@@ -198,6 +198,11 @@ export default function App() {
     editorInstance.current.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
       saveAndBuildNow();
     });
+
+    // Layout the editor to ensure it's properly sized
+    window.setTimeout(() => {
+      editorInstance.current?.layout();
+    }, 100);
   }, []);
 
   useEffect(() => {
@@ -271,6 +276,7 @@ export default function App() {
     if (!data.isBinary && editorInstance.current) {
       ignoreChangeRef.current = true;
       editorInstance.current.setValue(data.content || "");
+      editorInstance.current.layout();
       window.setTimeout(() => {
         ignoreChangeRef.current = false;
       }, 0);

@@ -635,8 +635,8 @@ a:hover {
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
-  padding-bottom: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -647,7 +647,6 @@ a:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 0.4px;
 }
