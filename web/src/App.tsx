@@ -189,6 +189,7 @@ export default function App() {
 
   useEffect(() => {
     if (!editorContainer.current || editorInstance.current) return;
+    
     editorInstance.current = monaco.editor.create(editorContainer.current, {
       value: "",
       language: "latex",
@@ -217,6 +218,16 @@ export default function App() {
     window.setTimeout(() => {
       editorInstance.current?.layout();
     }, 100);
+
+    // Observe size changes to trigger layout
+    const resizeObserver = new ResizeObserver(() => {
+      editorInstance.current?.layout();
+    });
+    resizeObserver.observe(editorContainer.current);
+    
+    return () => {
+      resizeObserver.disconnect();
+    };
   }, []);
 
   useEffect(() => {
@@ -224,6 +235,13 @@ export default function App() {
       monaco.editor.setTheme(theme === "dark" ? "vs-dark" : "vs");
     }
   }, [theme]);
+
+  // Layout editor when visibility or pane dimensions change
+  useEffect(() => {
+    if (visiblePanes.editor && editorInstance.current && !isBinary) {
+      editorInstance.current.layout();
+    }
+  }, [visiblePanes.editor, paneDimensions, isBinary]);
 
   useEffect(() => {
     if (numPages > 0) {
@@ -280,22 +298,22 @@ export default function App() {
      setCurrentDir(dir);
    }
 
-   async function openFile(path: string) {
-     setCurrentFile(path);
-     currentFileRef.current = path;
-     const res = await fetch(`${apiUrl}/file?path=${encodeURIComponent(path)}`);
-     if (!res.ok) return;
-     const data = await res.json();
-     setIsBinary(data.isBinary);
-     if (!data.isBinary && editorInstance.current) {
-       ignoreChangeRef.current = true;
-       editorInstance.current.setValue(data.content || "");
-       editorInstance.current.layout();
-       window.setTimeout(() => {
-         ignoreChangeRef.current = false;
-       }, 0);
-     }
-   }
+  async function openFile(path: string) {
+    setCurrentFile(path);
+    currentFileRef.current = path;
+    const res = await fetch(`${apiUrl}/file?path=${encodeURIComponent(path)}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    setIsBinary(data.isBinary);
+    if (!data.isBinary && editorInstance.current) {
+      ignoreChangeRef.current = true;
+      editorInstance.current.setValue(data.content || "");
+      editorInstance.current.layout();
+      window.setTimeout(() => {
+        ignoreChangeRef.current = false;
+      }, 0);
+    }
+  }
 
   function scheduleSave(newContent: string) {
     if (!currentFileRef.current) return;
@@ -694,7 +712,7 @@ export default function App() {
           <>
             {visiblePanes.sidebar && (
               <>
-                <aside className="sidebar">
+                <aside className="sidebar" style={{ width: `${paneDimensions.sidebar}px` }}>
               <div className="file-header">
                 <div className="pane-title">Files</div>
               </div>
@@ -777,15 +795,14 @@ export default function App() {
         )}
         {visiblePanes.editor && (
           <>
-            <section className="editor">
+            <section className="editor" style={{ width: paneDimensions.editor > 0 ? `${paneDimensions.editor}px` : undefined, flex: paneDimensions.editor > 0 ? undefined : 1 }}>
               <div className="pane-header">
                 <div className="pane-title">Editor</div>
               </div>
               {isBinary ? (
                 <div className="binary">Binary file selected</div>
-              ) : (
-                <div className="monaco" ref={editorContainer} />
-              )}
+              ) : null}
+              <div className="monaco" ref={editorContainer} style={{ display: isBinary ? "none" : "block", height: isBinary ? 0 : "auto" }} />
             </section>
             {visiblePanes.preview ? (
               <div

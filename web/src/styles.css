@@ -256,7 +256,6 @@ a:hover {
 }
 
 .sidebar {
-  width: 280px;
   flex-shrink: 0;
 }
 
