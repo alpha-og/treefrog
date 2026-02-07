@@ -1,6 +1,26 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import * as monaco from "monaco-editor";
+import {
+  File,
+  Folder,
+  ChevronRight,
+  ChevronLeft,
+  Plus,
+  Copy,
+  Trash2,
+  Edit2,
+  EyeOff,
+  Eye,
+  PanelLeft,
+  PanelRight,
+  Maximize2,
+  MoreVertical,
+  FileText,
+  FileCode,
+  FileJson,
+  Settings,
+} from "lucide-react";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -28,6 +48,32 @@ type ModalState =
   | { kind: "duplicate"; path: string }
   | { kind: "delete"; path: string; isDir: boolean };
 
+function getFileIcon(name: string, isDir: boolean) {
+  if (isDir) return <Folder size={14} />;
+
+  const ext = name.split(".").pop()?.toLowerCase() || "";
+  
+  switch (ext) {
+    case "tex":
+    case "txt":
+      return <FileText size={14} />;
+    case "json":
+      return <FileJson size={14} />;
+    case "js":
+    case "ts":
+    case "tsx":
+    case "jsx":
+    case "py":
+    case "rs":
+    case "go":
+      return <FileCode size={14} />;
+    case "pdf":
+      return <File size={14} />;
+    default:
+      return <File size={14} />;
+  }
+}
+
 const API = "/api";
 const ZOOM_LEVELS = [0.6, 0.8, 1, 1.2, 1.4, 1.6, 2, 2.4];
 
@@ -54,6 +100,33 @@ export default function App() {
   const [zoom, setZoom] = useState<number>(1.2);
   const [numPages, setNumPages] = useState<number>(0);
   const [pageInput, setPageInput] = useState<string>("1");
+
+  // Layout pane visibility state
+  const [visiblePanes, setVisiblePanes] = useState<{ sidebar: boolean; editor: boolean; preview: boolean }>(() => {
+    const saved = localStorage.getItem("treefrog-panes");
+    return saved ? JSON.parse(saved) : { sidebar: true, editor: true, preview: true };
+  });
+
+  // Pane dimensions for resizing
+  const [paneDimensions, setPaneDimensions] = useState<{ sidebar: number; editor: number }>(() => {
+    const saved = localStorage.getItem("treefrog-pane-dims");
+    return saved ? JSON.parse(saved) : { sidebar: 280, editor: 0 };
+  });
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; isDir: boolean } | null>(
+    null
+  );
+
+  // File menu dropdown state
+  const [fileMenu, setFileMenu] = useState<{ x: number; y: number; path: string; isDir: boolean } | null>(null);
+
+  // Resizing state
+  const [isResizing, setIsResizing] = useState<"sidebar-editor" | "editor-preview" | null>(null);
+  const mainRef = useRef<HTMLDivElement | null>(null);
+  const startPosRef = useRef<number>(0);
+  const startDimsRef = useRef<{ sidebar: number; editor: number }>({ sidebar: 0, editor: 0 });
+  const resizingRef = useRef<"sidebar-editor" | "editor-preview" | null>(null);
   const buildPollRef = useRef<number | null>(null);
   const currentFileRef = useRef<string>("");
   const ignoreChangeRef = useRef<boolean>(false);
@@ -81,6 +154,24 @@ export default function App() {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem("treefrog-theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem("treefrog-panes", JSON.stringify(visiblePanes));
+  }, [visiblePanes]);
+
+  useEffect(() => {
+    localStorage.setItem("treefrog-pane-dims", JSON.stringify(paneDimensions));
+  }, [paneDimensions]);
+
+  useEffect(() => {
+    function handleClickOutside() {
+      setContextMenu(null);
+    }
+    if (contextMenu) {
+      document.addEventListener("click", handleClickOutside);
+      return () => document.removeEventListener("click", handleClickOutside);
+    }
+  }, [contextMenu]);
 
   useEffect(() => {
     if (!editorContainer.current || editorInstance.current) return;
@@ -346,6 +437,60 @@ export default function App() {
     }
   }
 
+  function togglePane(pane: "sidebar" | "editor" | "preview") {
+    setVisiblePanes((prev) => {
+      const newPanes = { ...prev, [pane]: !prev[pane] };
+      // If all panes are hidden, show the sidebar as fallback
+      const visibleCount = Object.values(newPanes).filter(Boolean).length;
+      if (visibleCount === 0) {
+        return { ...newPanes, sidebar: true };
+      }
+      return newPanes;
+    });
+  }
+
+  function handleResizeStart(which: "sidebar-editor" | "editor-preview", e: React.MouseEvent) {
+    e.preventDefault();
+    resizingRef.current = which;
+    setIsResizing(which);
+    startPosRef.current = e.clientX;
+    startDimsRef.current = { ...paneDimensions };
+
+    const handleResizeMove = (moveEvent: MouseEvent) => {
+      if (!resizingRef.current || !mainRef.current) return;
+      const delta = moveEvent.clientX - startPosRef.current;
+      const mainRect = mainRef.current.getBoundingClientRect();
+      const mainWidth = mainRect.width;
+
+      if (resizingRef.current === "sidebar-editor") {
+        const newSidebar = Math.max(200, Math.min(400, startDimsRef.current.sidebar + delta));
+        setPaneDimensions((prev) => ({ ...prev, sidebar: newSidebar }));
+      } else if (resizingRef.current === "editor-preview") {
+        const newEditor = Math.max(200, Math.min(mainWidth - startDimsRef.current.sidebar - 200, startDimsRef.current.editor + delta));
+        setPaneDimensions((prev) => ({ ...prev, editor: newEditor }));
+      }
+    };
+
+    const handleResizeEnd = () => {
+      resizingRef.current = null;
+      setIsResizing(null);
+      document.removeEventListener("mousemove", handleResizeMove);
+      document.removeEventListener("mouseup", handleResizeEnd);
+    };
+
+    document.addEventListener("mousemove", handleResizeMove);
+    document.addEventListener("mouseup", handleResizeEnd);
+  }
+
+  function handleFileContextMenu(e: React.MouseEvent, path: string, isDir: boolean) {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, path, isDir });
+  }
+
+  function closeContextMenu() {
+    setContextMenu(null);
+  }
+
   async function confirmModal() {
     if (!modal) return;
     if (modal.kind === "create") {
@@ -394,6 +539,10 @@ export default function App() {
     return items;
   }, [currentDir]);
 
+  const allPanesHidden = useMemo(() => {
+    return !visiblePanes.sidebar && !visiblePanes.editor && !visiblePanes.preview;
+  }, [visiblePanes]);
+
   return (
     <div className="app">
       <header className="topbar">
@@ -414,165 +563,305 @@ export default function App() {
           {shellEscape && <span className="warning">Shell-escape enabled</span>}
           <button onClick={triggerBuild}>Build</button>
           <button onClick={syncFromCursor}>Sync</button>
+          <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+            <button 
+              onClick={() => togglePane("sidebar")} 
+              title={visiblePanes.sidebar ? "Hide sidebar" : "Show sidebar"}
+              style={{ opacity: visiblePanes.sidebar ? 1 : 0.5 }}
+            >
+              <PanelLeft size={16} />
+            </button>
+            <button 
+              onClick={() => togglePane("editor")} 
+              title={visiblePanes.editor ? "Hide editor" : "Show editor"}
+              style={{ opacity: visiblePanes.editor ? 1 : 0.5 }}
+            >
+              <Maximize2 size={16} />
+            </button>
+            <button 
+              onClick={() => togglePane("preview")} 
+              title={visiblePanes.preview ? "Hide preview" : "Show preview"}
+              style={{ opacity: visiblePanes.preview ? 1 : 0.5 }}
+            >
+              <PanelRight size={16} />
+            </button>
+          </div>
           <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
             {theme === "dark" ? "Light" : "Dark"}
           </button>
         </div>
       </header>
-      <div className="main">
-        <aside className="sidebar">
-          <div className="file-header">
-            <div className="pane-title">Files</div>
-            <div className="file-actions">
-              <button onClick={() => openModal({ kind: "create", type: "file" })}>New file</button>
-              <button onClick={() => openModal({ kind: "create", type: "dir" })}>New folder</button>
+      <div className="main" ref={mainRef}>
+        {allPanesHidden ? (
+          <EmptyPlaceholder />
+        ) : (
+          <>
+            {visiblePanes.sidebar && (
+              <>
+                <aside className="sidebar">
+              <div className="file-header">
+                <div className="pane-title">Files</div>
+              </div>
+              <div className="file-actions">
+                <button onClick={() => openModal({ kind: "create", type: "file" })} title="New file">
+                  <Plus size={14} />
+                  File
+                </button>
+                <button onClick={() => openModal({ kind: "create", type: "dir" })} title="New folder">
+                  <Folder size={14} />
+                  Folder
+                </button>
+              </div>
+              <div className="breadcrumbs">
+                {breadcrumbs.map((b, i) => (
+                  <button key={b.path} onClick={() => loadEntries(b.path)} title={b.path}>
+                    {b.name}
+                    {i < breadcrumbs.length - 1 && <ChevronRight size={12} />}
+                  </button>
+                ))}
+              </div>
+              <ul className="filelist">
+                {entries.map((f) => {
+                  const path = joinPath(currentDir, f.name);
+                  return (
+                    <li key={f.name}>
+                      <div className="file-row" onContextMenu={(e) => handleFileContextMenu(e, path, f.isDir)}>
+                        {f.isDir ? (
+                          <button className="dir" onClick={() => loadEntries(path)} title={f.name}>
+                            {getFileIcon(f.name, true)}
+                            {f.name}
+                          </button>
+                        ) : (
+                          <button
+                            className={currentFile === path ? "active" : ""}
+                            onClick={() => openFile(path)}
+                            title={f.name}
+                          >
+                            {getFileIcon(f.name, false)}
+                            {f.name}
+                          </button>
+                        )}
+                        <button
+                          className="file-menu-button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFileMenu({ x: e.currentTarget.getBoundingClientRect().right - 140, y: e.currentTarget.getBoundingClientRect().bottom + 4, path, isDir: f.isDir });
+                          }}
+                          title="More options"
+                        >
+                          <MoreVertical size={14} />
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="git-panel">
+                <div className="pane-title">Git</div>
+                <pre className={`git-status ${gitError ? "error" : ""}`}>{gitStatus || "clean"}</pre>
+                <input
+                  placeholder="Commit message"
+                  value={commitMsg}
+                  onChange={(e) => setCommitMsg(e.target.value)}
+                />
+                <div className="git-actions">
+                  <button onClick={commitAll}>Commit</button>
+                  <button onClick={push}>Push</button>
+                  <button onClick={pull}>Pull</button>
+                </div>
+              </div>
+            </aside>
+            {visiblePanes.editor || visiblePanes.preview ? (
+              <div
+                className="resize-handle"
+                onMouseDown={(e) => handleResizeStart("sidebar-editor", e)}
+              />
+            ) : null}
+          </>
+        )}
+        {visiblePanes.editor && (
+          <>
+            <section className="editor">
+              <div className="pane-header">
+                <div className="pane-title">Editor</div>
+              </div>
+              {isBinary ? (
+                <div className="binary">Binary file selected</div>
+              ) : (
+                <div className="monaco" ref={editorContainer} />
+              )}
+            </section>
+            {visiblePanes.preview ? (
+              <div
+                className="resize-handle"
+                onMouseDown={(e) => handleResizeStart("editor-preview", e)}
+              />
+            ) : null}
+          </>
+        )}
+        {visiblePanes.preview && (
+          <section className="preview">
+            <div className="pane-header">
+              <div className="pane-title">
+                Preview
+                <span className={`status ${buildStatus?.state || "idle"}`}>
+                  {buildStatus?.state || "idle"}
+                </span>
+              </div>
             </div>
-          </div>
-          <div className="breadcrumbs">
-            {breadcrumbs.map((b, i) => (
-              <button key={b.path} onClick={() => loadEntries(b.path)}>
-                {i > 0 ? "/" : ""}{b.name}
-              </button>
-            ))}
-            <button className="up" onClick={() => loadEntries(parentDir(currentDir))}>Up</button>
-          </div>
-          <ul className="filelist">
-            {entries.map((f) => {
-              const path = joinPath(currentDir, f.name);
-              return (
-                <li key={f.name}>
-                  <div className="file-row">
-                    {f.isDir ? (
-                      <button className="dir" onClick={() => loadEntries(path)}>
-                        {f.name}/
-                      </button>
-                    ) : (
-                      <button
-                        className={currentFile === path ? "active" : ""}
-                        onClick={() => openFile(path)}
-                      >
-                        {f.name}
-                      </button>
-                    )}
-                    <div className="row-actions">
-                      <button onClick={() => openModal({ kind: "rename", path })}>Rename</button>
-                      <button onClick={() => openModal({ kind: "duplicate", path })}>Duplicate</button>
-                      <button onClick={() => openModal({ kind: "move", path })}>Move</button>
-                      <button onClick={() => openModal({ kind: "delete", path, isDir: f.isDir })}>Delete</button>
-                    </div>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-          <div className="git-panel">
-            <div className="pane-title">Git</div>
-            <pre className={`git-status ${gitError ? "error" : ""}`}>{gitStatus || "clean"}</pre>
-            <input
-              placeholder="Commit message"
-              value={commitMsg}
-              onChange={(e) => setCommitMsg(e.target.value)}
-            />
-            <div className="git-actions">
-              <button onClick={commitAll}>Commit all</button>
-              <button onClick={push}>Push</button>
-              <button onClick={pull}>Pull</button>
+            {buildStatus?.state === "error" && (
+              <div className="build-error">
+                <div className="error-title">Build failed</div>
+                <div className="error-message">{buildStatus.message || "Unknown error"}</div>
+                <a href={`${API}/build/log`} target="_blank" rel="noreferrer">
+                  View full log
+                </a>
+              </div>
+            )}
+            <div className="preview-toolbar">
+              <button onClick={() => setZoom(clampZoom(zoom - 0.2))}>−</button>
+              <select value={zoom} onChange={(e) => setZoom(Number(e.target.value))}>
+                {ZOOM_LEVELS.map((z) => (
+                  <option key={z} value={z}>{Math.round(z * 100)}%</option>
+                ))}
+              </select>
+              <button onClick={() => setZoom(clampZoom(zoom + 0.2))}>+</button>
+              <div className="page-controls">
+                <button onClick={() => scrollToPage(Math.max(1, Number(pageInput) - 1))}>Prev</button>
+                <input
+                  value={pageInput}
+                  onChange={(e) => setPageInput(e.target.value)}
+                  onBlur={() => scrollToPage(clampPage(Number(pageInput), numPages))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      scrollToPage(clampPage(Number(pageInput), numPages));
+                    }
+                  }}
+                />
+                <span>/ {numPages || 0}</span>
+                <button onClick={() => scrollToPage(Math.min(numPages, Number(pageInput) + 1))}>Next</button>
+              </div>
+              <a href={`${API}/export/pdf`} target="_blank" rel="noreferrer">Export PDF</a>
+              <a href={`${API}/export/source-zip`} target="_blank" rel="noreferrer">Export Source</a>
             </div>
-          </div>
-        </aside>
-        <section className="editor">
-          <div className="pane-title">Editor</div>
-          {isBinary ? (
-            <div className="binary">Binary file selected</div>
-          ) : (
-            <div className="monaco" ref={editorContainer} />
-          )}
-        </section>
-        <section className="preview">
-          <div className="pane-title">
-            Preview
-            <span className={`status ${buildStatus?.state || "idle"}`}>
-              {buildStatus?.state || "idle"}
-            </span>
-          </div>
-          {buildStatus?.state === "error" && (
-            <div className="build-error">
-              <div className="error-title">Build failed</div>
-              <div className="error-message">{buildStatus.message || "Unknown error"}</div>
-              <a className="ghost" href={`${API}/build/log`} target="_blank" rel="noreferrer">
-                View full log
-              </a>
-            </div>
-          )}
-          <div className="preview-toolbar">
-            <button onClick={() => setZoom(clampZoom(zoom - 0.2))}>-</button>
-            <select value={zoom} onChange={(e) => setZoom(Number(e.target.value))}>
-              {ZOOM_LEVELS.map((z) => (
-                <option key={z} value={z}>{Math.round(z * 100)}%</option>
-              ))}
-            </select>
-            <button onClick={() => setZoom(clampZoom(zoom + 0.2))}>+</button>
-            <div className="page-controls">
-              <button onClick={() => scrollToPage(Math.max(1, Number(pageInput) - 1))}>Prev</button>
-              <input
-                value={pageInput}
-                onChange={(e) => setPageInput(e.target.value)}
-                onBlur={() => scrollToPage(clampPage(Number(pageInput), numPages))}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    scrollToPage(clampPage(Number(pageInput), numPages));
+            {projectRoot ? (
+              <PDFPreview
+                key={pdfKey}
+                url={`${API}/export/pdf?ts=${pdfKey}`}
+                zoom={zoom}
+                numPages={numPages}
+                onPageCount={setNumPages}
+                registerPageRef={registerPageRef}
+                pageProxyRef={pageProxyRef}
+                onKeyShortcut={(e) => {
+                  if ((e.ctrlKey || e.metaKey) && (e.key === "+" || e.key === "=")) {
+                    e.preventDefault();
+                    setZoom(clampZoom(zoom + 0.2));
+                  }
+                  if ((e.ctrlKey || e.metaKey) && e.key === "-") {
+                    e.preventDefault();
+                    setZoom(clampZoom(zoom - 0.2));
+                  }
+                  if (e.key === "j") {
+                    scrollToPage(Math.min(numPages, Number(pageInput) + 1));
+                  }
+                  if (e.key === "k") {
+                    scrollToPage(Math.max(1, Number(pageInput) - 1));
                   }
                 }}
+                onClickSync={async (page, x, y) => {
+                  const res = await fetch(`${API}/synctex/edit?page=${page}&x=${x}&y=${y}`);
+                  if (!res.ok) return;
+                  const data = (await res.json()) as SyncEdit;
+                  if (data.file) {
+                    await openFile(data.file);
+                    editorInstance.current?.setPosition({ lineNumber: data.line || 1, column: data.col || 1 });
+                    editorInstance.current?.revealLineInCenter(data.line || 1);
+                  }
+                }}
+                syncTarget={syncTarget}
+                onSyncScroll={(page) => scrollToPage(page)}
               />
-              <span>/ {numPages || 0}</span>
-              <button onClick={() => scrollToPage(Math.min(numPages, Number(pageInput) + 1))}>Next</button>
-            </div>
-            <a className="ghost" href={`${API}/export/pdf`} target="_blank" rel="noreferrer">Export PDF</a>
-            <a className="ghost" href={`${API}/export/source-zip`} target="_blank" rel="noreferrer">Export Source</a>
-          </div>
-          {projectRoot ? (
-            <PDFPreview
-              key={pdfKey}
-              url={`${API}/export/pdf?ts=${pdfKey}`}
-              zoom={zoom}
-              numPages={numPages}
-              onPageCount={setNumPages}
-              registerPageRef={registerPageRef}
-              pageProxyRef={pageProxyRef}
-              onKeyShortcut={(e) => {
-                if ((e.ctrlKey || e.metaKey) && (e.key === "+" || e.key === "=")) {
-                  e.preventDefault();
-                  setZoom(clampZoom(zoom + 0.2));
-                }
-                if ((e.ctrlKey || e.metaKey) && e.key === "-") {
-                  e.preventDefault();
-                  setZoom(clampZoom(zoom - 0.2));
-                }
-                if (e.key === "j") {
-                  scrollToPage(Math.min(numPages, Number(pageInput) + 1));
-                }
-                if (e.key === "k") {
-                  scrollToPage(Math.max(1, Number(pageInput) - 1));
-                }
-              }}
-              onClickSync={async (page, x, y) => {
-                const res = await fetch(`${API}/synctex/edit?page=${page}&x=${x}&y=${y}`);
-                if (!res.ok) return;
-                const data = (await res.json()) as SyncEdit;
-                if (data.file) {
-                  await openFile(data.file);
-                  editorInstance.current?.setPosition({ lineNumber: data.line || 1, column: data.col || 1 });
-                  editorInstance.current?.revealLineInCenter(data.line || 1);
-                }
-              }}
-              syncTarget={syncTarget}
-              onSyncScroll={(page) => scrollToPage(page)}
-            />
-          ) : (
-            <div className="empty">Select a project to see preview.</div>
-          )}
-        </section>
+            ) : (
+              <div className="empty">Select a project to see preview.</div>
+            )}
+          </section>
+        )}
+          </>
+        )}
       </div>
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          path={contextMenu.path}
+          isDir={contextMenu.isDir}
+          onClose={closeContextMenu}
+          onRename={() => {
+            openModal({ kind: "rename", path: contextMenu.path });
+            closeContextMenu();
+          }}
+          onDuplicate={() => {
+            openModal({ kind: "duplicate", path: contextMenu.path });
+            closeContextMenu();
+          }}
+          onMove={() => {
+            openModal({ kind: "move", path: contextMenu.path });
+            closeContextMenu();
+          }}
+          onDelete={() => {
+            openModal({ kind: "delete", path: contextMenu.path, isDir: contextMenu.isDir });
+            closeContextMenu();
+          }}
+          onCreateFile={() => {
+            setCurrentDir(contextMenu.path);
+            openModal({ kind: "create", type: "file" });
+            closeContextMenu();
+          }}
+          onCreateFolder={() => {
+            setCurrentDir(contextMenu.path);
+            openModal({ kind: "create", type: "dir" });
+            closeContextMenu();
+          }}
+        />
+      )}
+
+      {fileMenu && (
+        <FileMenu
+          x={fileMenu.x}
+          y={fileMenu.y}
+          path={fileMenu.path}
+          isDir={fileMenu.isDir}
+          onClose={() => setFileMenu(null)}
+          onRename={() => {
+            openModal({ kind: "rename", path: fileMenu.path });
+            setFileMenu(null);
+          }}
+          onDuplicate={() => {
+            openModal({ kind: "duplicate", path: fileMenu.path });
+            setFileMenu(null);
+          }}
+          onMove={() => {
+            openModal({ kind: "move", path: fileMenu.path });
+            setFileMenu(null);
+          }}
+          onDelete={() => {
+            openModal({ kind: "delete", path: fileMenu.path, isDir: fileMenu.isDir });
+            setFileMenu(null);
+          }}
+          onCreateFile={() => {
+            setCurrentDir(fileMenu.path);
+            openModal({ kind: "create", type: "file" });
+            setFileMenu(null);
+          }}
+          onCreateFolder={() => {
+            setCurrentDir(fileMenu.path);
+            openModal({ kind: "create", type: "dir" });
+            setFileMenu(null);
+          }}
+        />
+      )}
 
       {showProjectPicker && (
         <div className="modal">
@@ -616,6 +905,32 @@ export default function App() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function EmptyPlaceholder() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        height: "100%",
+        gap: "16px",
+        color: "var(--ink-secondary)",
+      }}
+    >
+      <Settings size={48} style={{ opacity: 0.3 }} />
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontSize: "14px", fontWeight: 600, marginBottom: "4px" }}>
+          All panes hidden
+        </div>
+        <div style={{ fontSize: "12px", opacity: 0.7 }}>
+          Use the panel icons in the toolbar to show panes
+        </div>
+      </div>
     </div>
   );
 }
@@ -692,6 +1007,160 @@ function modalHint(modal: ModalState, currentDir: string) {
     default:
       return currentDir;
   }
+}
+
+function ContextMenu({
+  x,
+  y,
+  path,
+  isDir,
+  onClose,
+  onRename,
+  onDuplicate,
+  onMove,
+  onDelete,
+  onCreateFile,
+  onCreateFolder,
+}: {
+  x: number;
+  y: number;
+  path: string;
+  isDir: boolean;
+  onClose: () => void;
+  onRename: () => void;
+  onDuplicate: () => void;
+  onMove: () => void;
+  onDelete: () => void;
+  onCreateFile: () => void;
+  onCreateFolder: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={ref}
+      className="context-menu"
+      style={{ top: `${y}px`, left: `${x}px` }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button onClick={onRename}>
+        <Edit2 size={14} />
+        Rename
+      </button>
+      <button onClick={onDuplicate}>
+        <Copy size={14} />
+        Duplicate
+      </button>
+      <button onClick={onMove}>
+        <ChevronRight size={14} />
+        Move
+      </button>
+      {isDir && (
+        <>
+          <button onClick={onCreateFile}>
+            <File size={14} />
+            New File
+          </button>
+          <button onClick={onCreateFolder}>
+            <Folder size={14} />
+            New Folder
+          </button>
+        </>
+      )}
+      <button onClick={onDelete} className="danger">
+        <Trash2 size={14} />
+        Delete
+      </button>
+    </div>
+  );
+}
+
+function FileMenu({
+  x,
+  y,
+  path,
+  isDir,
+  onClose,
+  onRename,
+  onDuplicate,
+  onMove,
+  onDelete,
+  onCreateFile,
+  onCreateFolder,
+}: {
+  x: number;
+  y: number;
+  path: string;
+  isDir: boolean;
+  onClose: () => void;
+  onRename: () => void;
+  onDuplicate: () => void;
+  onMove: () => void;
+  onDelete: () => void;
+  onCreateFile: () => void;
+  onCreateFolder: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={ref}
+      className="file-menu-dropdown"
+      style={{ top: `${y}px`, left: `${x}px` }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button onClick={onRename}>
+        <Edit2 size={14} />
+        Rename
+      </button>
+      <button onClick={onDuplicate}>
+        <Copy size={14} />
+        Duplicate
+      </button>
+      <button onClick={onMove}>
+        <ChevronRight size={14} />
+        Move
+      </button>
+      {isDir && (
+        <>
+          <button onClick={onCreateFile}>
+            <FileText size={14} />
+            New File
+          </button>
+          <button onClick={onCreateFolder}>
+            <Folder size={14} />
+            New Folder
+          </button>
+        </>
+      )}
+      <button onClick={onDelete} className="danger">
+        <Trash2 size={14} />
+        Delete
+      </button>
+    </div>
+  );
 }
 
 function PDFPreview({
