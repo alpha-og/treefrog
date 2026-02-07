@@ -20,6 +20,11 @@ import {
   FileCode,
   FileJson,
   Settings,
+  ChevronDown,
+  Zap,
+  Monitor,
+  Moon,
+  Sun,
 } from "lucide-react";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -74,7 +79,7 @@ function getFileIcon(name: string, isDir: boolean) {
   }
 }
 
-const API = "/api";
+const API_DEFAULT = "/api";
 const ZOOM_LEVELS = [0.6, 0.8, 1, 1.2, 1.4, 1.6, 2, 2.4];
 
 export default function App() {
@@ -95,7 +100,19 @@ export default function App() {
   const [showProjectPicker, setShowProjectPicker] = useState<boolean>(false);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [modalInput, setModalInput] = useState<string>("");
-  const [theme, setTheme] = useState<string>("light");
+  const [theme, setTheme] = useState<string>(() => {
+    const saved = localStorage.getItem("treefrog-theme");
+    const prefersDark = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    return saved || (prefersDark ? "dark" : "light");
+  });
+
+  const [apiUrl, setApiUrl] = useState<string>(() => {
+    return localStorage.getItem("treefrog-api-url") || "/api";
+  });
+
+  const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [buildMenu, setBuildMenu] = useState<boolean>(false);
+  const [viewMenu, setViewMenu] = useState<boolean>(false);
 
   const [zoom, setZoom] = useState<number>(1.2);
   const [numPages, setNumPages] = useState<number>(0);
@@ -144,16 +161,13 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const saved = localStorage.getItem("treefrog-theme");
-    const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const initial = saved || (prefersDark ? "dark" : "light");
-    setTheme(initial);
-  }, []);
-
-  useEffect(() => {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem("treefrog-theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem("treefrog-api-url", apiUrl);
+  }, [apiUrl]);
 
   useEffect(() => {
     localStorage.setItem("treefrog-panes", JSON.stringify(visiblePanes));
@@ -220,68 +234,68 @@ export default function App() {
     }
   }, [numPages]);
 
-  async function loadProject() {
-    const res = await fetch(`${API}/project`);
-    if (!res.ok) return;
-    const data = await res.json();
-    setProjectRoot(data.root || "");
-    if (!data.root) {
-      setShowProjectPicker(true);
-      return;
-    }
-    setShowProjectPicker(false);
-    await loadEntries("");
-    await refreshGit();
-  }
+   async function loadProject() {
+     const res = await fetch(`${apiUrl}/project`);
+     if (!res.ok) return;
+     const data = await res.json();
+     setProjectRoot(data.root || "");
+     if (!data.root) {
+       setShowProjectPicker(true);
+       return;
+     }
+     setShowProjectPicker(false);
+     await loadEntries("");
+     await refreshGit();
+   }
 
-  async function setProjectRootFromUI() {
-    if (!projectInput.trim()) return;
-    const res = await fetch(`${API}/project/set`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ root: projectInput.trim() }),
-    });
-    if (!res.ok) {
-      const msg = await res.text();
-      alert(msg);
-      return;
-    }
-    const data = await res.json();
-    setProjectRoot(data.root || "");
-    setShowProjectPicker(false);
-    setCurrentDir("");
-    setCurrentFile("");
-    currentFileRef.current = "";
-    editorInstance.current?.setValue("");
-    await loadEntries("");
-    await refreshGit();
-  }
+   async function setProjectRootFromUI() {
+     if (!projectInput.trim()) return;
+     const res = await fetch(`${apiUrl}/project/set`, {
+       method: "POST",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify({ root: projectInput.trim() }),
+     });
+     if (!res.ok) {
+       const msg = await res.text();
+       alert(msg);
+       return;
+     }
+     const data = await res.json();
+     setProjectRoot(data.root || "");
+     setShowProjectPicker(false);
+     setCurrentDir("");
+     setCurrentFile("");
+     currentFileRef.current = "";
+     editorInstance.current?.setValue("");
+     await loadEntries("");
+     await refreshGit();
+   }
 
-  async function loadEntries(dir: string) {
-    const path = dir === "" ? "." : dir;
-    const res = await fetch(`${API}/files?path=${encodeURIComponent(path)}`);
-    if (!res.ok) return;
-    const data = await res.json();
-    setEntries(data);
-    setCurrentDir(dir);
-  }
+   async function loadEntries(dir: string) {
+     const path = dir === "" ? "." : dir;
+     const res = await fetch(`${apiUrl}/files?path=${encodeURIComponent(path)}`);
+     if (!res.ok) return;
+     const data = await res.json();
+     setEntries(data);
+     setCurrentDir(dir);
+   }
 
-  async function openFile(path: string) {
-    setCurrentFile(path);
-    currentFileRef.current = path;
-    const res = await fetch(`${API}/file?path=${encodeURIComponent(path)}`);
-    if (!res.ok) return;
-    const data = await res.json();
-    setIsBinary(data.isBinary);
-    if (!data.isBinary && editorInstance.current) {
-      ignoreChangeRef.current = true;
-      editorInstance.current.setValue(data.content || "");
-      editorInstance.current.layout();
-      window.setTimeout(() => {
-        ignoreChangeRef.current = false;
-      }, 0);
-    }
-  }
+   async function openFile(path: string) {
+     setCurrentFile(path);
+     currentFileRef.current = path;
+     const res = await fetch(`${apiUrl}/file?path=${encodeURIComponent(path)}`);
+     if (!res.ok) return;
+     const data = await res.json();
+     setIsBinary(data.isBinary);
+     if (!data.isBinary && editorInstance.current) {
+       ignoreChangeRef.current = true;
+       editorInstance.current.setValue(data.content || "");
+       editorInstance.current.layout();
+       window.setTimeout(() => {
+         ignoreChangeRef.current = false;
+       }, 0);
+     }
+   }
 
   function scheduleSave(newContent: string) {
     if (!currentFileRef.current) return;
@@ -292,13 +306,13 @@ export default function App() {
     }, 600);
   }
 
-  async function saveFile(path: string, content: string) {
-    await fetch(`${API}/file?path=${encodeURIComponent(path)}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, isBinary: false }),
-    });
-  }
+   async function saveFile(path: string, content: string) {
+     await fetch(`${apiUrl}/file?path=${encodeURIComponent(path)}`, {
+       method: "PUT",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify({ content, isBinary: false }),
+     });
+   }
 
   async function saveAndBuildNow() {
     if (!currentFileRef.current || !editorInstance.current) return;
@@ -314,33 +328,33 @@ export default function App() {
     }, 700);
   }
 
-  async function triggerBuild() {
-    const mainFile = currentFileRef.current || "main.tex";
-    await fetch(`${API}/build`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mainFile, engine, shellEscape }),
-    });
-    startBuildPolling();
-  }
+   async function triggerBuild() {
+     const mainFile = currentFileRef.current || "main.tex";
+     await fetch(`${apiUrl}/build`, {
+       method: "POST",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify({ mainFile, engine, shellEscape }),
+     });
+     startBuildPolling();
+   }
 
-  function startBuildPolling() {
-    if (buildPollRef.current) window.clearInterval(buildPollRef.current);
-    buildPollRef.current = window.setInterval(async () => {
-      const res = await fetch(`${API}/build/status`);
-      if (!res.ok) return;
-      const data = (await res.json()) as BuildStatus;
-      setBuildStatus(data);
-      if (data.state === "success") {
-        setPdfKey(Date.now());
-        refreshGit();
-        if (buildPollRef.current) window.clearInterval(buildPollRef.current);
-      }
-      if (data.state === "error") {
-        if (buildPollRef.current) window.clearInterval(buildPollRef.current);
-      }
-    }, 1000);
-  }
+   function startBuildPolling() {
+     if (buildPollRef.current) window.clearInterval(buildPollRef.current);
+     buildPollRef.current = window.setInterval(async () => {
+       const res = await fetch(`${apiUrl}/build/status`);
+       if (!res.ok) return;
+       const data = (await res.json()) as BuildStatus;
+       setBuildStatus(data);
+       if (data.state === "success") {
+         setPdfKey(Date.now());
+         refreshGit();
+         if (buildPollRef.current) window.clearInterval(buildPollRef.current);
+       }
+       if (data.state === "error") {
+         if (buildPollRef.current) window.clearInterval(buildPollRef.current);
+       }
+     }, 1000);
+   }
 
   function connectWS() {
     const wsProto = location.protocol === "https:" ? "wss" : "ws";
@@ -359,51 +373,51 @@ export default function App() {
     };
   }
 
-  async function refreshGit() {
-    const res = await fetch(`${API}/git/status`);
-    if (!res.ok) {
-      const msg = await res.text();
-      setGitStatus(msg || "git error");
-      setGitError(true);
-      return;
-    }
-    const data = await res.json();
-    setGitStatus(data.raw || "");
-    setGitError(false);
-  }
+   async function refreshGit() {
+     const res = await fetch(`${apiUrl}/git/status`);
+     if (!res.ok) {
+       const msg = await res.text();
+       setGitStatus(msg || "git error");
+       setGitError(true);
+       return;
+     }
+     const data = await res.json();
+     setGitStatus(data.raw || "");
+     setGitError(false);
+   }
 
-  async function commitAll() {
-    if (!commitMsg.trim()) return;
-    await fetch(`${API}/git/commit`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: commitMsg, all: true }),
-    });
-    setCommitMsg("");
-    refreshGit();
-  }
+   async function commitAll() {
+     if (!commitMsg.trim()) return;
+     await fetch(`${apiUrl}/git/commit`, {
+       method: "POST",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify({ message: commitMsg, all: true }),
+     });
+     setCommitMsg("");
+     refreshGit();
+   }
 
-  async function push() {
-    await fetch(`${API}/git/push`, { method: "POST", headers: { "Content-Type": "application/json" } });
-    refreshGit();
-  }
+   async function push() {
+     await fetch(`${apiUrl}/git/push`, { method: "POST", headers: { "Content-Type": "application/json" } });
+     refreshGit();
+   }
 
-  async function pull() {
-    await fetch(`${API}/git/pull`, { method: "POST", headers: { "Content-Type": "application/json" } });
-    refreshGit();
-  }
+   async function pull() {
+     await fetch(`${apiUrl}/git/pull`, { method: "POST", headers: { "Content-Type": "application/json" } });
+     refreshGit();
+   }
 
-  async function syncFromCursor() {
-    if (!currentFile || !editorInstance.current) return;
-    const pos = editorInstance.current.getPosition();
-    if (!pos) return;
-    const url = `${API}/synctex/view?file=${encodeURIComponent(currentFile)}&line=${pos.lineNumber}&col=${pos.column}`;
-    const res = await fetch(url);
-    if (!res.ok) return;
-    const data = (await res.json()) as SyncView;
-    setSyncTarget(data);
-    scrollToPage(data.page);
-  }
+   async function syncFromCursor() {
+     if (!currentFile || !editorInstance.current) return;
+     const pos = editorInstance.current.getPosition();
+     if (!pos) return;
+     const url = `${apiUrl}/synctex/view?file=${encodeURIComponent(currentFile)}&line=${pos.lineNumber}&col=${pos.column}`;
+     const res = await fetch(url);
+     if (!res.ok) return;
+     const data = (await res.json()) as SyncView;
+     setSyncTarget(data);
+     scrollToPage(data.page);
+   }
 
   function registerPageRef(page: number, el: HTMLDivElement | null) {
     if (!el) return;
@@ -418,20 +432,20 @@ export default function App() {
     }
   }
 
-  async function runFS(endpoint: string, body: any) {
-    const res = await fetch(`${API}${endpoint}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const msg = await res.text();
-      alert(msg);
-      return false;
-    }
-    await loadEntries(currentDir);
-    return true;
-  }
+   async function runFS(endpoint: string, body: any) {
+     const res = await fetch(`${apiUrl}${endpoint}`, {
+       method: "POST",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify(body),
+     });
+     if (!res.ok) {
+       const msg = await res.text();
+       alert(msg);
+       return false;
+     }
+     await loadEntries(currentDir);
+     return true;
+   }
 
   function openModal(next: ModalState) {
     setModal(next);
@@ -552,51 +566,127 @@ export default function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <div className="brand">Treefrog</div>
-        <div className="project-chip" onClick={() => setShowProjectPicker(true)}>
-          {projectRoot ? projectRoot : "Set project"}
-        </div>
-        <div className="actions">
-          <select value={engine} onChange={(e) => setEngine(e.target.value)}>
-            <option value="pdflatex">pdflatex</option>
-            <option value="xelatex">xelatex</option>
-            <option value="lualatex">lualatex</option>
-          </select>
-          <label className="toggle">
-            <input type="checkbox" checked={shellEscape} onChange={(e) => setShellEscape(e.target.checked)} />
-            Shell-escape
-          </label>
-          {shellEscape && <span className="warning">Shell-escape enabled</span>}
-          <button onClick={triggerBuild}>Build</button>
-          <button onClick={syncFromCursor}>Sync</button>
-          <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-            <button 
-              onClick={() => togglePane("sidebar")} 
-              title={visiblePanes.sidebar ? "Hide sidebar" : "Show sidebar"}
-              style={{ opacity: visiblePanes.sidebar ? 1 : 0.5 }}
-            >
-              <PanelLeft size={16} />
-            </button>
-            <button 
-              onClick={() => togglePane("editor")} 
-              title={visiblePanes.editor ? "Hide editor" : "Show editor"}
-              style={{ opacity: visiblePanes.editor ? 1 : 0.5 }}
-            >
-              <Maximize2 size={16} />
-            </button>
-            <button 
-              onClick={() => togglePane("preview")} 
-              title={visiblePanes.preview ? "Hide preview" : "Show preview"}
-              style={{ opacity: visiblePanes.preview ? 1 : 0.5 }}
-            >
-              <PanelRight size={16} />
-            </button>
-          </div>
-          <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
-            {theme === "dark" ? "Light" : "Dark"}
-          </button>
-        </div>
-      </header>
+         <div className="brand">Treefrog</div>
+         <div className="project-chip" onClick={() => setShowProjectPicker(true)}>
+           {projectRoot ? projectRoot : "Set project"}
+         </div>
+         <div className="actions">
+           {/* Build & Engine Menu */}
+           <div style={{ position: "relative" }}>
+             <button 
+               onClick={() => setBuildMenu(!buildMenu)}
+               style={{ display: "flex", alignItems: "center", gap: "4px" }}
+               title="Build options"
+             >
+               <Zap size={16} />
+               <ChevronDown size={14} />
+             </button>
+             {buildMenu && (
+               <div className="toolbar-dropdown" onClick={(e) => e.stopPropagation()}>
+                 <div style={{ padding: "8px 12px", color: "var(--ink-secondary)", fontSize: "11px", fontWeight: 600, textTransform: "uppercase" }}>
+                   Engine
+                 </div>
+                 <select 
+                   value={engine} 
+                   onChange={(e) => {
+                     setEngine(e.target.value);
+                     setBuildMenu(false);
+                   }}
+                   style={{ width: "100%", padding: "6px 8px", marginBottom: "8px", border: "none", background: "transparent", cursor: "pointer", fontSize: "13px" }}
+                 >
+                   <option value="pdflatex">pdflatex</option>
+                   <option value="xelatex">xelatex</option>
+                   <option value="lualatex">lualatex</option>
+                 </select>
+                 <label className="toggle" style={{ padding: "8px 12px", margin: 0, display: "flex", gap: "8px", alignItems: "center" }}>
+                   <input type="checkbox" checked={shellEscape} onChange={(e) => setShellEscape(e.target.checked)} style={{ cursor: "pointer" }} />
+                   <span style={{ fontSize: "12px" }}>Shell-escape</span>
+                 </label>
+                 {shellEscape && <div style={{ padding: "6px 12px", fontSize: "11px", color: "var(--accent)", fontWeight: 500 }}>⚠ Enabled</div>}
+                 <button 
+                   onClick={() => {
+                     triggerBuild();
+                     setBuildMenu(false);
+                   }}
+                   style={{ width: "100%", margin: "8px 0 0 0", padding: "8px 12px", border: "1px solid var(--border)", background: "var(--accent-light)", color: "var(--accent)", borderRadius: "6px", cursor: "pointer", fontWeight: 600, fontSize: "12px" }}
+                 >
+                   Build Now
+                 </button>
+               </div>
+             )}
+           </div>
+
+           <button onClick={syncFromCursor} title="Sync from cursor">
+             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+               <circle cx="4" cy="4" r="2.5" />
+               <circle cx="12" cy="12" r="2.5" />
+               <path d="M6 5.5 L10 10.5" />
+             </svg>
+           </button>
+
+           {/* View Menu */}
+           <div style={{ position: "relative" }}>
+             <button 
+               onClick={() => setViewMenu(!viewMenu)}
+               style={{ display: "flex", alignItems: "center", gap: "4px" }}
+               title="View options"
+             >
+               <Monitor size={16} />
+               <ChevronDown size={14} />
+             </button>
+             {viewMenu && (
+               <div className="toolbar-dropdown" onClick={(e) => e.stopPropagation()}>
+                 <button 
+                   onClick={() => {
+                     togglePane("sidebar");
+                     setViewMenu(false);
+                   }}
+                   style={{ width: "100%", textAlign: "left", padding: "8px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: "12px", borderRadius: "6px", color: "var(--ink)", display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                 >
+                   <span>Sidebar</span>
+                   {visiblePanes.sidebar && <span style={{ fontSize: "10px", color: "var(--accent)" }}>✓</span>}
+                 </button>
+                 <button 
+                   onClick={() => {
+                     togglePane("editor");
+                     setViewMenu(false);
+                   }}
+                   style={{ width: "100%", textAlign: "left", padding: "8px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: "12px", borderRadius: "6px", color: "var(--ink)", display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                 >
+                   <span>Editor</span>
+                   {visiblePanes.editor && <span style={{ fontSize: "10px", color: "var(--accent)" }}>✓</span>}
+                 </button>
+                 <button 
+                   onClick={() => {
+                     togglePane("preview");
+                     setViewMenu(false);
+                   }}
+                   style={{ width: "100%", textAlign: "left", padding: "8px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: "12px", borderRadius: "6px", color: "var(--ink)", display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                 >
+                   <span>Preview</span>
+                   {visiblePanes.preview && <span style={{ fontSize: "10px", color: "var(--accent)" }}>✓</span>}
+                 </button>
+               </div>
+             )}
+           </div>
+
+           {/* Theme Toggle */}
+           <button 
+             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+             title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+           >
+             {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+           </button>
+
+           {/* Settings */}
+           <button 
+             onClick={() => setShowSettings(true)}
+             title="Settings"
+           >
+             <Settings size={16} />
+           </button>
+         </div>
+       </header>
       <div className="main" ref={mainRef}>
         {allPanesHidden ? (
           <EmptyPlaceholder />
@@ -715,15 +805,15 @@ export default function App() {
                 </span>
               </div>
             </div>
-            {buildStatus?.state === "error" && (
-              <div className="build-error">
-                <div className="error-title">Build failed</div>
-                <div className="error-message">{buildStatus.message || "Unknown error"}</div>
-                <a href={`${API}/build/log`} target="_blank" rel="noreferrer">
-                  View full log
-                </a>
-              </div>
-            )}
+             {buildStatus?.state === "error" && (
+               <div className="build-error">
+                 <div className="error-title">Build failed</div>
+                 <div className="error-message">{buildStatus.message || "Unknown error"}</div>
+                 <a href={`${apiUrl}/build/log`} target="_blank" rel="noreferrer">
+                   View full log
+                 </a>
+               </div>
+             )}
             <div className="preview-toolbar">
               <button onClick={() => setZoom(clampZoom(zoom - 0.2))}>−</button>
               <select value={zoom} onChange={(e) => setZoom(Number(e.target.value))}>
@@ -747,50 +837,50 @@ export default function App() {
                 <span>/ {numPages || 0}</span>
                 <button onClick={() => scrollToPage(Math.min(numPages, Number(pageInput) + 1))}>Next</button>
               </div>
-              <a href={`${API}/export/pdf`} target="_blank" rel="noreferrer">Export PDF</a>
-              <a href={`${API}/export/source-zip`} target="_blank" rel="noreferrer">Export Source</a>
+               <a href={`${apiUrl}/export/pdf`} target="_blank" rel="noreferrer">Export PDF</a>
+               <a href={`${apiUrl}/export/source-zip`} target="_blank" rel="noreferrer">Export Source</a>
             </div>
-            {projectRoot ? (
-              <PDFPreview
-                key={pdfKey}
-                url={`${API}/export/pdf?ts=${pdfKey}`}
-                zoom={zoom}
-                numPages={numPages}
-                onPageCount={setNumPages}
-                registerPageRef={registerPageRef}
-                pageProxyRef={pageProxyRef}
-                onKeyShortcut={(e) => {
-                  if ((e.ctrlKey || e.metaKey) && (e.key === "+" || e.key === "=")) {
-                    e.preventDefault();
-                    setZoom(clampZoom(zoom + 0.2));
-                  }
-                  if ((e.ctrlKey || e.metaKey) && e.key === "-") {
-                    e.preventDefault();
-                    setZoom(clampZoom(zoom - 0.2));
-                  }
-                  if (e.key === "j") {
-                    scrollToPage(Math.min(numPages, Number(pageInput) + 1));
-                  }
-                  if (e.key === "k") {
-                    scrollToPage(Math.max(1, Number(pageInput) - 1));
-                  }
-                }}
-                onClickSync={async (page, x, y) => {
-                  const res = await fetch(`${API}/synctex/edit?page=${page}&x=${x}&y=${y}`);
-                  if (!res.ok) return;
-                  const data = (await res.json()) as SyncEdit;
-                  if (data.file) {
-                    await openFile(data.file);
-                    editorInstance.current?.setPosition({ lineNumber: data.line || 1, column: data.col || 1 });
-                    editorInstance.current?.revealLineInCenter(data.line || 1);
-                  }
-                }}
-                syncTarget={syncTarget}
-                onSyncScroll={(page) => scrollToPage(page)}
-              />
-            ) : (
-              <div className="empty">Select a project to see preview.</div>
-            )}
+             {projectRoot ? (
+               <PDFPreview
+                 key={pdfKey}
+                 url={`${apiUrl}/export/pdf?ts=${pdfKey}`}
+                 zoom={zoom}
+                 numPages={numPages}
+                 onPageCount={setNumPages}
+                 registerPageRef={registerPageRef}
+                 pageProxyRef={pageProxyRef}
+                 onKeyShortcut={(e) => {
+                   if ((e.ctrlKey || e.metaKey) && (e.key === "+" || e.key === "=")) {
+                     e.preventDefault();
+                     setZoom(clampZoom(zoom + 0.2));
+                   }
+                   if ((e.ctrlKey || e.metaKey) && e.key === "-") {
+                     e.preventDefault();
+                     setZoom(clampZoom(zoom - 0.2));
+                   }
+                   if (e.key === "j") {
+                     scrollToPage(Math.min(numPages, Number(pageInput) + 1));
+                   }
+                   if (e.key === "k") {
+                     scrollToPage(Math.max(1, Number(pageInput) - 1));
+                   }
+                 }}
+                 onClickSync={async (page, x, y) => {
+                   const res = await fetch(`${apiUrl}/synctex/edit?page=${page}&x=${x}&y=${y}`);
+                   if (!res.ok) return;
+                   const data = (await res.json()) as SyncEdit;
+                   if (data.file) {
+                     await openFile(data.file);
+                     editorInstance.current?.setPosition({ lineNumber: data.line || 1, column: data.col || 1 });
+                     editorInstance.current?.revealLineInCenter(data.line || 1);
+                   }
+                 }}
+                 syncTarget={syncTarget}
+                 onSyncScroll={(page) => scrollToPage(page)}
+               />
+             ) : (
+               <div className="empty">Select a project to see preview.</div>
+             )}
           </section>
         )}
           </>
@@ -869,25 +959,33 @@ export default function App() {
         />
       )}
 
-      {showProjectPicker && (
-        <div className="modal">
-          <div className="modal-card">
-            <h3>Select Project Folder</h3>
-            <p>Enter an absolute path to your LaTeX project.</p>
-            <input
-              placeholder="/path/to/project"
-              value={projectInput}
-              onChange={(e) => setProjectInput(e.target.value)}
-            />
-            <div className="modal-actions">
-              <button onClick={setProjectRootFromUI}>Set project</button>
-              {projectRoot && (
-                <button onClick={() => setShowProjectPicker(false)}>Cancel</button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+       {showProjectPicker && (
+         <div className="modal">
+           <div className="modal-card">
+             <h3>Select Project Folder</h3>
+             <p>Enter an absolute path to your LaTeX project.</p>
+             <input
+               placeholder="/path/to/project"
+               value={projectInput}
+               onChange={(e) => setProjectInput(e.target.value)}
+             />
+             <div className="modal-actions">
+               <button onClick={setProjectRootFromUI}>Set project</button>
+               {projectRoot && (
+                 <button onClick={() => setShowProjectPicker(false)}>Cancel</button>
+               )}
+             </div>
+           </div>
+         </div>
+       )}
+
+       {showSettings && (
+         <SettingsModal
+           apiUrl={apiUrl}
+           onSave={(url) => setApiUrl(url)}
+           onClose={() => setShowSettings(false)}
+         />
+       )}
 
       {modal && (
         <div className="modal">
@@ -911,6 +1009,65 @@ export default function App() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function SettingsModal({
+  apiUrl,
+  onSave,
+  onClose,
+}: {
+  apiUrl: string;
+  onSave: (url: string) => void;
+  onClose: () => void;
+}) {
+  const [input, setInput] = useState<string>(apiUrl);
+  const [saved, setSaved] = useState<boolean>(false);
+
+  const handleSave = () => {
+    const trimmed = input.trim() || API_DEFAULT;
+    onSave(trimmed);
+    setSaved(true);
+    window.setTimeout(() => {
+      onClose();
+    }, 500);
+  };
+
+  return (
+    <div className="modal">
+      <div className="modal-card">
+        <h3>Settings</h3>
+        <p>Configure the API endpoint for this application.</p>
+        <div style={{ marginBottom: "16px" }}>
+          <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "8px", color: "var(--ink-secondary)" }}>
+            API URL
+          </label>
+          <input
+            type="text"
+            placeholder={API_DEFAULT}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSave();
+              if (e.key === "Escape") onClose();
+            }}
+            style={{ width: "100%" }}
+          />
+          <div style={{ fontSize: "11px", color: "var(--ink-secondary)", marginTop: "6px", fontStyle: "italic" }}>
+            Default: {API_DEFAULT}
+          </div>
+        </div>
+        {saved && (
+          <div style={{ fontSize: "12px", color: "var(--accent)", marginBottom: "16px" }}>
+            ✓ Settings saved
+          </div>
+        )}
+        <div className="modal-actions">
+          <button onClick={handleSave}>Save</button>
+          <button onClick={onClose}>Cancel</button>
+        </div>
+      </div>
     </div>
   );
 }
