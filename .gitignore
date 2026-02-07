@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.treefrog-cache/
+.env
+.DS_Store

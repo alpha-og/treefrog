@@ -1,0 +1,11 @@
+version: "3.9"
+services:
+  remote-builder:
+    build:
+      context: ./remote-builder
+    ports:
+      - "9000:9000"
+    environment:
+      - PORT=9000
+      - BUILDER_TOKEN=${BUILDER_TOKEN}
+    restart: unless-stopped
