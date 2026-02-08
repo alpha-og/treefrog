@@ -35,8 +35,10 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
     setBuilderToken(trimmedToken);
 
     // Send config to backend
+    console.log("Saving config:", { url: trimmedUrl, token: trimmedToken ? "***" : "(empty)" });
     try {
       await syncConfig(trimmedUrl, trimmedToken);
+      console.log("Config saved successfully");
     } catch (err) {
       console.warn("Could not send config to server:", err);
     }

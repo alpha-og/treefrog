@@ -137,13 +137,18 @@ func (a *App) GetConfig() Config {
 
 // SetBuilderConfig updates the builder configuration
 func (a *App) SetBuilderConfig(url, token string) {
+	fmt.Printf("Setting builder config - URL: %s, Token: %s\n", url, map[bool]string{true: "(set)", false: "(empty)"}[token != ""])
 	a.configMu.Lock()
 	defer a.configMu.Unlock()
 	a.builderURL = url
 	a.builderToken = token
 	a.config.BuilderURL = url
 	a.config.BuilderToken = token
-	a.saveConfig()
+	if err := a.saveConfig(); err != nil {
+		fmt.Printf("Error saving config: %v\n", err)
+	} else {
+		fmt.Println("Config saved successfully")
+	}
 }
 
 // getRoot returns the current project root safely
