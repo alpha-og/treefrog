@@ -46,59 +46,82 @@ export default function ContextMenu({
 
   if (!visible) return null;
 
+  const itemStyle =
+    "w-full flex items-center gap-3 px-2.5 py-2 rounded-lg cursor-pointer transition-colors duration-150 hover:bg-base-200 active:bg-base-300";
+
+  const separator = (
+    <li className="my-1">
+      <div className="border-t border-base-300/70 mx-2" />
+    </li>
+  );
+
   return (
     <div
       ref={ref}
-      className="dropdown dropdown-open fixed"
+      className="fixed dropdown dropdown-open"
       style={{ top: `${y}px`, left: `${x}px`, zIndex: 50 }}
     >
-      <div className="dropdown-content menu bg-base-100 rounded-box shadow-lg border border-base-300">
-        <ul className="p-0">
+      <div className="dropdown-content min-w-[200px] max-w-[260px] bg-base-100 rounded-xl panel-shadow border border-base-300">
+        {/* Header */}
+        <div className="px-3 pt-2 pb-2 border-b border-base-300">
+          <p className="text-xs text-base-content/60 truncate">{path}</p>
+        </div>
+
+        <ul className="menu p-1 text-sm">
           <li>
-            <a onClick={onRename} className="gap-2">
-              <Edit2 size={14} />
+            <button onClick={onRename} className={itemStyle}>
+              <Edit2 size={16} className="opacity-70 shrink-0" />
               Rename
-            </a>
+            </button>
           </li>
+
           <li>
-            <a onClick={onDuplicate} className="gap-2">
-              <Copy size={14} />
+            <button onClick={onDuplicate} className={itemStyle}>
+              <Copy size={16} className="opacity-70 shrink-0" />
               Duplicate
-            </a>
+            </button>
           </li>
+
           <li>
-            <a onClick={onMove} className="gap-2">
-              <ChevronRight size={14} />
+            <button onClick={onMove} className={itemStyle}>
+              <ChevronRight size={16} className="opacity-70 shrink-0" />
               Move
-            </a>
+            </button>
           </li>
+
           {isDir && (
             <>
-              <li className="divider m-0"></li>
+              {separator}
+
               <li>
-                <a onClick={onCreateFile} className="gap-2">
-                  <File size={14} />
+                <button onClick={onCreateFile} className={itemStyle}>
+                  <File size={16} className="opacity-70 shrink-0" />
                   New File
-                </a>
+                </button>
               </li>
+
               <li>
-                <a onClick={onCreateFolder} className="gap-2">
-                  <Folder size={14} />
+                <button onClick={onCreateFolder} className={itemStyle}>
+                  <Folder size={16} className="opacity-70 shrink-0" />
                   New Folder
-                </a>
+                </button>
               </li>
             </>
           )}
-          <li className="divider m-0"></li>
+
+          {separator}
+
           <li>
-            <a onClick={onDelete} className="gap-2 text-error">
-              <Trash2 size={14} />
+            <button
+              onClick={onDelete}
+              className={`${itemStyle} text-error hover:bg-error/10`}
+            >
+              <Trash2 size={16} className="shrink-0" />
               Delete
-            </a>
+            </button>
           </li>
         </ul>
       </div>
     </div>
   );
 }
-
