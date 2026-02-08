@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 import * as monaco from "monaco-editor";
 import { pdfjs } from "react-pdf";
 
@@ -27,131 +33,121 @@ import { useBuild } from "./hooks/useBuild";
 import { useGit } from "./hooks/useGit";
 import { useWebSocket } from "./hooks/useWebSocket";
 
-
 // Services
 import { syncConfig } from "./services/configService";
 
 // Utils
+import { clampPage, modalTitle, modalPlaceholder, modalHint } from "./utils/ui";
 import { joinPath } from "./utils/path";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url
+  import.meta.url,
 ).toString();
-
-function baseName(path: string) {
-  const parts = path.split("/");
-  return parts[parts.length - 1];
-}
-
-function clampZoom(z: number) {
-  return Math.min(2.4, Math.max(0.6, Math.round(z * 10) / 10));
-}
-
-function clampPage(p: number, max: number) {
-  if (!p || Number.isNaN(p)) return 1;
-  return Math.min(Math.max(1, p), Math.max(1, max));
-}
-
-function modalTitle(modal: ModalState) {
-  switch (modal.kind) {
-    case "create":
-      return modal.type === "file" ? "Create file" : "Create folder";
-    case "rename":
-      return "Rename";
-    case "move":
-      return "Move";
-    case "duplicate":
-      return "Duplicate";
-    case "delete":
-      return "Delete";
-  }
-}
-
-function modalPlaceholder(modal: ModalState, currentDir: string) {
-  switch (modal.kind) {
-    case "create":
-      return joinPath(currentDir, modal.type === "file" ? "new.tex" : "new-folder");
-    case "rename":
-      return modal.path;
-    case "move":
-      return currentDir || "";
-    case "duplicate":
-      return modal.path + " copy";
-    default:
-      return "";
-  }
-}
-
-function modalHint(modal: ModalState) {
-  switch (modal.kind) {
-    case "create":
-      return "Enter a relative path.";
-    case "rename":
-      return "Enter the new relative path.";
-    case "move":
-      return "Enter the destination directory path.";
-    case "duplicate":
-      return "Enter the new relative path.";
-    case "delete":
-      return modal.isDir ? "Delete folder recursively?" : "Delete this file?";
-  }
-}
 
 export default function App() {
   // ========== STORES ==========
   const { theme, setTheme, apiUrl, builderUrl, builderToken } = useAppStore();
-  const { entries, currentDir, currentFile, isBinary, fileContent, setCurrentDir } = useFileStore();
+  const {
+    entries,
+    currentDir,
+    currentFile,
+    isBinary,
+    fileContent,
+    setCurrentDir,
+  } = useFileStore();
   const { sidebar, editor, preview, toggle: togglePane } = usePaneStore();
-  const { sidebarWidth, editorWidth, setSidebarWidth, setEditorWidth } = useDimensionStore();
-  const { modal, modalInput, openModal, closeModal, setModalInput } = useModalStore();
+  const { sidebarWidth, editorWidth, setSidebarWidth, setEditorWidth } =
+    useDimensionStore();
+  const { modal, modalInput, openModal, closeModal, setModalInput } =
+    useModalStore();
 
-   // ========== HOOKS ==========
-   const { root: projectRoot, showPicker, setShowPicker, select: selectProject, loading: projectLoading } = useProject();
-   const { loadEntries, openFile, saveFile, createFile, renameFile, moveFile, duplicateFile, deleteFile, refresh: refreshFiles, clear: clearFiles } = useFiles();
-   const { status: buildStatus, build, updateStatus } = useBuild();
-   const { status: gitStatus, isError: gitError, refresh: refreshGit, commit, push, pull } = useGit();
+  // ========== HOOKS ==========
+  const {
+    root: projectRoot,
+    showPicker,
+    setShowPicker,
+    select: selectProject,
+    loading: projectLoading,
+  } = useProject();
+  const {
+    loadEntries,
+    openFile,
+    saveFile,
+    createFile,
+    renameFile,
+    moveFile,
+    duplicateFile,
+    deleteFile,
+    refresh: _refreshFiles,
+    clear: clearFiles,
+  } = useFiles();
+  const { status: buildStatus, build, updateStatus } = useBuild();
+  const {
+    status: gitStatus,
+    isError: gitError,
+    refresh: refreshGit,
+    commit,
+    push,
+    pull,
+  } = useGit();
 
-
-  // ========== LOCAL STATE (UI-specific) ==========
+  // ========== UI STATE ==========
   const [engine, setEngine] = useState<string>("pdflatex");
   const [shellEscape, setShellEscape] = useState<boolean>(true);
-  const [pdfKey, setPdfKey] = useState<number>(Date.now());
   const [zoom, setZoom] = useState<number>(1.2);
   const [numPages, setNumPages] = useState<number>(0);
   const [pageInput, setPageInput] = useState<string>("1");
   const [configSynced, setConfigSynced] = useState<boolean>(false);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; isDir: boolean } | null>(null);
+  const [pdfKey, setPdfKey] = useState<number>(Date.now());
 
-  // Resize state
-  const [isResizing, setIsResizing] = useState<"sidebar-editor" | "editor-preview" | null>(null);
-  const mainRef = useRef<HTMLDivElement | null>(null);
-  const startPosRef = useRef<number>(0);
-  const startDimsRef = useRef<{ sidebar: number; editor: number }>({ sidebar: 0, editor: 0 });
-  const resizingRef = useRef<"sidebar-editor" | "editor-preview" | null>(null);
+  // ========== MODAL STATE ==========
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    path: string;
+    isDir: boolean;
+  } | null>(null);
+
+  // ========== RESIZE STATE ==========
+  const [_isResizing, setIsResizing] = useState<
+    "sidebar-editor" | "editor-preview" | null
+  >(null);
 
   // ========== REFS ==========
   const currentFileRef = useRef<string>("");
   const pageProxyRef = useRef<Map<number, pdfjs.PDFPageProxy>>(new Map());
   const buildTimer = useRef<number | null>(null);
-  const editorInstance = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const _editorInstance = useRef<monaco.editor.IStandaloneCodeEditor | null>(
+    null,
+  );
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const mainRef = useRef<HTMLDivElement | null>(null);
+  const startPosRef = useRef<number>(0);
+  const startDimsRef = useRef<{ sidebar: number; editor: number }>({
+    sidebar: 0,
+    editor: 0,
+  });
+  const resizingRef = useRef<"sidebar-editor" | "editor-preview" | null>(null);
 
   // Keep currentFileRef in sync
   useEffect(() => {
     currentFileRef.current = currentFile;
   }, [currentFile]);
 
-   // ========== WEBSOCKET ==========
-   const handleBuildMessage = useCallback((data: BuildStatus) => {
-     updateStatus(data);
-     if (data.state === "success") {
-       setPdfKey(Date.now());
-       refreshGit();
-     }
-   }, [refreshGit, updateStatus]);
+  // ========== WEBSOCKET ==========
+  const handleBuildMessage = useCallback(
+    (data: BuildStatus) => {
+      updateStatus(data);
+      if (data.state === "success") {
+        setPdfKey(Date.now());
+        refreshGit();
+      }
+    },
+    [refreshGit, updateStatus],
+  );
 
-   useWebSocket(handleBuildMessage);
+  useWebSocket(handleBuildMessage);
 
   // ========== EFFECTS ==========
 
@@ -197,14 +193,14 @@ export default function App() {
     }
   }, [numPages]);
 
-   // ========== BUILD FUNCTIONS ==========
-   const scheduleBuild = useCallback(() => {
-     if (buildTimer.current) window.clearTimeout(buildTimer.current);
-     buildTimer.current = window.setTimeout(async () => {
-       const mainFile = currentFileRef.current || "main.tex";
-       await build(mainFile, engine, shellEscape);
-     }, 500);
-   }, [build, engine, shellEscape]);
+  // ========== BUILD FUNCTIONS ==========
+  const scheduleBuild = useCallback(() => {
+    if (buildTimer.current) window.clearTimeout(buildTimer.current);
+    buildTimer.current = window.setTimeout(async () => {
+      const mainFile = currentFileRef.current || "main.tex";
+      await build(mainFile, engine, shellEscape);
+    }, 500);
+  }, [build, engine, shellEscape]);
 
   const triggerBuild = useCallback(async () => {
     const mainFile = currentFileRef.current || "main.tex";
@@ -212,27 +208,36 @@ export default function App() {
   }, [build, engine, shellEscape]);
 
   // ========== PROJECT SELECTION ==========
-  const handleSelectProject = useCallback(async (path: string) => {
-    await selectProject(path);
-    clearFiles();
-    await loadEntries("");
-    await refreshGit();
-  }, [selectProject, clearFiles, loadEntries, refreshGit]);
+  const handleSelectProject = useCallback(
+    async (path: string) => {
+      await selectProject(path);
+      clearFiles();
+      await loadEntries("");
+      await refreshGit();
+    },
+    [selectProject, clearFiles, loadEntries, refreshGit],
+  );
 
   // ========== SAVE HANDLER ==========
-  const handleSave = useCallback(async (content: string) => {
-    if (!currentFileRef.current) return;
-    await saveFile(currentFileRef.current, content);
-    scheduleBuild();
-  }, [saveFile, scheduleBuild]);
+  const handleSave = useCallback(
+    async (content: string) => {
+      if (!currentFileRef.current) return;
+      await saveFile(currentFileRef.current, content);
+      scheduleBuild();
+    },
+    [saveFile, scheduleBuild],
+  );
 
   // ========== MODAL HANDLERS ==========
-  const handleOpenModal = useCallback((next: ModalState) => {
-    openModal(next);
-    if (next.kind === "rename") setModalInput(next.path);
-    if (next.kind === "move") setModalInput(currentDir || "");
-    if (next.kind === "duplicate") setModalInput(next.path + " copy");
-  }, [openModal, setModalInput, currentDir]);
+  const handleOpenModal = useCallback(
+    (next: ModalState) => {
+      openModal(next);
+      if (next.kind === "rename") setModalInput(next.path);
+      if (next.kind === "move") setModalInput(currentDir || "");
+      if (next.kind === "duplicate") setModalInput(next.path + " copy");
+    },
+    [openModal, setModalInput, currentDir],
+  );
 
   const confirmModal = useCallback(async () => {
     if (!modal) return;
@@ -260,47 +265,72 @@ export default function App() {
       alert(err.message || "Operation failed");
     }
     closeModal();
-  }, [modal, modalInput, currentDir, createFile, renameFile, moveFile, duplicateFile, deleteFile, closeModal]);
+  }, [
+    modal,
+    modalInput,
+    currentDir,
+    createFile,
+    renameFile,
+    moveFile,
+    duplicateFile,
+    deleteFile,
+    closeModal,
+  ]);
 
   // ========== RESIZE HANDLERS ==========
-  const handleResizeStart = useCallback((which: "sidebar-editor" | "editor-preview", e: React.MouseEvent) => {
-    e.preventDefault();
-    resizingRef.current = which;
-    setIsResizing(which);
-    startPosRef.current = e.clientX;
-    startDimsRef.current = { sidebar: sidebarWidth, editor: editorWidth };
+  const handleResizeStart = useCallback(
+    (which: "sidebar-editor" | "editor-preview", e: React.MouseEvent) => {
+      e.preventDefault();
+      resizingRef.current = which;
+      setIsResizing(which);
+      startPosRef.current = e.clientX;
+      startDimsRef.current = { sidebar: sidebarWidth, editor: editorWidth };
 
-    const handleResizeMove = (moveEvent: MouseEvent) => {
-      if (!resizingRef.current || !mainRef.current) return;
-      const delta = moveEvent.clientX - startPosRef.current;
-      const mainRect = mainRef.current.getBoundingClientRect();
-      const mainWidth = mainRect.width;
+      const handleResizeMove = (moveEvent: MouseEvent) => {
+        if (!resizingRef.current || !mainRef.current) return;
+        const delta = moveEvent.clientX - startPosRef.current;
+        const mainRect = mainRef.current.getBoundingClientRect();
+        const mainWidth = mainRect.width;
 
-      if (resizingRef.current === "sidebar-editor") {
-        const newSidebar = Math.max(200, Math.min(400, startDimsRef.current.sidebar + delta));
-        setSidebarWidth(newSidebar);
-      } else if (resizingRef.current === "editor-preview") {
-        const newEditor = Math.max(200, Math.min(mainWidth - startDimsRef.current.sidebar - 200, startDimsRef.current.editor + delta));
-        setEditorWidth(newEditor);
-      }
-    };
+        if (resizingRef.current === "sidebar-editor") {
+          const newSidebar = Math.max(
+            200,
+            Math.min(400, startDimsRef.current.sidebar + delta),
+          );
+          setSidebarWidth(newSidebar);
+        } else if (resizingRef.current === "editor-preview") {
+          const newEditor = Math.max(
+            200,
+            Math.min(
+              mainWidth - startDimsRef.current.sidebar - 200,
+              startDimsRef.current.editor + delta,
+            ),
+          );
+          setEditorWidth(newEditor);
+        }
+      };
 
-    const handleResizeEnd = () => {
-      resizingRef.current = null;
-      setIsResizing(null);
-      document.removeEventListener("mousemove", handleResizeMove);
-      document.removeEventListener("mouseup", handleResizeEnd);
-    };
+      const handleResizeEnd = () => {
+        resizingRef.current = null;
+        setIsResizing(null);
+        document.removeEventListener("mousemove", handleResizeMove);
+        document.removeEventListener("mouseup", handleResizeEnd);
+      };
 
-    document.addEventListener("mousemove", handleResizeMove);
-    document.addEventListener("mouseup", handleResizeEnd);
-  }, [sidebarWidth, editorWidth, setSidebarWidth, setEditorWidth]);
+      document.addEventListener("mousemove", handleResizeMove);
+      document.addEventListener("mouseup", handleResizeEnd);
+    },
+    [sidebarWidth, editorWidth, setSidebarWidth, setEditorWidth],
+  );
 
   // ========== PDF HELPERS ==========
-  const registerPageRef = useCallback((page: number, el: HTMLDivElement | null) => {
-    if (!el) return;
-    pageRefs.current.set(page, el);
-  }, []);
+  const registerPageRef = useCallback(
+    (page: number, el: HTMLDivElement | null) => {
+      if (!el) return;
+      pageRefs.current.set(page, el);
+    },
+    [],
+  );
 
   const scrollToPage = useCallback((page: number) => {
     const ref = pageRefs.current.get(page);
@@ -311,8 +341,14 @@ export default function App() {
   }, []);
 
   // ========== COMPUTED ==========
-  const visiblePanes = useMemo(() => ({ sidebar, editor, preview }), [sidebar, editor, preview]);
-  const allPanesHidden = useMemo(() => !sidebar && !editor && !preview, [sidebar, editor, preview]);
+  const visiblePanes = useMemo(
+    () => ({ sidebar, editor, preview }),
+    [sidebar, editor, preview],
+  );
+  const allPanesHidden = useMemo(
+    () => !sidebar && !editor && !preview,
+    [sidebar, editor, preview],
+  );
 
   return (
     <div className="h-screen w-screen flex flex-col bg-base-100">
@@ -349,9 +385,15 @@ export default function App() {
                     currentFile={currentFile}
                     onNavigate={loadEntries}
                     onOpenFile={openFile}
-                    onCreateFile={() => handleOpenModal({ kind: "create", type: "file" })}
-                    onCreateFolder={() => handleOpenModal({ kind: "create", type: "dir" })}
-                    onFileMenu={(x, y, path, isDir) => setContextMenu({ x, y, path, isDir })}
+                    onCreateFile={() =>
+                      handleOpenModal({ kind: "create", type: "file" })
+                    }
+                    onCreateFolder={() =>
+                      handleOpenModal({ kind: "create", type: "dir" })
+                    }
+                    onFileMenu={(x, y, path, isDir) =>
+                      setContextMenu({ x, y, path, isDir })
+                    }
                     gitStatus={gitStatus}
                     gitError={gitError}
                     onCommit={commit}
@@ -373,7 +415,10 @@ export default function App() {
               <>
                 <div
                   className="flex-1 min-w-0"
-                  style={{ width: editorWidth > 0 ? `${editorWidth}px` : undefined, flex: editorWidth > 0 ? "none" : 1 }}
+                  style={{
+                    width: editorWidth > 0 ? `${editorWidth}px` : undefined,
+                    flex: editorWidth > 0 ? "none" : 1,
+                  }}
                 >
                   <EditorPane
                     theme={theme}
@@ -427,19 +472,27 @@ export default function App() {
         isDir={contextMenu?.isDir || false}
         onClose={() => setContextMenu(null)}
         onRename={() => {
-          if (contextMenu) handleOpenModal({ kind: "rename", path: contextMenu.path });
+          if (contextMenu)
+            handleOpenModal({ kind: "rename", path: contextMenu.path });
           setContextMenu(null);
         }}
         onDuplicate={() => {
-          if (contextMenu) handleOpenModal({ kind: "duplicate", path: contextMenu.path });
+          if (contextMenu)
+            handleOpenModal({ kind: "duplicate", path: contextMenu.path });
           setContextMenu(null);
         }}
         onMove={() => {
-          if (contextMenu) handleOpenModal({ kind: "move", path: contextMenu.path });
+          if (contextMenu)
+            handleOpenModal({ kind: "move", path: contextMenu.path });
           setContextMenu(null);
         }}
         onDelete={() => {
-          if (contextMenu) handleOpenModal({ kind: "delete", path: contextMenu.path, isDir: contextMenu.isDir });
+          if (contextMenu)
+            handleOpenModal({
+              kind: "delete",
+              path: contextMenu.path,
+              isDir: contextMenu.isDir,
+            });
           setContextMenu(null);
         }}
         onCreateFile={() => {
@@ -466,7 +519,9 @@ export default function App() {
         <dialog className="modal modal-open">
           <div className="modal-box">
             <h3 className="font-bold text-lg mb-4">{modalTitle(modal)}</h3>
-            <p className="text-sm text-base-content/70 mb-4">{modalHint(modal)}</p>
+            <p className="text-sm text-base-content/70 mb-4">
+              {modalHint(modal)}
+            </p>
 
             {modal.kind !== "delete" && (
               <input
@@ -490,7 +545,10 @@ export default function App() {
             )}
 
             <div className="modal-action">
-              <button onClick={confirmModal} className={`btn ${modal.kind === "delete" ? "btn-error" : "btn-primary"}`}>
+              <button
+                onClick={confirmModal}
+                className={`btn ${modal.kind === "delete" ? "btn-error" : "btn-primary"}`}
+              >
                 Confirm
               </button>
               <button onClick={closeModal} className="btn">
