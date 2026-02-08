@@ -9,7 +9,6 @@ import { EditorPane } from "./components/EditorPane";
 import PreviewPane from "./components/PreviewPane";
 import ProjectPicker from "./components/ProjectPicker";
 import ContextMenu from "./components/ContextMenu";
-import FileMenu from "./components/FileMenu";
 import EmptyPlaceholder from "./components/EmptyPlaceholder";
 
 // Types
@@ -107,11 +106,11 @@ export default function App() {
   const { sidebarWidth, editorWidth, setSidebarWidth, setEditorWidth } = useDimensionStore();
   const { modal, modalInput, openModal, closeModal, setModalInput } = useModalStore();
 
-  // ========== HOOKS ==========
-  const { root: projectRoot, showPicker, setShowPicker, select: selectProject, loading: projectLoading } = useProject();
-  const { loadEntries, openFile, saveFile, createFile, renameFile, moveFile, duplicateFile, deleteFile, refresh: refreshFiles, clear: clearFiles } = useFiles();
-  const { status: buildStatus, build } = useBuild();
-  const { status: gitStatus, isError: gitError, refresh: refreshGit, commit, push, pull } = useGit();
+   // ========== HOOKS ==========
+   const { root: projectRoot, showPicker, setShowPicker, select: selectProject, loading: projectLoading } = useProject();
+   const { loadEntries, openFile, saveFile, createFile, renameFile, moveFile, duplicateFile, deleteFile, refresh: refreshFiles, clear: clearFiles } = useFiles();
+   const { status: buildStatus, build, updateStatus } = useBuild();
+   const { status: gitStatus, isError: gitError, refresh: refreshGit, commit, push, pull } = useGit();
 
 
   // ========== LOCAL STATE (UI-specific) ==========
@@ -123,7 +122,6 @@ export default function App() {
   const [pageInput, setPageInput] = useState<string>("1");
   const [configSynced, setConfigSynced] = useState<boolean>(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; isDir: boolean } | null>(null);
-  const [fileMenu, setFileMenu] = useState<{ x: number; y: number; path: string; isDir: boolean } | null>(null);
 
   // Resize state
   const [isResizing, setIsResizing] = useState<"sidebar-editor" | "editor-preview" | null>(null);
@@ -144,15 +142,16 @@ export default function App() {
     currentFileRef.current = currentFile;
   }, [currentFile]);
 
-  // ========== WEBSOCKET ==========
-  const handleBuildMessage = useCallback((data: BuildStatus) => {
-    if (data.state === "success") {
-      setPdfKey(Date.now());
-      refreshGit();
-    }
-  }, [refreshGit]);
+   // ========== WEBSOCKET ==========
+   const handleBuildMessage = useCallback((data: BuildStatus) => {
+     updateStatus(data);
+     if (data.state === "success") {
+       setPdfKey(Date.now());
+       refreshGit();
+     }
+   }, [refreshGit, updateStatus]);
 
-  useWebSocket(handleBuildMessage);
+   useWebSocket(handleBuildMessage);
 
   // ========== EFFECTS ==========
 
@@ -181,6 +180,10 @@ export default function App() {
     if (projectRoot && !projectLoading) {
       loadEntries("");
       refreshGit();
+      // Auto-open main.tex if it exists
+      openFile("main.tex").catch(() => {
+        // File doesn't exist, that's fine - show empty state
+      });
     }
   }, [projectRoot, projectLoading]);
 
@@ -194,14 +197,14 @@ export default function App() {
     }
   }, [numPages]);
 
-  // ========== BUILD FUNCTIONS ==========
-  const scheduleBuild = useCallback(() => {
-    if (buildTimer.current) window.clearTimeout(buildTimer.current);
-    buildTimer.current = window.setTimeout(async () => {
-      const mainFile = currentFileRef.current || "main.tex";
-      await build(mainFile, engine, shellEscape);
-    }, 700);
-  }, [build, engine, shellEscape]);
+   // ========== BUILD FUNCTIONS ==========
+   const scheduleBuild = useCallback(() => {
+     if (buildTimer.current) window.clearTimeout(buildTimer.current);
+     buildTimer.current = window.setTimeout(async () => {
+       const mainFile = currentFileRef.current || "main.tex";
+       await build(mainFile, engine, shellEscape);
+     }, 500);
+   }, [build, engine, shellEscape]);
 
   const triggerBuild = useCallback(async () => {
     const mainFile = currentFileRef.current || "main.tex";
@@ -348,7 +351,7 @@ export default function App() {
                     onOpenFile={openFile}
                     onCreateFile={() => handleOpenModal({ kind: "create", type: "file" })}
                     onCreateFolder={() => handleOpenModal({ kind: "create", type: "dir" })}
-                    onFileMenu={(x, y, path, isDir) => setFileMenu({ x, y, path, isDir })}
+                    onFileMenu={(x, y, path, isDir) => setContextMenu({ x, y, path, isDir })}
                     gitStatus={gitStatus}
                     gitError={gitError}
                     onCommit={commit}
@@ -376,6 +379,7 @@ export default function App() {
                     theme={theme}
                     fileContent={fileContent}
                     isBinary={isBinary}
+                    currentFile={currentFile}
                     onSave={handleSave}
                   />
                 </div>
@@ -447,42 +451,6 @@ export default function App() {
           if (contextMenu) setCurrentDir(contextMenu.path);
           handleOpenModal({ kind: "create", type: "dir" });
           setContextMenu(null);
-        }}
-      />
-
-      {/* File Menu */}
-      <FileMenu
-        visible={!!fileMenu}
-        x={fileMenu?.x || 0}
-        y={fileMenu?.y || 0}
-        path={fileMenu?.path || ""}
-        isDir={fileMenu?.isDir || false}
-        onClose={() => setFileMenu(null)}
-        onRename={() => {
-          if (fileMenu) handleOpenModal({ kind: "rename", path: fileMenu.path });
-          setFileMenu(null);
-        }}
-        onDuplicate={() => {
-          if (fileMenu) handleOpenModal({ kind: "duplicate", path: fileMenu.path });
-          setFileMenu(null);
-        }}
-        onMove={() => {
-          if (fileMenu) handleOpenModal({ kind: "move", path: fileMenu.path });
-          setFileMenu(null);
-        }}
-        onDelete={() => {
-          if (fileMenu) handleOpenModal({ kind: "delete", path: fileMenu.path, isDir: fileMenu.isDir });
-          setFileMenu(null);
-        }}
-        onCreateFile={() => {
-          if (fileMenu) setCurrentDir(fileMenu.path);
-          handleOpenModal({ kind: "create", type: "file" });
-          setFileMenu(null);
-        }}
-        onCreateFolder={() => {
-          if (fileMenu) setCurrentDir(fileMenu.path);
-          handleOpenModal({ kind: "create", type: "dir" });
-          setFileMenu(null);
         }}
       />
 
