@@ -4,3 +4,7 @@ dist/
 .env
 .DS_Store
 wails/frontend/wailsjs/
+wails/build/
+wails/treefrog
+wails/*.app/
+wails/*.exe
