@@ -1,109 +1,129 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Document, Page, pdfjs } from "react-pdf";
 import * as monaco from "monaco-editor";
-import {
-  File,
-  Folder,
-  ChevronRight,
-  Plus,
-  Copy,
-  Trash2,
-  Edit2,
-  MoreVertical,
-  FileText,
-  FileCode,
-  FileJson,
-  Settings,
-  ChevronDown,
-  Zap,
-  Monitor,
-  Moon,
-  Sun,
-} from "lucide-react";
+import { pdfjs } from "react-pdf";
+
+// Components
+import Toolbar from "./components/Toolbar";
+import Sidebar from "./components/Sidebar";
 import { EditorPane } from "./components/EditorPane";
+import PreviewPane from "./components/PreviewPane";
+import ProjectPicker from "./components/ProjectPicker";
+import ContextMenu from "./components/ContextMenu";
+import FileMenu from "./components/FileMenu";
+import EmptyPlaceholder from "./components/EmptyPlaceholder";
+
+// Types
+import { FileEntry, BuildStatus, SyncView, SyncEdit, ModalState } from "./types";
+
+// Constants
+import { API_DEFAULT, ZOOM_LEVELS } from "./constants";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
   import.meta.url
 ).toString();
 
-type FileEntry = { name: string; isDir: boolean; size: number; modTime: string };
+function getThemeName(themeMode: "light" | "dark"): string {
+  return themeMode === "dark" ? "dracula" : "latte";
+}
 
-type BuildStatus = {
-  id: string;
-  state: string;
-  message: string;
-  startedAt?: string;
-  endedAt?: string;
-};
+function baseName(path: string) {
+  const parts = path.split("/");
+  return parts[parts.length - 1];
+}
 
-type SyncView = { page: number; x: number; y: number; file: string; line: number };
+function clampZoom(z: number) {
+  return Math.min(2.4, Math.max(0.6, Math.round(z * 10) / 10));
+}
 
-type SyncEdit = { file: string; line: number; col: number };
+function clampPage(p: number, max: number) {
+  if (!p || Number.isNaN(p)) return 1;
+  return Math.min(Math.max(1, p), Math.max(1, max));
+}
 
-type ModalState =
-  | { kind: "create"; type: "file" | "dir" }
-  | { kind: "rename"; path: string }
-  | { kind: "move"; path: string }
-  | { kind: "duplicate"; path: string }
-  | { kind: "delete"; path: string; isDir: boolean };
-
-function getFileIcon(name: string, isDir: boolean) {
-  if (isDir) return <Folder size={14} />;
-
-  const ext = name.split(".").pop()?.toLowerCase() || "";
-
-  switch (ext) {
-    case "tex":
-    case "txt":
-      return <FileText size={14} />;
-    case "json":
-      return <FileJson size={14} />;
-    case "js":
-    case "ts":
-    case "tsx":
-    case "jsx":
-    case "py":
-    case "rs":
-    case "go":
-      return <FileCode size={14} />;
-    case "pdf":
-      return <File size={14} />;
-    default:
-      return <File size={14} />;
+function modalTitle(modal: ModalState) {
+  switch (modal.kind) {
+    case "create":
+      return modal.type === "file" ? "Create file" : "Create folder";
+    case "rename":
+      return "Rename";
+    case "move":
+      return "Move";
+    case "duplicate":
+      return "Duplicate";
+    case "delete":
+      return "Delete";
   }
 }
 
-const API_DEFAULT = "/api";
-const ZOOM_LEVELS = [0.6, 0.8, 1, 1.2, 1.4, 1.6, 2, 2.4];
+function modalPlaceholder(modal: ModalState, currentDir: string) {
+  switch (modal.kind) {
+    case "create":
+      return joinPath(currentDir, modal.type === "file" ? "new.tex" : "new-folder");
+    case "rename":
+      return modal.path;
+    case "move":
+      return currentDir || "";
+    case "duplicate":
+      return modal.path + " copy";
+    default:
+      return "";
+  }
+}
+
+function modalHint(modal: ModalState) {
+  switch (modal.kind) {
+    case "create":
+      return "Enter a relative path.";
+    case "rename":
+      return "Enter the new relative path.";
+    case "move":
+      return "Enter the destination directory path.";
+    case "duplicate":
+      return "Enter the new relative path.";
+    case "delete":
+      return modal.isDir ? "Delete folder recursively?" : "Delete this file?";
+  }
+}
 
 export default function App() {
+  // File state
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [currentDir, setCurrentDir] = useState<string>("");
   const [currentFile, setCurrentFile] = useState<string>("");
   const [isBinary, setIsBinary] = useState<boolean>(false);
   const [fileContent, setFileContent] = useState<string>("");
+
+  // Build state
   const [buildStatus, setBuildStatus] = useState<BuildStatus | null>(null);
   const [pdfKey, setPdfKey] = useState<number>(Date.now());
   const [engine, setEngine] = useState<string>("pdflatex");
   const [shellEscape, setShellEscape] = useState<boolean>(true);
+
+  // Git state
   const [gitStatus, setGitStatus] = useState<string>("");
-  const [commitMsg, setCommitMsg] = useState<string>("");
-  const [syncTarget, setSyncTarget] = useState<SyncView | null>(null);
-  const [projectRoot, setProjectRoot] = useState<string>("");
   const [gitError, setGitError] = useState<boolean>(false);
-  const [projectInput, setProjectInput] = useState<string>("");
+
+  // Sync state
+  const [syncTarget, setSyncTarget] = useState<SyncView | null>(null);
+
+  // Project state
+  const [projectRoot, setProjectRoot] = useState<string>("");
   const [showProjectPicker, setShowProjectPicker] = useState<boolean>(false);
+
+  // Modal state
   const [modal, setModal] = useState<ModalState | null>(null);
   const [modalInput, setModalInput] = useState<string>("");
-  const [theme, setTheme] = useState<string>(() => {
+
+  // Settings state
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
     const saved = localStorage.getItem("treefrog-theme");
     const prefersDark = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-    return saved || (prefersDark ? "dark" : "light");
+    return (saved as "light" | "dark") || (prefersDark ? "dark" : "light");
   });
 
   const [apiUrl, setApiUrl] = useState<string>(() => {
-    return localStorage.getItem("treefrog-api-url") || "/api";
+    return localStorage.getItem("treefrog-api-url") || API_DEFAULT;
   });
 
   const [builderToken, setBuilderToken] = useState<string>(() => {
@@ -114,81 +134,69 @@ export default function App() {
     return localStorage.getItem("treefrog-builder-url") || "https://treefrog-renderer.onrender.com";
   });
 
-   const [showSettings, setShowSettings] = useState<boolean>(false);
-   const [buildMenu, setBuildMenu] = useState<boolean>(false);
-   const [viewMenu, setViewMenu] = useState<boolean>(false);
-   const [configSynced, setConfigSynced] = useState<boolean>(false);
+  const [configSynced, setConfigSynced] = useState<boolean>(false);
 
+  // PDF state
   const [zoom, setZoom] = useState<number>(1.2);
   const [numPages, setNumPages] = useState<number>(0);
   const [pageInput, setPageInput] = useState<string>("1");
 
-  // Layout pane visibility state
+  // Layout state
   const [visiblePanes, setVisiblePanes] = useState<{ sidebar: boolean; editor: boolean; preview: boolean }>(() => {
     const saved = localStorage.getItem("treefrog-panes");
     return saved ? JSON.parse(saved) : { sidebar: true, editor: true, preview: true };
   });
 
-  // Pane dimensions for resizing
   const [paneDimensions, setPaneDimensions] = useState<{ sidebar: number; editor: number }>(() => {
     const saved = localStorage.getItem("treefrog-pane-dims");
     return saved ? JSON.parse(saved) : { sidebar: 280, editor: 0 };
   });
 
   // Context menu state
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; isDir: boolean } | null>(
-    null
-  );
-
-  // File menu dropdown state
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; isDir: boolean } | null>(null);
   const [fileMenu, setFileMenu] = useState<{ x: number; y: number; path: string; isDir: boolean } | null>(null);
 
-  // Resizing state
+  // Resize state
   const [isResizing, setIsResizing] = useState<"sidebar-editor" | "editor-preview" | null>(null);
   const mainRef = useRef<HTMLDivElement | null>(null);
   const startPosRef = useRef<number>(0);
   const startDimsRef = useRef<{ sidebar: number; editor: number }>({ sidebar: 0, editor: 0 });
   const resizingRef = useRef<"sidebar-editor" | "editor-preview" | null>(null);
+
+  // Refs
   const buildPollRef = useRef<number | null>(null);
   const currentFileRef = useRef<string>("");
-  const ignoreChangeRef = useRef<boolean>(false);
   const pageProxyRef = useRef<Map<number, pdfjs.PDFPageProxy>>(new Map());
-
   const saveTimer = useRef<number | null>(null);
   const buildTimer = useRef<number | null>(null);
-  const editorContainer = useRef<HTMLDivElement | null>(null);
   const editorInstance = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
+  // Effects
   useEffect(() => {
-     loadProject();
-     connectWS();
-   }, []);
+    loadProject();
+    connectWS();
+  }, []);
 
-    // Send builder config to local server on app load and when values change
-    useEffect(() => {
-      const sendConfigToServer = async () => {
-        try {
-          await fetch(`${apiUrl}/config`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              builderUrl,
-              builderToken,
-            }),
-          });
-          // Show feedback briefly
-          setConfigSynced(true);
-          window.setTimeout(() => setConfigSynced(false), 2000);
-        } catch (err) {
-          console.warn("Could not send config to server:", err);
-        }
-      };
-      sendConfigToServer();
-    }, [apiUrl, builderUrl, builderToken]);
+  useEffect(() => {
+    const sendConfigToServer = async () => {
+      try {
+        await fetch(`${apiUrl}/config`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ builderUrl, builderToken }),
+        });
+        setConfigSynced(true);
+        window.setTimeout(() => setConfigSynced(false), 2000);
+      } catch (err) {
+        console.warn("Could not send config to server:", err);
+      }
+    };
+    sendConfigToServer();
+  }, [apiUrl, builderUrl, builderToken]);
 
-   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
+  useEffect(() => {
+    document.documentElement.dataset.theme = getThemeName(theme);
     localStorage.setItem("treefrog-theme", theme);
   }, [theme]);
 
@@ -209,84 +217,6 @@ export default function App() {
   }, [visiblePanes]);
 
   useEffect(() => {
-    function handleClickOutside() {
-      setContextMenu(null);
-    }
-    if (contextMenu) {
-      document.addEventListener("click", handleClickOutside);
-      return () => document.removeEventListener("click", handleClickOutside);
-    }
-  }, [contextMenu]);
-
-  useEffect(() => {
-    // When editor pane becomes hidden, dispose the editor
-    if (!visiblePanes.editor && editorInstance.current) {
-      editorInstance.current.dispose();
-      editorInstance.current = null;
-      return;
-    }
-
-    // When editor pane becomes visible, create the editor
-    if (visiblePanes.editor && !editorInstance.current && editorContainer.current) {
-      editorInstance.current = monaco.editor.create(editorContainer.current, {
-        value: "",
-        language: "latex",
-        theme: theme === "dark" ? "vs-dark" : "vs",
-        automaticLayout: true,
-        minimap: { enabled: false },
-        fontFamily: "IBM Plex Mono, monospace",
-        fontSize: 14,
-      });
-
-      editorInstance.current.onDidChangeModelContent(() => {
-        if (ignoreChangeRef.current) return;
-        const value = editorInstance.current?.getValue() ?? "";
-        scheduleSave(value);
-      });
-
-      editorInstance.current.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-        saveAndBuildNow();
-      });
-
-      editorInstance.current.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
-        saveAndBuildNow();
-      });
-
-      // Layout the editor to ensure it's properly sized
-      window.setTimeout(() => {
-        editorInstance.current?.layout();
-      }, 100);
-
-      // Observe size changes to trigger layout
-      const resizeObserver = new ResizeObserver(() => {
-        editorInstance.current?.layout();
-      });
-      resizeObserver.observe(editorContainer.current);
-
-      return () => {
-        resizeObserver.disconnect();
-      };
-    }
-  }, [visiblePanes.editor]);
-
-  useEffect(() => {
-    if (editorInstance.current) {
-      monaco.editor.setTheme(theme === "dark" ? "vs-dark" : "vs");
-    }
-  }, [theme]);
-
-  // Layout editor when visibility or pane dimensions change
-  useEffect(() => {
-    if (visiblePanes.editor && editorInstance.current && !isBinary) {
-      // Give browser a chance to paint the element first
-      const timeoutId = window.setTimeout(() => {
-        editorInstance.current?.layout();
-      }, 50);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [visiblePanes.editor, paneDimensions, isBinary]);
-
-  useEffect(() => {
     if (numPages > 0) {
       const next = String(clampPage(Number(pageInput || "1"), numPages));
       if (next !== pageInput) {
@@ -295,12 +225,12 @@ export default function App() {
     }
   }, [numPages]);
 
+  // API functions
   async function loadProject() {
     try {
       const res = await fetch(`${apiUrl}/project`);
       if (!res.ok) {
         console.error(`Failed to load project: ${res.status} ${res.statusText}`);
-        console.error(`Make sure the local Treefrog server is running at: ${apiUrl}`);
         setShowProjectPicker(true);
         return;
       }
@@ -315,47 +245,32 @@ export default function App() {
       await refreshGit();
     } catch (err) {
       console.error("Error loading project:", err);
-      console.error(`Cannot connect to server at: ${apiUrl}`);
-      console.error("To fix: Open Settings and configure the correct Local Server URL");
       setShowProjectPicker(true);
     }
   }
 
-  async function setProjectRootFromUI() {
-    console.log("setProjectRootFromUI called with projectInput:", projectInput);
-    if (!projectInput.trim()) {
-      alert("Please enter a project path");
-      return;
+  async function setProjectRootFromUI(path: string) {
+    if (!path.trim()) {
+      throw new Error("Please enter a project path");
     }
-    try {
-      console.log("Fetching to set project at:", `${apiUrl}/project/set`);
-      const res = await fetch(`${apiUrl}/project/set`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ root: projectInput.trim() }),
-      });
-      console.log("Response status:", res.status, res.ok);
-      if (!res.ok) {
-        const msg = await res.text();
-        console.error("Error response:", msg);
-        alert(`Error: ${msg}`);
-        return;
-      }
-      const data = await res.json();
-      console.log("Project set successfully:", data);
-      setProjectRoot(data.root || "");
-      setProjectInput("");
-      setShowProjectPicker(false);
-       setCurrentDir("");
-       setCurrentFile("");
-       currentFileRef.current = "";
-       setFileContent("");
-       await loadEntries("");
-       await refreshGit();
-    } catch (err) {
-      console.error("Exception in setProjectRootFromUI:", err);
-      alert(`Failed to set project: ${err instanceof Error ? err.message : String(err)}`);
+    const res = await fetch(`${apiUrl}/project/set`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ root: path.trim() }),
+    });
+    if (!res.ok) {
+      const msg = await res.text();
+      throw new Error(msg);
     }
+    const data = await res.json();
+    setProjectRoot(data.root || "");
+    setShowProjectPicker(false);
+    setCurrentDir("");
+    setCurrentFile("");
+    currentFileRef.current = "";
+    setFileContent("");
+    await loadEntries("");
+    await refreshGit();
   }
 
   async function loadEntries(dir: string) {
@@ -374,8 +289,6 @@ export default function App() {
     if (!res.ok) return;
     const data = await res.json();
     setIsBinary(data.isBinary);
-
-    // Only set content if it's not binary
     if (!data.isBinary) {
       setFileContent(data.content || "");
     } else {
@@ -398,13 +311,6 @@ export default function App() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content, isBinary: false }),
     });
-  }
-
-  async function saveAndBuildNow() {
-    if (!currentFileRef.current || !editorInstance.current) return;
-    const content = editorInstance.current.getValue();
-    await saveFile(currentFileRef.current, content);
-    await triggerBuild();
   }
 
   function scheduleBuild() {
@@ -472,14 +378,13 @@ export default function App() {
     setGitError(false);
   }
 
-  async function commitAll() {
-    if (!commitMsg.trim()) return;
+  async function commitAll(msg: string) {
+    if (!msg.trim()) return;
     await fetch(`${apiUrl}/git/commit`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: commitMsg, all: true }),
+      body: JSON.stringify({ message: msg, all: true }),
     });
-    setCommitMsg("");
     refreshGit();
   }
 
@@ -491,31 +396,6 @@ export default function App() {
   async function pull() {
     await fetch(`${apiUrl}/git/pull`, { method: "POST", headers: { "Content-Type": "application/json" } });
     refreshGit();
-  }
-
-  async function syncFromCursor() {
-    if (!currentFile || !editorInstance.current) return;
-    const pos = editorInstance.current.getPosition();
-    if (!pos) return;
-    const url = `${apiUrl}/synctex/view?file=${encodeURIComponent(currentFile)}&line=${pos.lineNumber}&col=${pos.column}`;
-    const res = await fetch(url);
-    if (!res.ok) return;
-    const data = (await res.json()) as SyncView;
-    setSyncTarget(data);
-    scrollToPage(data.page);
-  }
-
-  function registerPageRef(page: number, el: HTMLDivElement | null) {
-    if (!el) return;
-    pageRefs.current.set(page, el);
-  }
-
-  function scrollToPage(page: number) {
-    const ref = pageRefs.current.get(page);
-    if (ref) {
-      ref.scrollIntoView({ behavior: "smooth", block: "start" });
-      setPageInput(String(page));
-    }
   }
 
   async function runFS(endpoint: string, body: any) {
@@ -533,20 +413,18 @@ export default function App() {
     return true;
   }
 
+  // UI handlers
   function openModal(next: ModalState) {
     setModal(next);
     setModalInput("");
-    if (next.kind === "rename" || next.kind === "move" || next.kind === "duplicate") {
-      if (next.kind === "rename") setModalInput(next.path);
-      if (next.kind === "move") setModalInput(currentDir || "");
-      if (next.kind === "duplicate") setModalInput(next.path + " copy");
-    }
+    if (next.kind === "rename") setModalInput(next.path);
+    if (next.kind === "move") setModalInput(currentDir || "");
+    if (next.kind === "duplicate") setModalInput(next.path + " copy");
   }
 
   function togglePane(pane: "sidebar" | "editor" | "preview") {
     setVisiblePanes((prev) => {
       const newPanes = { ...prev, [pane]: !prev[pane] };
-      // If all panes are hidden, show the sidebar as fallback
       const visibleCount = Object.values(newPanes).filter(Boolean).length;
       if (visibleCount === 0) {
         return { ...newPanes, sidebar: true };
@@ -588,13 +466,17 @@ export default function App() {
     document.addEventListener("mouseup", handleResizeEnd);
   }
 
-  function handleFileContextMenu(e: React.MouseEvent, path: string, isDir: boolean) {
-    e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY, path, isDir });
+  function registerPageRef(page: number, el: HTMLDivElement | null) {
+    if (!el) return;
+    pageRefs.current.set(page, el);
   }
 
-  function closeContextMenu() {
-    setContextMenu(null);
+  function scrollToPage(page: number) {
+    const ref = pageRefs.current.get(page);
+    if (ref) {
+      ref.scrollIntoView({ behavior: "smooth", block: "start" });
+      setPageInput(String(page));
+    }
   }
 
   async function confirmModal() {
@@ -625,252 +507,82 @@ export default function App() {
       await runFS("/fs/duplicate", { from: modal.path, to: modalInput.trim() });
     }
     if (modal.kind === "delete") {
-       const ok = await runFS("/fs/delete", { path: modal.path, recursive: modal.isDir });
-       if (ok && currentFile === modal.path) {
-         setCurrentFile("");
-         setFileContent("");
-       }
+      const ok = await runFS("/fs/delete", { path: modal.path, recursive: modal.isDir });
+      if (ok && currentFile === modal.path) {
+        setCurrentFile("");
+        setFileContent("");
+      }
     }
     setModal(null);
   }
-
-  const breadcrumbs = useMemo(() => {
-    const parts = currentDir ? currentDir.split("/") : [];
-    const items: { name: string; path: string }[] = [{ name: "root", path: "" }];
-    let acc = "";
-    for (const p of parts) {
-      acc = acc ? `${acc}/${p}` : p;
-      items.push({ name: p, path: acc });
-    }
-    return items;
-  }, [currentDir]);
 
   const allPanesHidden = useMemo(() => {
     return !visiblePanes.sidebar && !visiblePanes.editor && !visiblePanes.preview;
   }, [visiblePanes]);
 
   return (
-    <div className="app">
-      <header className="topbar">
-        <div className="brand">Treefrog</div>
-        <div className="project-chip" onClick={() => setShowProjectPicker(true)}>
-          {projectRoot ? projectRoot : "Set project"}
-        </div>
-        <div className="actions">
-          {/* Build & Engine Menu */}
-          <div style={{ position: "relative" }}>
-            <button
-              onClick={() => setBuildMenu(!buildMenu)}
-              style={{ display: "flex", alignItems: "center", gap: "4px" }}
-              title="Build options"
-            >
-              <Zap size={16} />
-              <ChevronDown size={14} />
-            </button>
-            {buildMenu && (
-              <div className="toolbar-dropdown" onClick={(e) => e.stopPropagation()}>
-                <div style={{ padding: "8px 12px", color: "var(--ink-secondary)", fontSize: "11px", fontWeight: 600, textTransform: "uppercase" }}>
-                  Engine
-                </div>
-                <select
-                  value={engine}
-                  onChange={(e) => {
-                    setEngine(e.target.value);
-                    setBuildMenu(false);
-                  }}
-                  style={{ width: "100%", padding: "6px 8px", marginBottom: "8px", border: "none", background: "transparent", cursor: "pointer", fontSize: "13px" }}
-                >
-                  <option value="pdflatex">pdflatex</option>
-                  <option value="xelatex">xelatex</option>
-                  <option value="lualatex">lualatex</option>
-                </select>
-                <label className="toggle" style={{ padding: "8px 12px", margin: 0, display: "flex", gap: "8px", alignItems: "center" }}>
-                  <input type="checkbox" checked={shellEscape} onChange={(e) => setShellEscape(e.target.checked)} style={{ cursor: "pointer" }} />
-                  <span style={{ fontSize: "12px" }}>Shell-escape</span>
-                </label>
-                {shellEscape && <div style={{ padding: "6px 12px", fontSize: "11px", color: "var(--accent)", fontWeight: 500 }}>⚠ Enabled</div>}
-                <button
-                  onClick={() => {
-                    triggerBuild();
-                    setBuildMenu(false);
-                  }}
-                  style={{ width: "100%", margin: "8px 0 0 0", padding: "8px 12px", border: "1px solid var(--border)", background: "var(--accent-light)", color: "var(--accent)", borderRadius: "6px", cursor: "pointer", fontWeight: 600, fontSize: "12px" }}
-                >
-                  Build Now
-                </button>
-              </div>
-            )}
-          </div>
+    <div className="h-screen w-screen flex flex-col bg-base-100" data-theme={getThemeName(theme)}>
+      {/* Toolbar */}
+      <Toolbar
+        projectRoot={projectRoot}
+        onOpenProject={() => setShowProjectPicker(true)}
+        onBuild={triggerBuild}
+        engine={engine}
+        onEngineChange={setEngine}
+        shell={shellEscape}
+        onShellChange={setShellEscape}
+        theme={theme}
+        onThemeToggle={() => setTheme(theme === "dark" ? "light" : "dark")}
+        onTogglePane={togglePane}
+        panesVisible={visiblePanes}
+        configSynced={configSynced}
+      />
 
-          <button onClick={syncFromCursor} title="Sync from cursor">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <circle cx="4" cy="4" r="2.5" />
-              <circle cx="12" cy="12" r="2.5" />
-              <path d="M6 5.5 L10 10.5" />
-            </svg>
-          </button>
-
-          {/* View Menu */}
-          <div style={{ position: "relative" }}>
-            <button
-              onClick={() => setViewMenu(!viewMenu)}
-              style={{ display: "flex", alignItems: "center", gap: "4px" }}
-              title="View options"
-            >
-              <Monitor size={16} />
-              <ChevronDown size={14} />
-            </button>
-            {viewMenu && (
-              <div className="toolbar-dropdown" onClick={(e) => e.stopPropagation()}>
-                <button
-                  onClick={() => {
-                    togglePane("sidebar");
-                    setViewMenu(false);
-                  }}
-                  style={{ width: "100%", textAlign: "left", padding: "8px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: "12px", borderRadius: "6px", color: "var(--ink)", display: "flex", alignItems: "center", justifyContent: "space-between" }}
-                >
-                  <span>Sidebar</span>
-                  {visiblePanes.sidebar && <span style={{ fontSize: "10px", color: "var(--accent)" }}>✓</span>}
-                </button>
-                <button
-                  onClick={() => {
-                    togglePane("editor");
-                    setViewMenu(false);
-                  }}
-                  style={{ width: "100%", textAlign: "left", padding: "8px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: "12px", borderRadius: "6px", color: "var(--ink)", display: "flex", alignItems: "center", justifyContent: "space-between" }}
-                >
-                  <span>Editor</span>
-                  {visiblePanes.editor && <span style={{ fontSize: "10px", color: "var(--accent)" }}>✓</span>}
-                </button>
-                <button
-                  onClick={() => {
-                    togglePane("preview");
-                    setViewMenu(false);
-                  }}
-                  style={{ width: "100%", textAlign: "left", padding: "8px 12px", border: "none", background: "transparent", cursor: "pointer", fontSize: "12px", borderRadius: "6px", color: "var(--ink)", display: "flex", alignItems: "center", justifyContent: "space-between" }}
-                >
-                  <span>Preview</span>
-                  {visiblePanes.preview && <span style={{ fontSize: "10px", color: "var(--accent)" }}>✓</span>}
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Theme Toggle */}
-          <button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          >
-            {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-          </button>
-
-           {/* Settings */}
-           <button
-             onClick={() => setShowSettings(true)}
-             title="Settings"
-           >
-             <Settings size={16} />
-           </button>
-           {configSynced && (
-             <div style={{ fontSize: "11px", color: "var(--accent)", marginLeft: "4px", display: "flex", alignItems: "center", gap: "4px" }}>
-               ✓ Config synced
-             </div>
-           )}
-        </div>
-      </header>
-      <div className="main" ref={mainRef}>
+      {/* Main Content */}
+      <div className="flex-1 flex flex-row overflow-hidden" ref={mainRef}>
         {allPanesHidden ? (
           <EmptyPlaceholder />
         ) : (
           <>
+            {/* Sidebar */}
             {visiblePanes.sidebar && (
               <>
-                <aside className="sidebar" style={{ width: `${paneDimensions.sidebar}px` }}>
-                  <div className="file-header">
-                    <div className="pane-title">Files</div>
-                  </div>
-                  <div className="file-actions">
-                    <button onClick={() => openModal({ kind: "create", type: "file" })} title="New file">
-                      <Plus size={14} />
-                      File
-                    </button>
-                    <button onClick={() => openModal({ kind: "create", type: "dir" })} title="New folder">
-                      <Folder size={14} />
-                      Folder
-                    </button>
-                  </div>
-                  <div className="breadcrumbs">
-                    {breadcrumbs.map((b, i) => (
-                      <button key={b.path} onClick={() => loadEntries(b.path)} title={b.path}>
-                        {b.name}
-                        {i < breadcrumbs.length - 1 && <ChevronRight size={12} />}
-                      </button>
-                    ))}
-                  </div>
-                  <ul className="filelist">
-                    {entries.map((f) => {
-                      const path = joinPath(currentDir, f.name);
-                      return (
-                        <li key={f.name}>
-                          <div className="file-row" onContextMenu={(e) => handleFileContextMenu(e, path, f.isDir)}>
-                            {f.isDir ? (
-                              <button className="dir" onClick={() => loadEntries(path)} title={f.name}>
-                                {getFileIcon(f.name, true)}
-                                {f.name}
-                              </button>
-                            ) : (
-                              <button
-                                className={currentFile === path ? "active" : ""}
-                                onClick={() => openFile(path)}
-                                title={f.name}
-                              >
-                                {getFileIcon(f.name, false)}
-                                {f.name}
-                              </button>
-                            )}
-                            <button
-                              className="file-menu-button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setFileMenu({ x: e.currentTarget.getBoundingClientRect().right - 140, y: e.currentTarget.getBoundingClientRect().bottom + 4, path, isDir: f.isDir });
-                              }}
-                              title="More options"
-                            >
-                              <MoreVertical size={14} />
-                            </button>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                  <div className="git-panel">
-                    <div className="pane-title">Git</div>
-                    <pre className={`git-status ${gitError ? "error" : ""}`}>{gitStatus || "clean"}</pre>
-                    <input
-                      placeholder="Commit message"
-                      value={commitMsg}
-                      onChange={(e) => setCommitMsg(e.target.value)}
-                    />
-                    <div className="git-actions">
-                      <button onClick={commitAll}>Commit</button>
-                      <button onClick={push}>Push</button>
-                      <button onClick={pull}>Pull</button>
-                    </div>
-                  </div>
-                </aside>
-                {visiblePanes.editor || visiblePanes.preview ? (
+                <div style={{ width: `${paneDimensions.sidebar}px`, flexShrink: 0 }}>
+                  <Sidebar
+                    projectRoot={projectRoot}
+                    entries={entries}
+                    currentDir={currentDir}
+                    currentFile={currentFile}
+                    onNavigate={loadEntries}
+                    onOpenFile={openFile}
+                    onCreateFile={() => openModal({ kind: "create", type: "file" })}
+                    onCreateFolder={() => openModal({ kind: "create", type: "dir" })}
+                    onFileMenu={(x, y, path, isDir) => setFileMenu({ x, y, path, isDir })}
+                    gitStatus={gitStatus}
+                    gitError={gitError}
+                    onCommit={commitAll}
+                    onPush={push}
+                    onPull={pull}
+                  />
+                </div>
+                {(visiblePanes.editor || visiblePanes.preview) && (
                   <div
-                    className="resize-handle"
+                    className="w-1 bg-base-300 hover:bg-primary cursor-col-resize transition-colors"
                     onMouseDown={(e) => handleResizeStart("sidebar-editor", e)}
                   />
-                ) : null}
+                )}
               </>
             )}
+
+            {/* Editor */}
             {visiblePanes.editor && (
               <>
-                <div style={{ width: paneDimensions.editor > 0 ? `${paneDimensions.editor}px` : undefined, flex: paneDimensions.editor > 0 ? undefined : 1 }}>
+                <div
+                  className="flex-1 min-w-0"
+                  style={{ width: paneDimensions.editor > 0 ? `${paneDimensions.editor}px` : undefined, flex: paneDimensions.editor > 0 ? "none" : 1 }}
+                >
                   <EditorPane
-                    theme={theme as "light" | "dark"}
+                    theme={theme}
                     fileContent={fileContent}
                     isBinary={isBinary}
                     onSave={async (content: string) => {
@@ -880,749 +592,189 @@ export default function App() {
                     }}
                   />
                 </div>
-                {visiblePanes.preview ? (
+                {visiblePanes.preview && (
                   <div
-                    className="resize-handle"
+                    className="w-1 bg-base-300 hover:bg-primary cursor-col-resize transition-colors"
                     onMouseDown={(e) => handleResizeStart("editor-preview", e)}
                   />
-                ) : null}
+                )}
               </>
             )}
+
+            {/* Preview */}
             {visiblePanes.preview && (
-              <section className="preview">
-                <div className="pane-header">
-                  <div className="pane-title">
-                    Preview
-                    <span className={`status ${buildStatus?.state || "idle"}`}>
-                      {buildStatus?.state || "idle"}
-                    </span>
-                  </div>
-                </div>
-                {buildStatus?.state === "error" && (
-                  <div className="build-error">
-                    <div className="error-title">Build failed</div>
-                    <div className="error-message">{buildStatus.message || "Unknown error"}</div>
-                    <a href={`${apiUrl}/build/log`} target="_blank" rel="noreferrer">
-                      View full log
-                    </a>
-                  </div>
-                )}
-                <div className="preview-toolbar">
-                  <button onClick={() => setZoom(clampZoom(zoom - 0.2))}>−</button>
-                  <select value={zoom} onChange={(e) => setZoom(Number(e.target.value))}>
-                    {ZOOM_LEVELS.map((z) => (
-                      <option key={z} value={z}>{Math.round(z * 100)}%</option>
-                    ))}
-                  </select>
-                  <button onClick={() => setZoom(clampZoom(zoom + 0.2))}>+</button>
-                  <div className="page-controls">
-                    <button onClick={() => scrollToPage(Math.max(1, Number(pageInput) - 1))}>Prev</button>
-                    <input
-                      value={pageInput}
-                      onChange={(e) => setPageInput(e.target.value)}
-                      onBlur={() => scrollToPage(clampPage(Number(pageInput), numPages))}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          scrollToPage(clampPage(Number(pageInput), numPages));
-                        }
-                      }}
-                    />
-                    <span>/ {numPages || 0}</span>
-                    <button onClick={() => scrollToPage(Math.min(numPages, Number(pageInput) + 1))}>Next</button>
-                  </div>
-                  <a href={`${apiUrl}/export/pdf`} target="_blank" rel="noreferrer">Export PDF</a>
-                  <a href={`${apiUrl}/export/source-zip`} target="_blank" rel="noreferrer">Export Source</a>
-                </div>
-                {projectRoot ? (
-                  <PDFPreview
-                    key={pdfKey}
-                    url={`${apiUrl}/export/pdf?ts=${pdfKey}`}
-                    zoom={zoom}
-                    numPages={numPages}
-                    onPageCount={setNumPages}
-                    registerPageRef={registerPageRef}
-                    pageProxyRef={pageProxyRef}
-                    onKeyShortcut={(e) => {
-                      if ((e.ctrlKey || e.metaKey) && (e.key === "+" || e.key === "=")) {
-                        e.preventDefault();
-                        setZoom(clampZoom(zoom + 0.2));
-                      }
-                      if ((e.ctrlKey || e.metaKey) && e.key === "-") {
-                        e.preventDefault();
-                        setZoom(clampZoom(zoom - 0.2));
-                      }
-                      if (e.key === "j") {
-                        scrollToPage(Math.min(numPages, Number(pageInput) + 1));
-                      }
-                      if (e.key === "k") {
-                        scrollToPage(Math.max(1, Number(pageInput) - 1));
-                      }
-                    }}
-                    onClickSync={async (page, x, y) => {
-                      const res = await fetch(`${apiUrl}/synctex/edit?page=${page}&x=${x}&y=${y}`);
-                      if (!res.ok) return;
-                      const data = (await res.json()) as SyncEdit;
-                      if (data.file) {
-                        await openFile(data.file);
-                        editorInstance.current?.setPosition({ lineNumber: data.line || 1, column: data.col || 1 });
-                        editorInstance.current?.revealLineInCenter(data.line || 1);
-                      }
-                    }}
-                    syncTarget={syncTarget}
-                    onSyncScroll={(page) => scrollToPage(page)}
-                  />
-                ) : (
-                  <div className="empty">Select a project to see preview.</div>
-                )}
-              </section>
+              <div className="flex-1 min-w-0">
+                <PreviewPane
+                  apiUrl={apiUrl}
+                  buildStatus={buildStatus}
+                  zoom={zoom}
+                  onZoomChange={setZoom}
+                  numPages={numPages}
+                  currentPage={Number(pageInput) || 1}
+                  onPageChange={(page) => {
+                    setPageInput(String(page));
+                    scrollToPage(page);
+                  }}
+                  projectRoot={projectRoot}
+                  pdfKey={pdfKey}
+                  pageProxyRef={pageProxyRef}
+                  onClickSync={async (page, x, y) => {
+                    const res = await fetch(`${apiUrl}/synctex/edit?page=${page}&x=${x}&y=${y}`);
+                    if (!res.ok) return;
+                    const data = (await res.json()) as SyncEdit;
+                    if (data.file) {
+                      await openFile(data.file);
+                      editorInstance.current?.setPosition({ lineNumber: data.line || 1, column: data.col || 1 });
+                      editorInstance.current?.revealLineInCenter(data.line || 1);
+                    }
+                  }}
+                  onKeyShortcut={(e) => {
+                    if ((e.ctrlKey || e.metaKey) && (e.key === "+" || e.key === "=")) {
+                      e.preventDefault();
+                      setZoom(clampZoom(zoom + 0.2));
+                    }
+                    if ((e.ctrlKey || e.metaKey) && e.key === "-") {
+                      e.preventDefault();
+                      setZoom(clampZoom(zoom - 0.2));
+                    }
+                    if (e.key === "j") {
+                      scrollToPage(Math.min(numPages, Number(pageInput) + 1));
+                    }
+                    if (e.key === "k") {
+                      scrollToPage(Math.max(1, Number(pageInput) - 1));
+                    }
+                  }}
+                  syncTarget={syncTarget}
+                  onSyncScroll={scrollToPage}
+                  registerPageRef={registerPageRef}
+                />
+              </div>
             )}
           </>
         )}
       </div>
 
-      {contextMenu && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          path={contextMenu.path}
-          isDir={contextMenu.isDir}
-          onClose={closeContextMenu}
-          onRename={() => {
-            openModal({ kind: "rename", path: contextMenu.path });
-            closeContextMenu();
-          }}
-          onDuplicate={() => {
-            openModal({ kind: "duplicate", path: contextMenu.path });
-            closeContextMenu();
-          }}
-          onMove={() => {
-            openModal({ kind: "move", path: contextMenu.path });
-            closeContextMenu();
-          }}
-          onDelete={() => {
-            openModal({ kind: "delete", path: contextMenu.path, isDir: contextMenu.isDir });
-            closeContextMenu();
-          }}
-          onCreateFile={() => {
-            setCurrentDir(contextMenu.path);
-            openModal({ kind: "create", type: "file" });
-            closeContextMenu();
-          }}
-          onCreateFolder={() => {
-            setCurrentDir(contextMenu.path);
-            openModal({ kind: "create", type: "dir" });
-            closeContextMenu();
-          }}
-        />
-      )}
+      {/* Context Menu */}
+      <ContextMenu
+        visible={!!contextMenu}
+        x={contextMenu?.x || 0}
+        y={contextMenu?.y || 0}
+        path={contextMenu?.path || ""}
+        isDir={contextMenu?.isDir || false}
+        onClose={() => setContextMenu(null)}
+        onRename={() => {
+          if (contextMenu) openModal({ kind: "rename", path: contextMenu.path });
+          setContextMenu(null);
+        }}
+        onDuplicate={() => {
+          if (contextMenu) openModal({ kind: "duplicate", path: contextMenu.path });
+          setContextMenu(null);
+        }}
+        onMove={() => {
+          if (contextMenu) openModal({ kind: "move", path: contextMenu.path });
+          setContextMenu(null);
+        }}
+        onDelete={() => {
+          if (contextMenu) openModal({ kind: "delete", path: contextMenu.path, isDir: contextMenu.isDir });
+          setContextMenu(null);
+        }}
+        onCreateFile={() => {
+          if (contextMenu) setCurrentDir(contextMenu.path);
+          openModal({ kind: "create", type: "file" });
+          setContextMenu(null);
+        }}
+        onCreateFolder={() => {
+          if (contextMenu) setCurrentDir(contextMenu.path);
+          openModal({ kind: "create", type: "dir" });
+          setContextMenu(null);
+        }}
+      />
 
-      {fileMenu && (
-        <FileMenu
-          x={fileMenu.x}
-          y={fileMenu.y}
-          path={fileMenu.path}
-          isDir={fileMenu.isDir}
-          onClose={() => setFileMenu(null)}
-          onRename={() => {
-            openModal({ kind: "rename", path: fileMenu.path });
-            setFileMenu(null);
-          }}
-          onDuplicate={() => {
-            openModal({ kind: "duplicate", path: fileMenu.path });
-            setFileMenu(null);
-          }}
-          onMove={() => {
-            openModal({ kind: "move", path: fileMenu.path });
-            setFileMenu(null);
-          }}
-          onDelete={() => {
-            openModal({ kind: "delete", path: fileMenu.path, isDir: fileMenu.isDir });
-            setFileMenu(null);
-          }}
-          onCreateFile={() => {
-            setCurrentDir(fileMenu.path);
-            openModal({ kind: "create", type: "file" });
-            setFileMenu(null);
-          }}
-          onCreateFolder={() => {
-            setCurrentDir(fileMenu.path);
-            openModal({ kind: "create", type: "dir" });
-            setFileMenu(null);
-          }}
-        />
-      )}
+      {/* File Menu */}
+      <FileMenu
+        visible={!!fileMenu}
+        x={fileMenu?.x || 0}
+        y={fileMenu?.y || 0}
+        path={fileMenu?.path || ""}
+        isDir={fileMenu?.isDir || false}
+        onClose={() => setFileMenu(null)}
+        onRename={() => {
+          if (fileMenu) openModal({ kind: "rename", path: fileMenu.path });
+          setFileMenu(null);
+        }}
+        onDuplicate={() => {
+          if (fileMenu) openModal({ kind: "duplicate", path: fileMenu.path });
+          setFileMenu(null);
+        }}
+        onMove={() => {
+          if (fileMenu) openModal({ kind: "move", path: fileMenu.path });
+          setFileMenu(null);
+        }}
+        onDelete={() => {
+          if (fileMenu) openModal({ kind: "delete", path: fileMenu.path, isDir: fileMenu.isDir });
+          setFileMenu(null);
+        }}
+        onCreateFile={() => {
+          if (fileMenu) setCurrentDir(fileMenu.path);
+          openModal({ kind: "create", type: "file" });
+          setFileMenu(null);
+        }}
+        onCreateFolder={() => {
+          if (fileMenu) setCurrentDir(fileMenu.path);
+          openModal({ kind: "create", type: "dir" });
+          setFileMenu(null);
+        }}
+      />
 
-      {showProjectPicker && (
-        <div className="modal">
-          <div className="modal-card">
-            <h3>Select Project Folder</h3>
-            <p>Enter an absolute path to your LaTeX project.</p>
-            <input
-              autoFocus
-              placeholder="/path/to/project"
-              value={projectInput}
-              onChange={(e) => setProjectInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") setProjectRootFromUI();
-              }}
-            />
-            <div style={{ fontSize: "11px", color: "var(--ink-secondary)", marginTop: "8px", marginBottom: "12px" }}>
-              Local Server: <code style={{ background: "var(--panel-hover)", padding: "2px 4px", borderRadius: "3px" }}>{apiUrl}</code>
-            </div>
-            <div className="modal-actions">
-              <button onClick={() => {
-                console.log("Set project clicked, projectInput:", projectInput);
-                setProjectRootFromUI();
-              }}>Set project</button>
-              <button onClick={() => {
-                console.log("Skip/Cancel clicked, projectRoot:", projectRoot);
-                setShowProjectPicker(false);
-              }}>
-                {projectRoot ? "Cancel" : "Skip"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Project Picker Modal */}
+      <ProjectPicker
+        visible={showProjectPicker}
+        confirm={setProjectRootFromUI}
+        close={() => setShowProjectPicker(false)}
+      />
 
-      {showSettings && (
-        <SettingsModal
-          apiUrl={apiUrl}
-          builderUrl={builderUrl}
-          builderToken={builderToken}
-          onSave={(url, bUrl, token) => {
-            setApiUrl(url);
-            setBuilderUrl(bUrl);
-            setBuilderToken(token);
-          }}
-          onClose={() => setShowSettings(false)}
-        />
-      )}
-
+      {/* File Operations Modal */}
       {modal && (
-        <div className="modal">
-          <div className="modal-card">
-            <h3>{modalTitle(modal)}</h3>
-            <p>{modalHint(modal, currentDir)}</p>
+        <dialog className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg mb-4">{modalTitle(modal)}</h3>
+            <p className="text-sm text-base-content/70 mb-4">{modalHint(modal)}</p>
+
             {modal.kind !== "delete" && (
               <input
+                type="text"
                 placeholder={modalPlaceholder(modal, currentDir)}
                 value={modalInput}
                 onChange={(e) => setModalInput(e.target.value)}
+                className="input input-bordered w-full"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") confirmModal();
+                  if (e.key === "Escape") setModal(null);
+                }}
               />
             )}
+
             {modal.kind === "delete" && modal.isDir && (
-              <p className="danger">This will delete the folder and its contents.</p>
+              <div className="alert alert-warning">
+                <span>This will delete the folder and all its contents.</span>
+              </div>
             )}
-            <div className="modal-actions">
-              <button onClick={confirmModal}>Confirm</button>
-              <button onClick={() => setModal(null)}>Cancel</button>
+
+            <div className="modal-action">
+              <button onClick={confirmModal} className={`btn ${modal.kind === "delete" ? "btn-error" : "btn-primary"}`}>
+                Confirm
+              </button>
+              <button onClick={() => setModal(null)} className="btn">
+                Cancel
+              </button>
             </div>
           </div>
-        </div>
+          <form method="dialog" className="modal-backdrop">
+            <button onClick={() => setModal(null)}>close</button>
+          </form>
+        </dialog>
       )}
-    </div>
-  );
-}
-
-function SettingsModal({
-  apiUrl,
-  builderUrl,
-  builderToken,
-  onSave,
-  onClose,
-}: {
-  apiUrl: string;
-  builderUrl: string;
-  builderToken: string;
-  onSave: (url: string, bUrl: string, token: string) => void;
-  onClose: () => void;
-}) {
-  const [apiInput, setApiInput] = useState<string>(apiUrl);
-  const [builderUrlInput, setBuilderUrlInput] = useState<string>(builderUrl);
-  const [tokenInput, setTokenInput] = useState<string>(builderToken);
-  const [saved, setSaved] = useState<boolean>(false);
-
-  const handleSave = async () => {
-     const trimmedUrl = apiInput.trim() || API_DEFAULT;
-     const trimmedBuilderUrl = builderUrlInput.trim() || "https://treefrog-renderer.onrender.com";
-     const trimmedToken = tokenInput.trim();
-     
-     // Config will be sent automatically via useEffect when state changes
-     onSave(trimmedUrl, trimmedBuilderUrl, trimmedToken);
-     setSaved(true);
-     window.setTimeout(() => {
-       onClose();
-     }, 500);
-   };
-
-  return (
-    <div className="modal">
-      <div className="modal-card">
-        <h3>Settings</h3>
-        <p style={{ fontSize: "12px", marginBottom: "16px" }}>
-          <strong>Local Server URL:</strong> The Treefrog server running on your machine<br />
-          <strong>Builder URL:</strong> Remote LaTeX builder instance<br />
-          <strong>Builder Token:</strong> Optional authentication for remote builder
-        </p>
-
-        <div style={{ marginBottom: "16px" }}>
-          <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "8px", color: "var(--ink-secondary)" }}>
-            Local Server URL
-          </label>
-          <input
-            type="text"
-            placeholder={API_DEFAULT}
-            value={apiInput}
-            onChange={(e) => setApiInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSave();
-              if (e.key === "Escape") onClose();
-            }}
-            style={{ width: "100%", boxSizing: "border-box" }}
-          />
-          <div style={{ fontSize: "11px", color: "var(--ink-secondary)", marginTop: "6px", fontStyle: "italic" }}>
-            Examples: http://localhost:8080, http://192.168.1.100:8080
-          </div>
-        </div>
-
-        <div style={{ marginBottom: "16px" }}>
-          <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "8px", color: "var(--ink-secondary)" }}>
-            Builder URL
-          </label>
-          <input
-            type="text"
-            placeholder="https://treefrog-renderer.onrender.com"
-            value={builderUrlInput}
-            onChange={(e) => setBuilderUrlInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSave();
-              if (e.key === "Escape") onClose();
-            }}
-            style={{ width: "100%", boxSizing: "border-box" }}
-          />
-          <div style={{ fontSize: "11px", color: "var(--ink-secondary)", marginTop: "6px", fontStyle: "italic" }}>
-            Remote LaTeX builder for compilation
-          </div>
-        </div>
-
-        <div style={{ marginBottom: "16px" }}>
-          <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "8px", color: "var(--ink-secondary)" }}>
-            Builder Token (optional)
-          </label>
-          <input
-            type="password"
-            placeholder="Leave empty if not required"
-            value={tokenInput}
-            onChange={(e) => setTokenInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSave();
-              if (e.key === "Escape") onClose();
-            }}
-            style={{ width: "100%", boxSizing: "border-box" }}
-          />
-          <div style={{ fontSize: "11px", color: "var(--ink-secondary)", marginTop: "6px", fontStyle: "italic" }}>
-            Authentication token for remote builder
-          </div>
-        </div>
-
-        {saved && (
-          <div style={{ fontSize: "12px", color: "var(--accent)", marginBottom: "16px" }}>
-            ✓ Settings saved
-          </div>
-        )}
-
-        <div className="modal-actions">
-          <button onClick={handleSave}>Save</button>
-          <button onClick={onClose}>Cancel</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function EmptyPlaceholder() {
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "100%",
-        gap: "16px",
-        color: "var(--ink-secondary)",
-      }}
-    >
-      <Settings size={48} style={{ opacity: 0.3 }} />
-      <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: "14px", fontWeight: 600, marginBottom: "4px" }}>
-          All panes hidden
-        </div>
-        <div style={{ fontSize: "12px", opacity: 0.7 }}>
-          Use the panel icons in the toolbar to show panes
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function joinPath(base: string, name: string) {
-  if (!base) return name;
-  if (!name) return base;
-  return `${base}/${name}`;
-}
-
-function baseName(path: string) {
-  const parts = path.split("/");
-  return parts[parts.length - 1];
-}
-
-function parentDir(path: string) {
-  if (!path) return "";
-  const parts = path.split("/");
-  parts.pop();
-  return parts.join("/");
-}
-
-function clampZoom(z: number) {
-  return Math.min(2.4, Math.max(0.6, Math.round(z * 10) / 10));
-}
-
-function clampPage(p: number, max: number) {
-  if (!p || Number.isNaN(p)) return 1;
-  return Math.min(Math.max(1, p), Math.max(1, max));
-}
-
-function modalTitle(modal: ModalState) {
-  switch (modal.kind) {
-    case "create":
-      return modal.type === "file" ? "Create file" : "Create folder";
-    case "rename":
-      return "Rename";
-    case "move":
-      return "Move";
-    case "duplicate":
-      return "Duplicate";
-    case "delete":
-      return "Delete";
-  }
-}
-
-function modalPlaceholder(modal: ModalState, currentDir: string) {
-  switch (modal.kind) {
-    case "create":
-      return joinPath(currentDir, modal.type === "file" ? "new.tex" : "new-folder");
-    case "rename":
-      return modal.path;
-    case "move":
-      return currentDir || "";
-    case "duplicate":
-      return modal.path + " copy";
-    default:
-      return "";
-  }
-}
-
-function modalHint(modal: ModalState, currentDir: string) {
-  switch (modal.kind) {
-    case "create":
-      return "Enter a relative path.";
-    case "rename":
-      return "Enter the new relative path.";
-    case "move":
-      return "Enter the destination directory path.";
-    case "duplicate":
-      return "Enter the new relative path.";
-    case "delete":
-      return modal.isDir ? "Delete folder recursively?" : "Delete this file?";
-    default:
-      return currentDir;
-  }
-}
-
-function ContextMenu({
-  x,
-  y,
-  path,
-  isDir,
-  onClose,
-  onRename,
-  onDuplicate,
-  onMove,
-  onDelete,
-  onCreateFile,
-  onCreateFolder,
-}: {
-  x: number;
-  y: number;
-  path: string;
-  isDir: boolean;
-  onClose: () => void;
-  onRename: () => void;
-  onDuplicate: () => void;
-  onMove: () => void;
-  onDelete: () => void;
-  onCreateFile: () => void;
-  onCreateFolder: () => void;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [onClose]);
-
-  return (
-    <div
-      ref={ref}
-      className="context-menu"
-      style={{ top: `${y}px`, left: `${x}px` }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <button onClick={onRename}>
-        <Edit2 size={14} />
-        Rename
-      </button>
-      <button onClick={onDuplicate}>
-        <Copy size={14} />
-        Duplicate
-      </button>
-      <button onClick={onMove}>
-        <ChevronRight size={14} />
-        Move
-      </button>
-      {isDir && (
-        <>
-          <button onClick={onCreateFile}>
-            <File size={14} />
-            New File
-          </button>
-          <button onClick={onCreateFolder}>
-            <Folder size={14} />
-            New Folder
-          </button>
-        </>
-      )}
-      <button onClick={onDelete} className="danger">
-        <Trash2 size={14} />
-        Delete
-      </button>
-    </div>
-  );
-}
-
-function FileMenu({
-  x,
-  y,
-  path,
-  isDir,
-  onClose,
-  onRename,
-  onDuplicate,
-  onMove,
-  onDelete,
-  onCreateFile,
-  onCreateFolder,
-}: {
-  x: number;
-  y: number;
-  path: string;
-  isDir: boolean;
-  onClose: () => void;
-  onRename: () => void;
-  onDuplicate: () => void;
-  onMove: () => void;
-  onDelete: () => void;
-  onCreateFile: () => void;
-  onCreateFolder: () => void;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [onClose]);
-
-  return (
-    <div
-      ref={ref}
-      className="file-menu-dropdown"
-      style={{ top: `${y}px`, left: `${x}px` }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <button onClick={onRename}>
-        <Edit2 size={14} />
-        Rename
-      </button>
-      <button onClick={onDuplicate}>
-        <Copy size={14} />
-        Duplicate
-      </button>
-      <button onClick={onMove}>
-        <ChevronRight size={14} />
-        Move
-      </button>
-      {isDir && (
-        <>
-          <button onClick={onCreateFile}>
-            <FileText size={14} />
-            New File
-          </button>
-          <button onClick={onCreateFolder}>
-            <Folder size={14} />
-            New Folder
-          </button>
-        </>
-      )}
-      <button onClick={onDelete} className="danger">
-        <Trash2 size={14} />
-        Delete
-      </button>
-    </div>
-  );
-}
-
-function PDFPreview({
-  url,
-  onClickSync,
-  syncTarget,
-  zoom,
-  numPages,
-  onPageCount,
-  registerPageRef,
-  pageProxyRef,
-  onKeyShortcut,
-  onSyncScroll,
-}: {
-  url: string;
-  onClickSync: (page: number, x: number, y: number) => void;
-  syncTarget: SyncView | null;
-  zoom: number;
-  numPages: number;
-  onPageCount: (n: number) => void;
-  registerPageRef: (page: number, el: HTMLDivElement | null) => void;
-  pageProxyRef: React.MutableRefObject<Map<number, pdfjs.PDFPageProxy>>;
-  onKeyShortcut: (e: React.KeyboardEvent<HTMLDivElement>) => void;
-  onSyncScroll: (page: number) => void;
-}) {
-  const [error, setError] = useState<string>("");
-
-  useEffect(() => {
-    setError("");
-  }, [url]);
-
-  useEffect(() => {
-    if (syncTarget) {
-      onSyncScroll(syncTarget.page);
-    }
-  }, [syncTarget, onSyncScroll]);
-
-  if (error) return <div className="empty">{error}</div>;
-  return (
-    <div className="pdf" tabIndex={0} onKeyDown={onKeyShortcut}>
-      <Document
-        file={url}
-        onLoadSuccess={(doc) => onPageCount(doc.numPages)}
-        onLoadError={() => setError("Failed to load PDF")}
-        loading={<div className="empty">Loading PDF…</div>}
-        error={<div className="empty">Failed to load PDF</div>}
-      >
-        {Array.from({ length: numPages }, (_, i) => i + 1).map((pageNum) => (
-          <PDFPage
-            key={pageNum}
-            pageNum={pageNum}
-            zoom={zoom}
-            onClickSync={onClickSync}
-            syncTarget={syncTarget}
-            registerRef={(ref) => registerPageRef(pageNum, ref)}
-            pageProxyRef={pageProxyRef}
-          />
-        ))}
-      </Document>
-    </div>
-  );
-}
-
-function PDFPage({
-  pageNum,
-  zoom,
-  onClickSync,
-  syncTarget,
-  registerRef,
-  pageProxyRef,
-}: {
-  pageNum: number;
-  zoom: number;
-  onClickSync: (page: number, x: number, y: number) => void;
-  syncTarget: SyncView | null;
-  registerRef: (ref: HTMLDivElement) => void;
-  pageProxyRef: React.MutableRefObject<Map<number, pdfjs.PDFPageProxy>>;
-}) {
-  const overlayRef = useRef<HTMLDivElement | null>(null);
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (wrapperRef.current) {
-      registerRef(wrapperRef.current);
-    }
-  }, [registerRef]);
-
-  useEffect(() => {
-    const overlay = overlayRef.current;
-    if (!overlay) return;
-    overlay.innerHTML = "";
-    if (syncTarget && syncTarget.page === pageNum) {
-      const pageProxy = pageProxyRef.current.get(pageNum);
-      if (pageProxy) {
-        const viewport = pageProxy.getViewport({ scale: zoom });
-        const pt = viewport.convertToViewportPoint(syncTarget.x, syncTarget.y);
-        const dot = document.createElement("div");
-        dot.className = "sync-dot";
-        dot.style.left = `${pt[0]}px`;
-        dot.style.top = `${pt[1]}px`;
-        overlay.appendChild(dot);
-      }
-    }
-  }, [syncTarget, pageNum, zoom, pageProxyRef]);
-
-  return (
-    <div
-      className="pdf-page"
-      ref={wrapperRef}
-      onClick={(e) => {
-        const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const pageProxy = pageProxyRef.current.get(pageNum);
-        if (!pageProxy) return;
-        const viewport = pageProxy.getViewport({ scale: zoom });
-        const pdfPoint = viewport.convertToPdfPoint(x, y);
-        onClickSync(pageNum, pdfPoint[0], pdfPoint[1]);
-      }}
-    >
-      <Page
-        pageNumber={pageNum}
-        scale={zoom}
-        onLoadSuccess={(pageProxy) => {
-          pageProxyRef.current.set(pageNum, pageProxy);
-        }}
-        renderAnnotationLayer={false}
-        renderTextLayer={false}
-      />
-      <div className="overlay" ref={overlayRef} />
     </div>
   );
 }

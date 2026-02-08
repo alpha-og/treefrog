@@ -13,8 +13,8 @@ export function EditorPane({ theme, fileContent, isBinary, onSave }: EditorPaneP
   useEditor(containerRef, theme, fileContent, isBinary, onSave);
 
   return (
-    <section className="editor flex-1 flex flex-col bg-base-100 border-l border-base-300 overflow-hidden">
-      <div className="border-b border-base-300 px-4 py-3 font-semibold text-sm">
+    <section className="editor flex-1 h-full flex flex-col bg-base-100 border-l border-base-300 overflow-hidden">
+      <div className="border-b border-base-300 px-4 py-3 font-semibold text-sm flex-shrink-0">
         Editor
       </div>
 

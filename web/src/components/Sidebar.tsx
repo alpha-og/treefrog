@@ -3,6 +3,7 @@ import { getFileIcon } from "../utils/icons";
 import { FileEntry } from "../types";
 
 interface SidebarProps {
+  projectRoot: string;
   entries: FileEntry[];
   currentDir: string;
   currentFile: string;
@@ -19,6 +20,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({
+  projectRoot,
   entries,
   currentDir,
   currentFile,
@@ -42,10 +44,13 @@ export default function Sidebar({
     : [{ name: "root", path: "" }];
 
   return (
-    <aside className="sidebar w-full bg-base-200 border-r border-base-300 flex flex-col overflow-hidden">
+    <aside className="sidebar h-full bg-base-200 border-r border-base-300 flex flex-col overflow-hidden">
       {/* File Browser Header */}
       <div className="p-4 border-b border-base-300">
-        <h2 className="text-lg font-semibold mb-3">Files</h2>
+        <h2 className="text-lg font-semibold mb-1">Files</h2>
+        {projectRoot && (
+          <p className="text-xs text-base-content/60 mb-3 truncate">{projectRoot}</p>
+        )}
         <div className="flex gap-2">
           <button
             onClick={onCreateFile}

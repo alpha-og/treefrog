@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Zap, Monitor, Settings, Sun, Moon, ChevronDown } from "lucide-react";
 import SettingsModal from "./SettingsModal";
 
@@ -34,52 +34,72 @@ export default function Toolbar({
   const [showBuildMenu, setShowBuildMenu] = useState(false);
   const [showViewMenu, setShowViewMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const buildMenuRef = useRef<HTMLDivElement>(null);
+  const viewMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (buildMenuRef.current && !buildMenuRef.current.contains(e.target as Node)) {
+        setShowBuildMenu(false);
+      }
+      if (viewMenuRef.current && !viewMenuRef.current.contains(e.target as Node)) {
+        setShowViewMenu(false);
+      }
+    };
+
+    if (showBuildMenu || showViewMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [showBuildMenu, showViewMenu]);
 
   return (
     <>
-      <header className="navbar bg-base-200 sticky top-0 z-40 border-b border-base-300">
-        <div className="flex-1">
+      <header className="navbar bg-base-200 sticky top-0 z-40 border-b border-base-300 flex flex-row items-center justify-between px-4 py-2 gap-4">
+        {/* Left side - Logo */}
+        <div className="flex items-center gap-4">
           <button
-            className="btn btn-ghost btn-lg gap-2"
+            className="btn btn-ghost btn-sm gap-2"
             onClick={() => {}}
           >
-            <span className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
               Treefrog
             </span>
           </button>
         </div>
 
-        <div className="flex-none gap-2">
-          {/* Project Info */}
+        {/* Right side - Controls */}
+        <div className="flex items-center gap-2">
+          {/* Open Project Button */}
           <button
-            className="btn btn-sm btn-ghost"
+            className="btn btn-sm btn-primary"
             onClick={onOpenProject}
-            title="Change project"
+            title="Open project folder"
           >
-            <span className="truncate max-w-xs">
-              {projectRoot || "No project selected"}
-            </span>
+            Open Project
           </button>
 
-          <div className="divider divider-horizontal m-0"></div>
+          <div className="divider divider-horizontal m-0 h-6"></div>
 
           {/* Build Menu */}
-          <div className="dropdown dropdown-end">
+          <div ref={buildMenuRef} className="dropdown dropdown-end">
             <button
               className="btn btn-sm btn-ghost gap-1"
               onClick={() => setShowBuildMenu(!showBuildMenu)}
               title="Build options"
+              role="menubutton"
             >
               <Zap size={16} />
               <ChevronDown size={14} />
             </button>
             {showBuildMenu && (
-              <ul className="dropdown-content menu bg-base-100 rounded-box w-52 p-2 shadow border border-base-300">
+              <ul className="dropdown-content menu bg-base-100 rounded-box w-52 p-2 shadow border border-base-300 z-50" onClick={(e) => e.stopPropagation()}>
                 <li className="menu-title">
                   <span>Engine</span>
                 </li>
                 <li>
-                  <a
+                  <button
                     onClick={() => {
                       onEngineChange("pdflatex");
                       setShowBuildMenu(false);
@@ -87,10 +107,10 @@ export default function Toolbar({
                     className={engine === "pdflatex" ? "active" : ""}
                   >
                     pdflatex {engine === "pdflatex" && "✓"}
-                  </a>
+                  </button>
                 </li>
                 <li>
-                  <a
+                  <button
                     onClick={() => {
                       onEngineChange("xelatex");
                       setShowBuildMenu(false);
@@ -98,10 +118,10 @@ export default function Toolbar({
                     className={engine === "xelatex" ? "active" : ""}
                   >
                     xelatex {engine === "xelatex" && "✓"}
-                  </a>
+                  </button>
                 </li>
                 <li>
-                  <a
+                  <button
                     onClick={() => {
                       onEngineChange("lualatex");
                       setShowBuildMenu(false);
@@ -109,10 +129,10 @@ export default function Toolbar({
                     className={engine === "lualatex" ? "active" : ""}
                   >
                     lualatex {engine === "lualatex" && "✓"}
-                  </a>
+                  </button>
                 </li>
                 <li>
-                  <label className="flex items-center gap-2">
+                  <label className="flex items-center gap-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={shell}
@@ -138,52 +158,56 @@ export default function Toolbar({
           </div>
 
           {/* View Menu */}
-          <div className="dropdown dropdown-end">
+          <div ref={viewMenuRef} className="dropdown dropdown-end">
             <button
               className="btn btn-sm btn-ghost gap-1"
               onClick={() => setShowViewMenu(!showViewMenu)}
               title="View options"
+              role="menubutton"
             >
               <Monitor size={16} />
               <ChevronDown size={14} />
             </button>
             {showViewMenu && (
-              <ul className="dropdown-content menu bg-base-100 rounded-box w-56 p-2 shadow border border-base-300">
+              <ul className="dropdown-content menu bg-base-100 rounded-box w-56 p-2 shadow border border-base-300 z-50" onClick={(e) => e.stopPropagation()}>
                 <li className="menu-title">
                   <span>Panes</span>
                 </li>
                 <li>
-                  <a
+                  <button
                     onClick={() => {
                       onTogglePane("sidebar");
                       setShowViewMenu(false);
                     }}
+                    className="flex items-center justify-between"
                   >
-                    <span className="flex-1">Sidebar</span>
-                    {panesVisible.sidebar && <span className="badge badge-primary">✓</span>}
-                  </a>
+                    <span className="flex-1 text-left">Sidebar</span>
+                    {panesVisible.sidebar && <span className="badge badge-primary badge-sm">✓</span>}
+                  </button>
                 </li>
                 <li>
-                  <a
+                  <button
                     onClick={() => {
                       onTogglePane("editor");
                       setShowViewMenu(false);
                     }}
+                    className="flex items-center justify-between"
                   >
-                    <span className="flex-1">Editor</span>
-                    {panesVisible.editor && <span className="badge badge-primary">✓</span>}
-                  </a>
+                    <span className="flex-1 text-left">Editor</span>
+                    {panesVisible.editor && <span className="badge badge-primary badge-sm">✓</span>}
+                  </button>
                 </li>
                 <li>
-                  <a
+                  <button
                     onClick={() => {
                       onTogglePane("preview");
                       setShowViewMenu(false);
                     }}
+                    className="flex items-center justify-between"
                   >
-                    <span className="flex-1">Preview</span>
-                    {panesVisible.preview && <span className="badge badge-primary">✓</span>}
-                  </a>
+                    <span className="flex-1 text-left">Preview</span>
+                    {panesVisible.preview && <span className="badge badge-primary badge-sm">✓</span>}
+                  </button>
                 </li>
               </ul>
             )}

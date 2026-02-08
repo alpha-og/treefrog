@@ -12,6 +12,11 @@ export function useEditor(
   const saveTimer = useRef<number | null>(null);
   const ignoreChange = useRef(false);
 
+  // Get Monaco theme based on system theme
+  const getMonacoTheme = (themeMode: "light" | "dark") => {
+    return themeMode === "dark" ? "vs-dark" : "vs";
+  };
+
   // Create editor on mount
   useEffect(() => {
     if (!containerRef.current || isBinary) return;
@@ -25,7 +30,7 @@ export function useEditor(
     editorRef.current = monaco.editor.create(containerRef.current, {
       value: "",
       language: "latex",
-      theme: theme === "dark" ? "vs-dark" : "vs",
+      theme: getMonacoTheme(theme),
       minimap: { enabled: false },
       automaticLayout: true,
       fontSize: 14,
@@ -72,7 +77,7 @@ export function useEditor(
   // Update theme
   useEffect(() => {
     if (editorRef.current) {
-      monaco.editor.setTheme(theme === "dark" ? "vs-dark" : "vs");
+      monaco.editor.setTheme(getMonacoTheme(theme));
     }
   }, [theme]);
 
