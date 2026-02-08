@@ -1,43 +1,29 @@
-import { GET, POST, getWailsApp } from "./api";
-import { isWails } from "../utils/env";
+import { GET, POST } from "./api";
 import { createLogger } from "../utils/logger";
+import * as App from "wailsjs/go/main/App";
+import { isWails } from "../utils/env";
 
 const log = createLogger("ProjectService");
 
-// Helper function to wait for Wails app to be available
-const waitForWailsApp = async (maxAttempts: number = 10): Promise<any> => {
-  for (let i = 0; i < maxAttempts; i++) {
-    if (isWails()) {
-      const app = getWailsApp();
-      if (app) {
-        log.debug("Wails app available");
-        return app;
-      }
-    }
-    if (i < maxAttempts - 1) {
-      log.debug(`Waiting for Wails app... attempt ${i + 1}/${maxAttempts}`);
-      await new Promise(resolve => setTimeout(resolve, 50));
-    }
-  }
-  log.warn("Wails app not available after max attempts");
-  return null;
-};
-
 export const getProject = async () => {
   log.debug("Getting current project");
-  const app = await waitForWailsApp();
-  if (app) {
+  
+  // Try Wails first
+  if (isWails()) {
     try {
-      return await app.GetProject();
+      const project = await App.GetProject();
+      log.info(`Project loaded via Wails: ${project.root}`);
+      return project;
     } catch (err) {
       log.error("Failed to get project from Wails", err);
-      return { name: "", root: "", builderUrl: "" };
     }
   }
   
   // Fallback to HTTP (should not happen in Wails mode)
   try {
-    return await GET("/project");
+    const project = await GET("/project");
+    log.info(`Project loaded via HTTP: ${project.root}`);
+    return project;
   } catch (err) {
     log.error("Failed to get project from HTTP", err);
     return { name: "", root: "", builderUrl: "" };
@@ -46,26 +32,32 @@ export const getProject = async () => {
 
 export const setProject = async (root: string) => {
   log.info(`Setting project root to: ${root}`);
-  const app = await waitForWailsApp();
-  if (app) {
+  
+  // Try Wails first
+  if (isWails()) {
     try {
-      return await app.SetProject(root);
+      const project = await App.SetProject(root);
+      log.info(`Project set via Wails: ${project.root}`);
+      return project;
     } catch (err) {
       log.error("Failed to set project in Wails", err);
       throw err;
     }
   }
   
-  // Fallback to HTTP (should not happen in Wails mode)
+  // Fallback to HTTP
   return POST("/project/set", { root });
 };
 
 export const openProjectDialog = async () => {
   log.info("Opening project dialog");
-  const app = await waitForWailsApp();
-  if (app) {
+  
+  // Try Wails first
+  if (isWails()) {
     try {
-      return await app.OpenProjectDialog();
+      const project = await App.OpenProjectDialog();
+      log.info(`Project selected via dialog: ${project.root}`);
+      return project;
     } catch (err) {
       log.error("Failed to open project dialog in Wails", err);
       throw err;
