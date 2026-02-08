@@ -16,10 +16,16 @@ dev:
 
 build:
 	@echo "Building Treefrog for current platform..."
+	@echo "Copying frontend dist to wails..."
+	@mkdir -p wails/frontend/dist
+	@cp -r frontend/dist/* wails/frontend/dist/
 	cd wails && wails build
 
 build-all:
 	@echo "Building Treefrog for all platforms..."
+	@echo "Copying frontend dist to wails..."
+	@mkdir -p wails/frontend/dist
+	@cp -r frontend/dist/* wails/frontend/dist/
 	cd wails && wails build -platform darwin/amd64
 	cd wails && wails build -platform darwin/arm64
 	cd wails && wails build -platform windows/amd64
