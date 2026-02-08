@@ -15,10 +15,6 @@ interface PreviewPaneProps {
   projectRoot: string;
   pdfKey: number;
   pageProxyRef: React.MutableRefObject<Map<number, any>>;
-  onClickSync: (page: number, x: number, y: number) => Promise<void>;
-  onKeyShortcut: (e: React.KeyboardEvent) => void;
-  syncTarget: { page: number; x: number; y: number; file: string; line: number } | null;
-  onSyncScroll: (page: number) => void;
   registerPageRef: (page: number, el: HTMLDivElement | null) => void;
 }
 
@@ -34,10 +30,6 @@ export default function PreviewPane({
   projectRoot,
   pdfKey,
   pageProxyRef,
-  onClickSync,
-  onKeyShortcut,
-  syncTarget,
-  onSyncScroll,
   registerPageRef,
 }: PreviewPaneProps) {
   const clampZoom = (z: number) => Math.min(2.4, Math.max(0.6, Math.round(z * 10) / 10));
@@ -168,10 +160,6 @@ export default function PreviewPane({
             onPageCount={onNumPagesChange}
             registerPageRef={registerPageRef}
             pageProxyRef={pageProxyRef}
-            onKeyShortcut={onKeyShortcut}
-            onClickSync={onClickSync}
-            syncTarget={syncTarget}
-            onSyncScroll={onSyncScroll}
           />
         ) : (
           <div className="flex items-center justify-center h-full text-base-content/50">

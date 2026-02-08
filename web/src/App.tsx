@@ -13,7 +13,7 @@ import FileMenu from "./components/FileMenu";
 import EmptyPlaceholder from "./components/EmptyPlaceholder";
 
 // Types
-import { BuildStatus, SyncEdit, ModalState } from "./types";
+import { BuildStatus, ModalState } from "./types";
 
 // Stores
 import { useAppStore } from "./stores/appStore";
@@ -27,7 +27,7 @@ import { useFiles } from "./hooks/useFiles";
 import { useBuild } from "./hooks/useBuild";
 import { useGit } from "./hooks/useGit";
 import { useWebSocket } from "./hooks/useWebSocket";
-import { useSyncTeX } from "./hooks/useSyncTex";
+
 
 // Services
 import { syncConfig } from "./services/configService";
@@ -112,7 +112,7 @@ export default function App() {
   const { loadEntries, openFile, saveFile, createFile, renameFile, moveFile, duplicateFile, deleteFile, refresh: refreshFiles, clear: clearFiles } = useFiles();
   const { status: buildStatus, build } = useBuild();
   const { status: gitStatus, isError: gitError, refresh: refreshGit, commit, push, pull } = useGit();
-  const { fromClick: syncFromClick } = useSyncTeX();
+
 
   // ========== LOCAL STATE (UI-specific) ==========
   const [engine, setEngine] = useState<string>("pdflatex");
@@ -307,22 +307,6 @@ export default function App() {
     }
   }, []);
 
-  // ========== SYNCTEX HANDLER ==========
-  const handleClickSync = useCallback(async (page: number, x: number, y: number) => {
-    try {
-      // Round coordinates to integers for compatibility
-      const data = await syncFromClick(page, Math.round(x), Math.round(y)) as SyncEdit | null;
-      if (data?.file) {
-        await openFile(data.file);
-        editorInstance.current?.setPosition({ lineNumber: data.line || 1, column: data.col || 1 });
-        editorInstance.current?.revealLineInCenter(data.line || 1);
-      }
-    } catch (err) {
-      // SyncTeX may fail if no PDF has been built or synctex file doesn't exist
-      console.debug("[SyncTeX] Click sync failed:", err);
-    }
-  }, [syncFromClick, openFile]);
-
   // ========== COMPUTED ==========
   const visiblePanes = useMemo(() => ({ sidebar, editor, preview }), [sidebar, editor, preview]);
   const allPanesHidden = useMemo(() => !sidebar && !editor && !preview, [sidebar, editor, preview]);
@@ -422,25 +406,6 @@ export default function App() {
                   projectRoot={projectRoot}
                   pdfKey={pdfKey}
                   pageProxyRef={pageProxyRef}
-                  onClickSync={handleClickSync}
-                  onKeyShortcut={(e) => {
-                    if ((e.ctrlKey || e.metaKey) && (e.key === "+" || e.key === "=")) {
-                      e.preventDefault();
-                      setZoom(clampZoom(zoom + 0.2));
-                    }
-                    if ((e.ctrlKey || e.metaKey) && e.key === "-") {
-                      e.preventDefault();
-                      setZoom(clampZoom(zoom - 0.2));
-                    }
-                    if (e.key === "j") {
-                      scrollToPage(Math.min(numPages, Number(pageInput) + 1));
-                    }
-                    if (e.key === "k") {
-                      scrollToPage(Math.max(1, Number(pageInput) - 1));
-                    }
-                  }}
-                  syncTarget={null}
-                  onSyncScroll={scrollToPage}
                   registerPageRef={registerPageRef}
                 />
               </div>

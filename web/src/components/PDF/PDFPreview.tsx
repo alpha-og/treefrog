@@ -9,10 +9,6 @@ interface PDFPreviewProps {
   onPageCount: (numPages: number) => void;
   registerPageRef: (page: number, el: HTMLDivElement | null) => void;
   pageProxyRef: React.MutableRefObject<Map<number, any>>;
-  onKeyShortcut: (e: React.KeyboardEvent) => void;
-  onClickSync: (page: number, x: number, y: number) => Promise<void>;
-  syncTarget: any;
-  onSyncScroll: (page: number) => void;
 }
 
 export default function PDFPreview({
@@ -22,7 +18,6 @@ export default function PDFPreview({
   onPageCount,
   registerPageRef,
   pageProxyRef,
-  onClickSync,
 }: PDFPreviewProps) {
   const [error, setError] = useState("");
 
@@ -55,7 +50,6 @@ export default function PDFPreview({
             zoom={zoom}
             pageProxyRef={pageProxyRef}
             registerPageRef={registerPageRef}
-            onClickSync={onClickSync}
           />
         ))}
       </Document>
