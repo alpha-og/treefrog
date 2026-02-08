@@ -1,9 +1,6 @@
 import {
-  Plus,
   Folder,
-  FileText,
   ChevronRight,
-  ChevronDown,
   GitBranch,
   GitCommit,
   Upload,
@@ -14,7 +11,7 @@ import {
 } from "lucide-react";
 import { getFileIcon } from "../utils/icons";
 import { FileEntry } from "../types";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface SidebarProps {
   projectRoot: string;
@@ -60,26 +57,16 @@ export default function Sidebar({
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
     new Set(),
   );
-  const [folderContents, setFolderContents] = useState<
-    Map<string, FileEntry[]>
-  >(new Map());
+  const folderContentsRef = useRef<Map<string, FileEntry[]>>(new Map());
 
   // Store folder contents when entries are loaded
   useEffect(() => {
     // Only store if we're at root level (no currentDir) or it's the initial load
     if (currentDir === "" || currentDir === undefined) {
-      setFolderContents((prev) => {
-        const next = new Map(prev);
-        next.set("", entries);
-        return next;
-      });
+      folderContentsRef.current.set("", entries);
     } else if (currentDir) {
       // Store nested folder contents
-      setFolderContents((prev) => {
-        const next = new Map(prev);
-        next.set(currentDir, entries);
-        return next;
-      });
+      folderContentsRef.current.set(currentDir, entries);
     }
   }, [currentDir, entries]);
 
@@ -93,7 +80,7 @@ export default function Sidebar({
         // Expand
         next.add(path);
         // Only navigate if we don't have the contents cached
-        if (!folderContents.has(path)) {
+        if (!folderContentsRef.current.has(path)) {
           onNavigate(path);
         }
       }
@@ -106,7 +93,7 @@ export default function Sidebar({
     parentPath: string = "",
     depth: number = 0,
   ): TreeNode[] => {
-    const contents = folderContents.get(parentPath) || [];
+    const contents = folderContentsRef.current.get(parentPath) || [];
 
     return contents.map((entry) => {
       const path = parentPath ? `${parentPath}/${entry.name}` : entry.name;
@@ -166,7 +153,7 @@ export default function Sidebar({
               />
             </button>
           )}
-          {!hasChildren && <div className="w-[22px]" />}
+          {!hasChildren && <div className="w-5.5" />}
 
           {/* File/Folder icon and name */}
           <div className="flex-1 flex items-center gap-2 min-w-0">
@@ -355,7 +342,7 @@ export default function Sidebar({
               >
                 <Upload
                   size={14}
-                  className="group-hover:translate-y-[-2px] transition-transform"
+                  className="group-hover:-translate-y-0.5 transition-transform"
                 />
                 <span className="text-xs">Push</span>
               </button>
@@ -366,7 +353,7 @@ export default function Sidebar({
               >
                 <Download
                   size={14}
-                  className="group-hover:translate-y-[2px] transition-transform"
+                  className="group-hover:translate-y-0.5 transition-transform"
                 />
                 <span className="text-xs">Pull</span>
               </button>
