@@ -17,7 +17,7 @@ import PreviewPane from "../components/PreviewPane";
 import ProjectPicker from "../components/ProjectPicker";
 import ContextMenu from "../components/ContextMenu";
 import EmptyPlaceholder from "../components/EmptyPlaceholder";
-import TitleBar from "../components/TitleBar";
+import FramelessWindow from "../components/FramelessWindow";
 
 // Types
 import { BuildStatus, ModalState } from "../types";
@@ -441,12 +441,10 @@ export default function Editor() {
   );
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-base-100 rounded-2xl overflow-hidden">
-      {/* Frameless Title Bar */}
-      <TitleBar title={projectRoot ? `${projectRoot.split("/").pop()} - Treefrog` : "Treefrog"} />
-
-      {/* Toolbar */}
-      <Toolbar
+    <FramelessWindow title={projectRoot ? `${projectRoot.split("/").pop()} - Treefrog` : "Treefrog"}>
+      <div className="flex-1 flex flex-col bg-base-100">
+        {/* Toolbar */}
+        <Toolbar
         projectRoot={projectRoot}
         onOpenProject={() => setShowPicker(true)}
         onBuild={triggerBuild}
@@ -655,5 +653,6 @@ export default function Editor() {
         </dialog>
       )}
     </div>
+    </FramelessWindow>
   );
 }

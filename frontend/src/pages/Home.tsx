@@ -6,7 +6,7 @@ import { useAppStore } from "../stores/appStore";
 import { openProjectDialog } from "../services/projectService";
 import SettingsModal from "../components/SettingsModal";
 import ProjectCard from "../components/ProjectCard";
-import TitleBar from "../components/TitleBar";
+import FramelessWindow from "../components/FramelessWindow";
 
 interface HomeProps {
   onSelectProject?: (path: string) => Promise<void>;
@@ -71,12 +71,10 @@ export default function Home({ onSelectProject, loading }: HomeProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-base-200 via-base-100 to-base-200 flex flex-col rounded-2xl overflow-hidden">
-      {/* Frameless Title Bar */}
-      <TitleBar title="Treefrog" />
-
-      {/* Header - Minimalist and Clean */}
-      <header className="border-b border-base-content/5 bg-base-100/40 backdrop-blur-xl sticky top-0 z-30">
+    <FramelessWindow title="Treefrog">
+      <div className="min-h-screen bg-gradient-to-br from-base-200 via-base-100 to-base-200 flex flex-col">
+        {/* Header - Minimalist and Clean */}
+        <header className="border-b border-base-content/5 bg-base-100/40 backdrop-blur-xl sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-6 py-6 md:py-8">
           <div className="flex items-center justify-between gap-4">
             {/* Logo Section */}
@@ -262,6 +260,7 @@ export default function Home({ onSelectProject, loading }: HomeProps) {
         builderToken={builderToken}
         onSave={handleSaveSettings}
       />
-    </div>
+      </div>
+    </FramelessWindow>
   );
 }

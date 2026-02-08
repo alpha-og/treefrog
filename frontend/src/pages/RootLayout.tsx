@@ -1,5 +1,9 @@
 import { Outlet } from "@tanstack/react-router";
 
 export default function RootLayout() {
-  return <Outlet />;
+  return (
+    <div className="w-full h-full flex flex-col">
+      <Outlet />
+    </div>
+  );
 }
