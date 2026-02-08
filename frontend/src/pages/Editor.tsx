@@ -445,103 +445,108 @@ export default function Editor() {
       title="Treefrog" 
       subtitle={projectRoot ? <span className="font-mono text-xs">{projectRoot}</span> : undefined}
     >
-      <div className="flex-1 flex flex-col bg-base-100 overflow-hidden">
-        {/* Toolbar - Modern and elegant */}
-        <Toolbar
-        projectRoot={projectRoot}
-        onOpenProject={() => setShowPicker(true)}
-        onBuild={triggerBuild}
-        engine={engine}
-        onEngineChange={setEngine}
-        shell={shellEscape}
-        onShellChange={setShellEscape}
-        theme={theme}
-        onThemeToggle={() => setTheme(theme === "dark" ? "light" : "dark")}
-        onTogglePane={togglePane}
-        panesVisible={visiblePanes}
-        configSynced={configSynced}
-      />
+      <div className="flex-1 flex flex-col bg-base-100 overflow-hidden relative">
+        {/* Background gradient accent */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -mr-48 -mt-48"></div>
+          <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-secondary/5 rounded-full blur-3xl -mb-48"></div>
+        </div>
 
-       {/* Main Content */}
-       <div className="flex-1 flex flex-row overflow-hidden" ref={mainRef} style={_isResizing ? { userSelect: "none" } as React.CSSProperties : {}}>
-         {allPanesHidden ? (
-          <EmptyPlaceholder />
-        ) : (
-          <>
-            {/* Sidebar */}
-            {sidebar && (
-              <>
-                <div style={{ width: `${sidebarWidth}px`, flexShrink: 0 }}>
-                  <Sidebar
-                    projectRoot={projectRoot}
-                    entries={entries}
-                    currentDir={currentDir}
-                    currentFile={currentFile}
-                    onNavigate={loadEntries}
-                    onOpenFile={openFile}
-                    onCreateFile={() =>
-                      handleOpenModal({ kind: "create", type: "file" })
-                    }
-                    onCreateFolder={() =>
-                      handleOpenModal({ kind: "create", type: "dir" })
-                    }
-                    onFileMenu={(x, y, path, isDir) =>
-                      setContextMenu({ x, y, path, isDir })
-                    }
-                    gitStatus={gitStatus}
-                    gitError={gitError}
-                    onCommit={commit}
-                    onPush={push}
-                    onPull={pull}
-                  />
-                </div>
-                {(editor || preview) && (
-                  <div
-                    className="w-0.5 bg-base-content/10 hover:bg-primary/50 cursor-col-resize transition-all duration-200 hover:w-1 hover:shadow-lg hover:shadow-primary/20"
-                    onMouseDown={(e) => handleResizeStart("sidebar-editor", e)}
-                    style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}
-                  />
-                )}
-              </>
-            )}
+         {/* Toolbar - Modern and elegant */}
+         <Toolbar
+         projectRoot={projectRoot}
+         onOpenProject={() => setShowPicker(true)}
+         onBuild={triggerBuild}
+         engine={engine}
+         onEngineChange={setEngine}
+         shell={shellEscape}
+         onShellChange={setShellEscape}
+         theme={theme}
+         onThemeToggle={() => setTheme(theme === "dark" ? "light" : "dark")}
+         onTogglePane={togglePane}
+         panesVisible={visiblePanes}
+         configSynced={configSynced}
+       />
 
-            {/* Editor */}
-            {editor && (
-              <>
-                <div
-                  className="flex-1 min-w-0"
-                  style={{
-                    width: editorWidth > 0 ? `${editorWidth}px` : undefined,
-                    flex: editorWidth > 0 ? "none" : 1,
-                  }}
-                >
-                  <EditorPane
-                    theme={theme}
-                    fileContent={fileContent}
-                    isBinary={isBinary}
-                    currentFile={currentFile}
-                    onSave={handleSave}
-                  />
-                </div>
-                {preview && (
-                  <div
-                    className="w-0.5 bg-base-content/10 hover:bg-primary/50 cursor-col-resize transition-all duration-200 hover:w-1 hover:shadow-lg hover:shadow-primary/20"
-                    onMouseDown={(e) => handleResizeStart("editor-preview", e)}
-                    style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}
-                  />
-                )}
-              </>
-            )}
+        {/* Main Content */}
+        <div className="flex-1 flex flex-row overflow-hidden relative z-10" ref={mainRef} style={_isResizing ? { userSelect: "none" } as React.CSSProperties : {}}>
+          {allPanesHidden ? (
+           <EmptyPlaceholder />
+         ) : (
+           <>
+             {/* Sidebar */}
+             {sidebar && (
+               <>
+                 <div className="border-r border-base-content/5 backdrop-blur-sm bg-base-100/50 overflow-hidden animate-fade-in" style={{ width: `${sidebarWidth}px`, flexShrink: 0 }}>
+                   <Sidebar
+                     projectRoot={projectRoot}
+                     entries={entries}
+                     currentDir={currentDir}
+                     currentFile={currentFile}
+                     onNavigate={loadEntries}
+                     onOpenFile={openFile}
+                     onCreateFile={() =>
+                       handleOpenModal({ kind: "create", type: "file" })
+                     }
+                     onCreateFolder={() =>
+                       handleOpenModal({ kind: "create", type: "dir" })
+                     }
+                     onFileMenu={(x, y, path, isDir) =>
+                       setContextMenu({ x, y, path, isDir })
+                     }
+                     gitStatus={gitStatus}
+                     gitError={gitError}
+                     onCommit={commit}
+                     onPush={push}
+                     onPull={pull}
+                   />
+                 </div>
+                 {(editor || preview) && (
+                   <div
+                     className="w-0.5 bg-gradient-to-b from-transparent via-base-content/20 to-transparent hover:bg-primary/50 hover:shadow-lg hover:shadow-primary/30 cursor-col-resize transition-all duration-200 hover:w-1"
+                     onMouseDown={(e) => handleResizeStart("sidebar-editor", e)}
+                   />
+                 )}
+               </>
+             )}
 
-            {/* Preview */}
-            {preview && (
-              <div className="flex-1 min-w-0">
-                <PreviewPane
-                  apiUrl={apiUrl}
-                  buildStatus={buildStatus}
-                  zoom={zoom}
-                  onZoomChange={setZoom}
-                  numPages={numPages}
+             {/* Editor */}
+             {editor && (
+               <>
+                 <div
+                   className="flex-1 min-w-0 animate-fade-in"
+                   style={{
+                     width: editorWidth > 0 ? `${editorWidth}px` : undefined,
+                     flex: editorWidth > 0 ? "none" : 1,
+                   }}
+                 >
+                   <EditorPane
+                     theme={theme}
+                     fileContent={fileContent}
+                     isBinary={isBinary}
+                     currentFile={currentFile}
+                     onSave={handleSave}
+                   />
+                 </div>
+                 {preview && (
+                   <div
+                     className="w-0.5 bg-gradient-to-b from-transparent via-base-content/20 to-transparent hover:bg-primary/50 hover:shadow-lg hover:shadow-primary/30 cursor-col-resize transition-all duration-200 hover:w-1"
+                     onMouseDown={(e) => handleResizeStart("editor-preview", e)}
+                     style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}
+                   />
+                 )}
+               </>
+             )}
+
+             {/* Preview */}
+             {preview && (
+               <div className="flex-1 min-w-0 animate-fade-in">
+                 <PreviewPane
+                   apiUrl={apiUrl}
+                   buildStatus={buildStatus}
+                   zoom={zoom}
+                   onZoomChange={setZoom}
+                   numPages={numPages}
                   onNumPagesChange={setNumPages}
                   currentPage={Number(pageInput) || 1}
                   onPageChange={(page) => {

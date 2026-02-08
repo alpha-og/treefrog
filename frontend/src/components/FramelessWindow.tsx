@@ -8,8 +8,7 @@ interface FramelessWindowProps {
 }
 
 /**
- * FramelessWindow wraps content without a custom title bar
- * Uses native window controls from the OS
+ * FramelessWindow wraps content with native window controls
  */
 export default function FramelessWindow({
   title = "Treefrog",

@@ -118,14 +118,14 @@ export default function Sidebar({
     return (
       <div key={node.path}>
         <div
-          className={`
-            group relative flex items-center gap-2 px-2 py-1.5 rounded
-            transition-all duration-150 cursor-pointer
-            ${isActive
-              ? "bg-base-300 font-medium border-l-2 border-primary"
-              : "hover:bg-base-300/50"
-            }
-          `}
+           className={`
+             group relative flex items-center gap-2 px-2 py-1.5 rounded
+             transition-all duration-150 cursor-pointer
+             ${isActive
+               ? "bg-primary/15 font-medium border-l-2 border-primary shadow-sm"
+               : "hover:bg-base-300/40"
+             }
+           `}
           style={{ paddingLeft: `${0.5 + node.depth * 1}rem` }}
           onContextMenu={(e) => {
             e.preventDefault();
@@ -220,44 +220,44 @@ export default function Sidebar({
   };
 
   return (
-    <aside className="sidebar h-full bg-base-200 border-r border-base-300 flex flex-col overflow-hidden">
+    <aside className="sidebar h-full bg-base-200/50 backdrop-blur-sm border-r border-base-content/5 flex flex-col overflow-hidden hover:bg-base-200/70 transition-colors duration-300">
       {/* Header with Project Name */}
-      <div className="p-3 flex justify-between items-center border-b border-base-300">
-        {/* Project Root */}
-        {projectRoot && (
-          <div className="flex items-center gap-2">
-            <Folder size={16} className="text-base-content/50 shrink-0" />
-            <p
-              className="text-xs text-base-content/60 truncate font-medium"
-              title={projectRoot}
-            >
-              {projectRoot.split("/").pop() || projectRoot}
-            </p>
-          </div>
-        )}
+      <div className="p-4 flex justify-between items-center border-b border-base-content/5 bg-gradient-to-br from-base-100/50 to-transparent">
+         {/* Project Root */}
+         {projectRoot && (
+           <div className="flex items-center gap-2">
+             <Folder size={16} className="text-base-content/50 shrink-0" />
+             <p
+               className="text-xs text-base-content/60 truncate font-medium"
+               title={projectRoot}
+             >
+               {projectRoot.split("/").pop() || projectRoot}
+             </p>
+           </div>
+         )}
 
-        {/* Action Buttons */}
-        <div className="flex">
-          <button
-            onClick={onCreateFile}
-            className="btn btn-ghost flex-1 group justify-start"
-            title="New file"
-          >
-            <FilePlus size={18} className="text-base-content/70" />
-          </button>
-          <button
-            onClick={onCreateFolder}
-            className="btn btn-ghost flex-1 group justify-start"
-            title="New folder"
-          >
-            <FolderPlus size={18} className="text-base-content/70" />
-          </button>
-        </div>
-      </div>
+         {/* Action Buttons */}
+         <div className="flex">
+           <button
+             onClick={onCreateFile}
+             className="btn btn-ghost flex-1 group justify-start hover:bg-primary/10 transition-colors"
+             title="New file"
+           >
+             <FilePlus size={18} className="text-base-content/70 group-hover:text-primary transition-colors" />
+           </button>
+           <button
+             onClick={onCreateFolder}
+             className="btn btn-ghost flex-1 group justify-start hover:bg-primary/10 transition-colors"
+             title="New folder"
+           >
+             <FolderPlus size={18} className="text-base-content/70 group-hover:text-primary transition-colors" />
+           </button>
+         </div>
+       </div>
 
-      {/* File Tree */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin">
-        <div className="p-2 space-y-0.5">
+       {/* File Tree */}
+       <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin hover:scrollbar-thumb-primary/20">
+         <div className="p-3 space-y-0.5">
           {treeNodes.length === 0 ? (
             <div className="text-center py-8 text-base-content/40 text-sm">
               <Folder size={32} className="mx-auto mb-2 opacity-30" />
@@ -270,56 +270,56 @@ export default function Sidebar({
       </div>
 
       {/* Git Panel */}
-      <div className="border-t border-base-300 bg-base-200">
-        {/* Git Header - Collapsible */}
-        <button
-          onClick={() => setGitExpanded(!gitExpanded)}
-          className="w-full px-4 py-3 flex items-center justify-between hover:bg-base-300/30 transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <GitBranch size={14} className="text-base-content/70" />
-            <h3 className="font-semibold text-sm">Source Control</h3>
-          </div>
-          <ChevronRight
-            size={14}
-            className={`transition-transform ${gitExpanded ? "rotate-90" : ""}`}
-          />
-        </button>
+      <div className="border-t border-base-content/5 bg-gradient-to-t from-base-200/50 to-transparent">
+         {/* Git Header - Collapsible */}
+         <button
+           onClick={() => setGitExpanded(!gitExpanded)}
+           className="w-full px-4 py-3 flex items-center justify-between hover:bg-primary/10 transition-colors duration-200"
+         >
+           <div className="flex items-center gap-2">
+             <GitBranch size={14} className="text-base-content/70" />
+             <h3 className="font-semibold text-sm">Source Control</h3>
+           </div>
+           <ChevronRight
+             size={14}
+             className={`transition-transform duration-200 ${gitExpanded ? "rotate-90" : ""}`}
+           />
+         </button>
 
-        {/* Git Content - Expandable */}
-        <div
-          className={`
-            transition-all duration-200 overflow-hidden
-            ${gitExpanded ? "max-h-96" : "max-h-0"}
-          `}
-        >
-          <div className="px-4 pb-4 space-y-3">
-            {/* Git Status */}
-            <div>
-              <label className="text-xs text-base-content/60 mb-1 block">
-                Status
-              </label>
-              <pre
-                className={`
-                  text-xs bg-base-300/50 p-2.5 rounded-md
-                  overflow-y-auto max-h-24 font-mono
-                  scrollbar-thin
-                  ${gitError ? "text-error border border-error/30" : "text-base-content/80"}
-                `}
-              >
-                {gitStatus || "Working tree clean"}
-              </pre>
-            </div>
+         {/* Git Content - Expandable */}
+         <div
+           className={`
+             transition-all duration-300 overflow-hidden
+             ${gitExpanded ? "max-h-96" : "max-h-0"}
+           `}
+         >
+           <div className="px-4 pb-4 space-y-3">
+             {/* Git Status */}
+             <div>
+               <label className="text-xs text-base-content/60 mb-1 block">
+                 Status
+               </label>
+               <pre
+                 className={`
+                   text-xs bg-base-300/30 p-3 rounded-lg
+                   overflow-y-auto max-h-24 font-mono
+                   scrollbar-thin border border-base-content/5
+                   ${gitError ? "text-error" : "text-base-content/70"}
+                 `}
+               >
+                 {gitStatus || "Working tree clean"}
+               </pre>
+             </div>
 
-            {/* Commit Form */}
-            <form onSubmit={handleCommit} className="space-y-2">
-              <label className="text-xs text-base-content/60 block">
-                Commit Message
-              </label>
-              <div className="flex gap-2">
-                <input
-                  value={commitMessage}
-                  onChange={(e) => setCommitMessage(e.target.value)}
+             {/* Commit Form */}
+             <form onSubmit={handleCommit} className="space-y-2">
+               <label className="text-xs text-base-content/60 block">
+                 Commit Message
+               </label>
+               <div className="flex gap-2">
+                 <input
+                   value={commitMessage}
+                   onChange={(e) => setCommitMessage(e.target.value)}
                   placeholder="Enter commit message..."
                   className="input input-sm input-bordered flex-1 text-sm"
                 />
