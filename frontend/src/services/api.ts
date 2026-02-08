@@ -66,6 +66,7 @@ interface WailsApp {
   TriggerBuild(mainFile: string, engine: string, shellEscape: boolean): Promise<void>;
   GetBuildLog(): Promise<string>;
   GetPDFPath(): Promise<string>;
+  GetPDFContent(): Promise<Uint8Array>;
   ExportPDF(): Promise<string>;
   ExportSource(): Promise<string>;
   

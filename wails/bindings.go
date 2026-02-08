@@ -631,6 +631,15 @@ func (a *App) GetPDFPath() (string, error) {
 	return pdfPath, nil
 }
 
+// GetPDFContent returns the PDF content as bytes for desktop viewing
+func (a *App) GetPDFContent() ([]byte, error) {
+	pdfPath := filepath.Join(a.cacheDir, "last.pdf")
+	if _, err := os.Stat(pdfPath); err != nil {
+		return nil, fmt.Errorf("no PDF available")
+	}
+	return os.ReadFile(pdfPath)
+}
+
 // ExportPDF exports the PDF to a user-selected location
 func (a *App) ExportPDF() (string, error) {
 	pdfPath, err := a.GetPDFPath()

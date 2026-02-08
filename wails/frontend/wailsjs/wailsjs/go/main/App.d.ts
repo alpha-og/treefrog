@@ -18,6 +18,8 @@ export function GetBuildStatus():Promise<main.BuildStatus>;
 
 export function GetConfig():Promise<main.Config>;
 
+export function GetPDFContent():Promise<Array<number>>;
+
 export function GetPDFPath():Promise<string>;
 
 export function GetProject():Promise<main.ProjectInfo>;

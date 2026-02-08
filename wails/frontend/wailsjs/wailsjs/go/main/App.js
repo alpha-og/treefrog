@@ -34,6 +34,10 @@ export function GetConfig() {
   return window['go']['main']['App']['GetConfig']();
 }
 
+export function GetPDFContent() {
+  return window['go']['main']['App']['GetPDFContent']();
+}
+
 export function GetPDFPath() {
   return window['go']['main']['App']['GetPDFPath']();
 }

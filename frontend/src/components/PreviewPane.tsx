@@ -15,6 +15,7 @@ import {
   Zap,
 } from "lucide-react";
 import { ZOOM_LEVELS } from "../constants";
+import { usePDFUrl } from "../hooks/usePDFUrl";
 
 interface PreviewPaneProps {
   apiUrl: string;
@@ -47,6 +48,9 @@ export default function PreviewPane({
 }: PreviewPaneProps) {
   const clampZoom = (z: number) =>
     Math.min(2.4, Math.max(0.6, Math.round(z * 10) / 10));
+
+  // Get PDF URL that works in both web and Wails modes
+  const { pdfUrl, loading: pdfLoading, error: pdfError } = usePDFUrl(apiUrl, pdfKey);
 
   return (
     <section className="h-full flex flex-col bg-base-100 border-l border-base-300">
@@ -245,16 +249,41 @@ export default function PreviewPane({
                 <p className="text-sm text-base-content/40 mt-1">Please wait</p>
               </div>
             </div>
-          ) : (
+          ) : pdfLoading ? (
+            <div className="flex flex-col items-center justify-center h-full text-base-content/50 gap-4 animate-in fade-in duration-500">
+              <Loader2 size={48} className="animate-spin text-info" />
+              <div className="text-center">
+                <p className="font-medium">Loading PDF...</p>
+              </div>
+            </div>
+          ) : pdfError ? (
+            <div className="flex flex-col items-center justify-center h-full text-base-content/50 gap-4 animate-in fade-in duration-500">
+              <AlertCircle size={48} className="text-error" />
+              <div className="text-center">
+                <p className="font-medium text-error">Failed to load PDF</p>
+                <p className="text-sm text-base-content/40 mt-1">{pdfError}</p>
+              </div>
+            </div>
+          ) : pdfUrl ? (
             <PDFPreview
               key={pdfKey}
-              url={`${apiUrl}/export/pdf?ts=${pdfKey}`}
+              url={pdfUrl}
               zoom={zoom}
               numPages={numPages}
               onPageCount={onNumPagesChange}
               registerPageRef={registerPageRef}
               pageProxyRef={pageProxyRef}
             />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-base-content/50 gap-4 animate-in fade-in duration-500">
+              <FileText size={48} className="opacity-30" />
+              <div className="text-center">
+                <p className="font-medium text-base-content/60">
+                  No PDF Available
+                </p>
+                <p className="text-sm mt-1">Build the project to generate a preview</p>
+              </div>
+            </div>
           )
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-base-content/40 gap-4 animate-in fade-in duration-500">
