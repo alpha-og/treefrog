@@ -36,10 +36,21 @@ export function usePDFUrl(apiUrl: string, pdfKey: number): {
             throw new Error('Wails app not available');
           }
 
-          const content = await app.GetPDFContent();
+          const base64Content = await app.GetPDFContent();
           
-          // Create blob from PDF bytes
-          const blob = new Blob([content], { type: 'application/pdf' });
+          if (!base64Content) {
+            throw new Error('No PDF content returned');
+          }
+          
+          // Decode base64 to binary
+          const binaryString = atob(base64Content);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          
+          // Create blob from decoded bytes
+          const blob = new Blob([bytes], { type: 'application/pdf' });
           objectUrl = URL.createObjectURL(blob);
           setPdfUrl(objectUrl);
         } else {
@@ -47,7 +58,8 @@ export function usePDFUrl(apiUrl: string, pdfKey: number): {
           setPdfUrl(`${apiUrl}/export/pdf?ts=${pdfKey}`);
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load PDF');
+        const errorMsg = err instanceof Error ? err.message : 'Failed to load PDF';
+        setError(errorMsg);
       } finally {
         setLoading(false);
       }

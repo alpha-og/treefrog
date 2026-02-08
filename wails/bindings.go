@@ -3,6 +3,7 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -355,7 +356,7 @@ func (a *App) runBuild(mainFile, engine string, shellEscape bool) {
 	}
 
 	// Upload to builder
-	remoteID, err := a.uploadBuild(zipPath, builderURL, builderToken)
+	remoteID, err := a.uploadBuild(zipPath, mainFile, engine, shellEscape, builderURL, builderToken)
 	if err != nil {
 		a.statusMu.Lock()
 		a.status.State = "error"
@@ -373,7 +374,7 @@ func (a *App) runBuild(mainFile, engine string, shellEscape bool) {
 }
 
 // uploadBuild uploads the project zip to the builder
-func (a *App) uploadBuild(zipPath, builderURL, builderToken string) (string, error) {
+func (a *App) uploadBuild(zipPath, mainFile, engine string, shellEscape bool, builderURL, builderToken string) (string, error) {
 	file, err := os.Open(zipPath)
 	if err != nil {
 		return "", err
@@ -382,7 +383,18 @@ func (a *App) uploadBuild(zipPath, builderURL, builderToken string) (string, err
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
-	part, err := writer.CreateFormFile("project", "project.zip")
+
+	// Add options field with build configuration
+	opts := BuildOptions{
+		MainFile:    mainFile,
+		Engine:      engine,
+		ShellEscape: shellEscape,
+	}
+	optsJSON, _ := json.Marshal(opts)
+	_ = writer.WriteField("options", string(optsJSON))
+
+	// Add file field with the zip
+	part, err := writer.CreateFormFile("file", "source.zip")
 	if err != nil {
 		return "", err
 	}
@@ -399,7 +411,7 @@ func (a *App) uploadBuild(zipPath, builderURL, builderToken string) (string, err
 
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	if builderToken != "" {
-		req.Header.Set("Authorization", "Bearer "+builderToken)
+		req.Header.Set("X-Builder-Token", builderToken)
 	}
 
 	client := &http.Client{Timeout: 30 * time.Second}
@@ -410,8 +422,8 @@ func (a *App) uploadBuild(zipPath, builderURL, builderToken string) (string, err
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("builder error: %s", string(body))
+		respBody, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("builder error: %s", string(respBody))
 	}
 
 	var result struct {
@@ -469,6 +481,7 @@ func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape boo
 				return
 			}
 			a.statusMu.Lock()
+			a.status.State = "success"
 			a.status.EndedAt = time.Now().Format(time.RFC3339)
 			a.statusMu.Unlock()
 			a.emitBuildStatus(a.status)
@@ -487,13 +500,15 @@ func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape boo
 
 // checkRemoteBuild checks the status of a remote build
 func (a *App) checkRemoteBuild(remoteID, builderURL, builderToken string) (string, error) {
-	req, err := http.NewRequest("GET", builderURL+"/build/"+remoteID+"/status", nil)
+	url := builderURL + "/build/" + remoteID + "/status"
+
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return "", err
 	}
 
 	if builderToken != "" {
-		req.Header.Set("Authorization", "Bearer "+builderToken)
+		req.Header.Set("X-Builder-Token", builderToken)
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -504,46 +519,76 @@ func (a *App) checkRemoteBuild(remoteID, builderURL, builderToken string) (strin
 	defer resp.Body.Close()
 
 	var result struct {
-		State string `json:"state"`
+		Status  string `json:"status"`
+		Message string `json:"message"`
+		Error   string `json:"error"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.Unmarshal(io.ReadAll(resp.Body)); err != nil {
 		return "", err
 	}
 
-	return result.State, nil
+	return result.Status, nil
 }
 
 // downloadPDF downloads the built PDF
 func (a *App) downloadPDF(remoteID, builderURL, builderToken string) error {
-	req, err := http.NewRequest("GET", builderURL+"/build/"+remoteID+"/pdf", nil)
+	url := builderURL + "/build/" + remoteID + "/artifacts/pdf"
+
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
 	}
 
 	if builderToken != "" {
-		req.Header.Set("Authorization", "Bearer "+builderToken)
+		req.Header.Set("X-Builder-Token", builderToken)
 	}
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("PDF download failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to download PDF: %s", resp.Status)
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("PDF download failed with status %s: %s", resp.Status, string(body))
 	}
 
 	pdfPath := filepath.Join(a.cacheDir, "last.pdf")
+
 	file, err := os.Create(pdfPath)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	_, err = io.Copy(file, resp.Body)
-	return err
+	n, err := io.Copy(file, resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to save PDF: %w", err)
+	}
+
+	if n == 0 {
+		return fmt.Errorf("PDF file is empty")
+	}
+
+	// Check if it's a valid PDF (starts with %PDF)
+	f, err := os.Open(pdfPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	header := make([]byte, 4)
+	if _, err := f.Read(header); err != nil {
+		return err
+	}
+
+	if string(header) != "%PDF" {
+		return fmt.Errorf("invalid PDF file: header is %s, expected %%PDF", string(header))
+	}
+
+	return nil
 }
 
 // zipProject creates a zip archive of the project
@@ -617,6 +662,9 @@ func (a *App) GetBuildLog() (string, error) {
 	logPath := filepath.Join(a.cacheDir, "build.log")
 	data, err := os.ReadFile(logPath)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return "No build log available. The build may not have started yet.", nil
+		}
 		return "", err
 	}
 	return string(data), nil
@@ -631,13 +679,23 @@ func (a *App) GetPDFPath() (string, error) {
 	return pdfPath, nil
 }
 
-// GetPDFContent returns the PDF content as bytes for desktop viewing
-func (a *App) GetPDFContent() ([]byte, error) {
+// GetPDFContent returns the PDF content as base64-encoded string for desktop viewing
+// We use base64 instead of raw bytes because Wails' type conversion doesn't handle binary data well
+func (a *App) GetPDFContent() (string, error) {
 	pdfPath := filepath.Join(a.cacheDir, "last.pdf")
+
 	if _, err := os.Stat(pdfPath); err != nil {
-		return nil, fmt.Errorf("no PDF available")
+		return "", fmt.Errorf("no PDF available")
 	}
-	return os.ReadFile(pdfPath)
+
+	content, err := os.ReadFile(pdfPath)
+	if err != nil {
+		return "", err
+	}
+
+	// Convert to base64 for safe transmission to JavaScript
+	encoded := base64.StdEncoding.EncodeToString(content)
+	return encoded, nil
 }
 
 // ExportPDF exports the PDF to a user-selected location
@@ -794,7 +852,7 @@ func (a *App) SyncTeXView(file string, line, col int) (*SyncTeXResult, error) {
 
 	builderToken := a.getBuilderToken()
 	if builderToken != "" {
-		req.Header.Set("Authorization", "Bearer "+builderToken)
+		req.Header.Set("X-Builder-Token", builderToken)
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -834,7 +892,7 @@ func (a *App) SyncTeXEdit(page int, x, y float64) (*SyncTeXResult, error) {
 
 	builderToken := a.getBuilderToken()
 	if builderToken != "" {
-		req.Header.Set("Authorization", "Bearer "+builderToken)
+		req.Header.Set("X-Builder-Token", builderToken)
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}

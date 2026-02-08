@@ -30,6 +30,13 @@ type BuildStatus struct {
 	EndedAt   string `json:"endedAt"`
 }
 
+// BuildOptions contains options for a LaTeX build
+type BuildOptions struct {
+	MainFile    string `json:"mainFile"`
+	Engine      string `json:"engine"`
+	ShellEscape bool   `json:"shellEscape"`
+}
+
 // FileEntry represents a file or directory
 type FileEntry struct {
 	Name    string      `json:"name"`

@@ -3,3 +3,4 @@ dist/
 .treefrog-cache/
 .env
 .DS_Store
+wails/frontend/wailsjs/

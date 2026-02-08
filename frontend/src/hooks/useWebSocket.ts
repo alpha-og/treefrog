@@ -1,10 +1,12 @@
 import { useEffect, useRef } from "react";
 import { isWails } from "../utils/env";
+import { useAppStore } from "../stores/appStore";
 
 export function useWebSocket(onMsg: (d: any) => void) {
   const onMsgRef = useRef(onMsg);
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 10;
+  const { apiUrl } = useAppStore();
 
   useEffect(() => {
     onMsgRef.current = onMsg;
@@ -54,7 +56,11 @@ export function useWebSocket(onMsg: (d: any) => void) {
 
     // Web mode: use WebSocket
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsURL = `${protocol}//${window.location.host}/ws/build`;
+    // Construct WebSocket URL from apiUrl (replace /api with /ws/build)
+    const baseURL = apiUrl.startsWith("http") ? apiUrl : `${window.location.protocol}//${window.location.host}${apiUrl}`;
+    const wsURL = baseURL
+      .replace(/^https?:/, protocol === "wss:" ? "wss:" : "ws:")
+      .replace(/\/api\/?$/, "/ws/build");
 
     let ws: WebSocket | null = null;
     let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -114,5 +120,5 @@ export function useWebSocket(onMsg: (d: any) => void) {
       if (ws) ws.close();
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
     };
-  }, []);
+  }, [apiUrl]);
 }

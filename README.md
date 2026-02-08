@@ -282,6 +282,71 @@ All bindings are available via `window.go.main.App`:
 - **Native Menu Bar** (Desktop): File, Build, Git, View menus with keyboard shortcuts
 - **Project Persistence** (Desktop): Automatically remembers last opened project
 
+## Build Flow
+
+The Treefrog build process orchestrates LaTeX compilation between the desktop app and a remote builder service:
+
+### Build Flow Diagram
+
+```
+User clicks "Build"
+    ↓
+TriggerBuild() called
+    ↓
+Project zipped locally
+    ↓
+Zip uploaded to Remote Builder with build options
+    ├─ mainFile (e.g., "main.tex")
+    ├─ engine (pdflatex, xelatex, etc.)
+    └─ shellEscape (true/false)
+    ↓
+Remote Builder returns Build ID
+    ↓
+Poll /build/{id}/status every 2 seconds
+    ├─ Status: "running"
+    ├─ Status: "success" → Download PDF
+    └─ Status: "error" → Show error
+    ↓
+On Success: Download PDF from /build/{id}/artifacts/pdf
+    ↓
+Save PDF to cache (last.pdf)
+    ↓
+Emit "build-status" event to frontend
+    ↓
+Frontend updates pdfKey → usePDFUrl reloads PDF
+    ↓
+PDF displayed in viewer
+```
+
+### Key Technical Details
+
+**Backend (Go - Wails)**:
+- `TriggerBuild()`: Initiates build, sets initial status
+- `uploadBuild()`: Creates multipart form with zip file + build options
+- `pollBuildStatus()`: Polls remote builder status every 2 seconds
+- `downloadPDF()`: Fetches PDF from builder, validates it
+- `GetPDFContent()`: Returns PDF as base64-encoded string (for binary safety with Wails)
+
+**Frontend (React)**:
+- `useBuild()`: Manages build state and prevents duplicate requests
+- `useWebSocket()`: Listens for "build-status" Wails events
+- `usePDFUrl()`: Decodes base64 PDF, creates blob URL
+- `PreviewPane`: Displays build status and PDF viewer
+
+### Important Implementation Notes
+
+1. **PDF Transfer**: PDF content is transferred as base64-encoded string because Wails' automatic type conversion doesn't safely handle raw binary data. The frontend decodes it back to binary before creating the blob.
+
+2. **HTTP Headers**: Remote builder expects `X-Builder-Token` header (not `Authorization`), and build options must be sent as form field `"options"` (JSON) with file field `"file"`.
+
+3. **Status Polling**: Polls every 2 seconds until build completes or times out. Status values: `running`, `success`, `error`
+
+4. **PDF Validation**: Downloaded PDF is validated by checking:
+   - File is not empty (>0 bytes)
+   - Header starts with `%PDF` magic bytes
+
+5. **Error Handling**: Build errors are captured and emitted to frontend with error message for user display.
+
 ## Troubleshooting
 
 ### Desktop App Won't Start
@@ -298,6 +363,13 @@ All bindings are available via `window.go.main.App`:
 - Verify `BUILDER_TOKEN` is correct
 - Check that your main `.tex` file is selected
 - Enable shell-escape in build options if needed
+- Check remote builder is accessible at your `BUILDER_URL`
+
+### PDF Shows "Invalid PDF structure" Error
+- Ensure the remote builder is successfully generating PDFs
+- Check that shell-escape is enabled if your document needs it
+- Verify the main file is set to your entry point (usually `main.tex`)
+- Check remote builder logs for compilation errors
 
 ### Changes Not Syncing
 - Ensure `PROJECT_ROOT` points to the correct directory
