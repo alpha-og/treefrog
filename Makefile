@@ -1,42 +1,31 @@
-.PHONY: builder local web dev dev-no-builder stop wails wails-dev wails-build
+.PHONY: dev build build-all doctor stop
 
-builder:
-	BUILDER_TOKEN=$${BUILDER_TOKEN} ./scripts/start-builder.sh
-
-local:
-	PROJECT_ROOT=$${PROJECT_ROOT} BUILDER_URL=$${BUILDER_URL} BUILDER_TOKEN=$${BUILDER_TOKEN} ./scripts/start-local.sh
-
-web:
-	./scripts/start-web.sh
-
+# Desktop App Development
 dev:
-	PROJECT_ROOT=$${PROJECT_ROOT} BUILDER_URL=$${BUILDER_URL} BUILDER_TOKEN=$${BUILDER_TOKEN} ./scripts/dev.sh
-
-dev-no-builder:
-	./scripts/dev-no-builder.sh
-
-stop:
-	docker compose down
-
-# Wails Desktop App Commands
-wails:
-	@echo "Building Wails desktop app..."
-	cd wails && wails build
-
-wails-dev:
-	@echo "Running Wails in development mode..."
+	@echo "Running Treefrog in development mode..."
 	cd wails && wails dev
 
-wails-build:
-	@echo "Building Wails for current platform..."
+build:
+	@echo "Building Treefrog for current platform..."
 	cd wails && wails build
 
-wails-build-all:
-	@echo "Building Wails for all platforms..."
+build-all:
+	@echo "Building Treefrog for all platforms..."
 	cd wails && wails build -platform darwin/amd64
 	cd wails && wails build -platform darwin/arm64
 	cd wails && wails build -platform windows/amd64
 	cd wails && wails build -platform linux/amd64
 
-wails-doctor:
+# Remote Builder (Docker)
+builder:
+	@echo "Starting remote builder..."
+	docker compose up --build -d
+
+stop:
+	@echo "Stopping services..."
+	docker compose down
+
+# Diagnostics
+doctor:
+	@echo "Checking Wails setup..."
 	cd wails && wails doctor
