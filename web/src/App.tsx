@@ -158,7 +158,7 @@ export default function App() {
 
   // Apply theme
   useEffect(() => {
-    const themeName = theme === "dark" ? "dracula" : "cupcake";
+    const themeName = theme === "dark" ? "rusty-dark" : "rusty-light";
     document.documentElement.setAttribute("data-theme", themeName);
   }, [theme]);
 

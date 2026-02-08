@@ -1,4 +1,166 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;600&family=IBM+Plex+Mono:wght@400;600&display=swap");
+
 @import "tailwindcss";
+
 @plugin "daisyui" {
-  themes: dracula, cupcake;
+  themes: rusty-light --default, rusty-dark --prefersdark;
+}
+
+/* ==========================================
+   RUSTY LIGHT THEME
+   Warm paper tones with terracotta accent
+   ========================================== */
+@plugin "daisyui/theme" {
+  name: "rusty-light";
+  default: true;
+  color-scheme: light;
+
+  /* Base colors: warm paper tones */
+  --color-base-100: oklch(98% 0.008 80);    /* #fbfaf7 - panel/card background */
+  --color-base-200: oklch(96% 0.01 80);     /* #f4f3ef - page background */
+  --color-base-300: oklch(89% 0.015 75);    /* #dedad3 - borders */
+  --color-base-content: oklch(15% 0.01 60); /* #1b1b1b - main text */
+
+  /* Primary: rusty terracotta */
+  --color-primary: oklch(48% 0.14 28);           /* #b24a2f */
+  --color-primary-content: oklch(98% 0.005 80);  /* light text on primary */
+
+  /* Secondary: teal accent */
+  --color-secondary: oklch(48% 0.08 180);        /* #2f6f6d */
+  --color-secondary-content: oklch(98% 0.005 80);
+
+  /* Accent: same as secondary for variety */
+  --color-accent: oklch(48% 0.08 180);
+  --color-accent-content: oklch(98% 0.005 80);
+
+  /* Neutral: warm gray for muted elements */
+  --color-neutral: oklch(48% 0.02 60);           /* #6f6a63 - muted */
+  --color-neutral-content: oklch(96% 0.01 80);
+
+  /* Semantic colors */
+  --color-info: oklch(60% 0.15 240);
+  --color-info-content: oklch(98% 0.01 240);
+  --color-success: oklch(55% 0.15 145);
+  --color-success-content: oklch(98% 0.01 145);
+  --color-warning: oklch(75% 0.15 75);
+  --color-warning-content: oklch(20% 0.05 75);
+  --color-error: oklch(55% 0.2 25);
+  --color-error-content: oklch(98% 0.01 25);
+
+  /* Border radius - 14px for panels, softer UI */
+  --radius-box: 0.875rem;
+  --radius-field: 0.5rem;
+  --radius-selector: 0.625rem;
+
+  /* Base sizes */
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+
+  /* Border size */
+  --border: 1px;
+
+  /* Effects - subtle depth */
+  --depth: 1;
+  --noise: 0;
+}
+
+/* ==========================================
+   RUSTY DARK THEME
+   Dark with warm undertones
+   ========================================== */
+@plugin "daisyui/theme" {
+  name: "rusty-dark";
+  prefersdark: true;
+  color-scheme: dark;
+
+  /* Base colors: dark with subtle warmth */
+  --color-base-100: oklch(18% 0.006 250);   /* #1a1c1d - panel/card background */
+  --color-base-200: oklch(12% 0.004 250);   /* #111212 - page background */
+  --color-base-300: oklch(24% 0.008 250);   /* #2a2d2f - borders */
+  --color-base-content: oklch(93% 0.008 75); /* #eceae7 - main text */
+
+  /* Primary: lighter terracotta for dark mode */
+  --color-primary: oklch(62% 0.15 30);           /* #e07a5f */
+  --color-primary-content: oklch(15% 0.01 30);
+
+  /* Secondary: lighter teal for dark mode */
+  --color-secondary: oklch(75% 0.1 180);         /* #7bd1c9 */
+  --color-secondary-content: oklch(15% 0.01 180);
+
+  /* Accent: same as secondary */
+  --color-accent: oklch(75% 0.1 180);
+  --color-accent-content: oklch(15% 0.01 180);
+
+  /* Neutral: muted warm gray */
+  --color-neutral: oklch(68% 0.015 70);          /* #a4a09a - muted */
+  --color-neutral-content: oklch(18% 0.006 250);
+
+  /* Semantic colors - slightly brighter for dark mode */
+  --color-info: oklch(65% 0.15 240);
+  --color-info-content: oklch(15% 0.01 240);
+  --color-success: oklch(60% 0.15 145);
+  --color-success-content: oklch(15% 0.01 145);
+  --color-warning: oklch(78% 0.15 75);
+  --color-warning-content: oklch(20% 0.05 75);
+  --color-error: oklch(60% 0.2 25);
+  --color-error-content: oklch(15% 0.01 25);
+
+  /* Border radius - same as light for consistency */
+  --radius-box: 0.875rem;
+  --radius-field: 0.5rem;
+  --radius-selector: 0.625rem;
+
+  /* Base sizes */
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+
+  /* Border size */
+  --border: 1px;
+
+  /* Effects */
+  --depth: 1;
+  --noise: 0;
+}
+
+/* ==========================================
+   GLOBAL STYLES
+   ========================================== */
+
+body {
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+}
+
+/* Gradient backgrounds for that premium feel */
+[data-theme="rusty-light"] {
+  background: linear-gradient(120deg, oklch(96% 0.01 80), oklch(95% 0.008 75) 60%);
+}
+
+[data-theme="rusty-dark"] {
+  background: linear-gradient(120deg, oklch(12% 0.004 250), oklch(10% 0.003 250) 70%);
+}
+
+/* Enhanced shadows for panels - warm tinted */
+[data-theme="rusty-light"] .panel-shadow {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="rusty-dark"] .panel-shadow {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+/* PDF page styling - always white with shadow */
+.pdf-page {
+  background: white;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="rusty-dark"] .pdf-page {
+  background: #f8f6f2;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* Monaco editor font override */
+.monaco-editor,
+.monaco-editor .view-lines {
+  font-family: "IBM Plex Mono", monospace !important;
 }
