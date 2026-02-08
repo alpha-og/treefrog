@@ -4,6 +4,9 @@ import { RouterProvider } from "@tanstack/react-router";
 import { router } from "./router";
 import "./globals.css";
 
+// Import Wails runtime to ensure window.go is available in dev mode
+import "wailsjs/runtime";
+
 import EditorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
 import CssWorker from "monaco-editor/esm/vs/language/css/css.worker?worker";

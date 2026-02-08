@@ -6,7 +6,7 @@ interface PDFPreviewProps {
   url: string;
   zoom: number;
   numPages: number;
-  onPageCount: (numPages: number) => void;
+  onNumPagesChange: (numPages: number) => void;
   registerPageRef: (page: number, el: HTMLDivElement | null) => void;
   pageProxyRef: React.MutableRefObject<Map<number, any>>;
 }
@@ -15,7 +15,7 @@ export default function PDFPreview({
   url,
   zoom,
   numPages,
-  onPageCount,
+  onNumPagesChange,
   registerPageRef,
   pageProxyRef,
 }: PDFPreviewProps) {
@@ -35,7 +35,7 @@ export default function PDFPreview({
     <div className="flex flex-col items-center gap-4 p-4">
       <Document
         file={url}
-        onLoadSuccess={(d: any) => onPageCount(d.numPages)}
+        onLoadSuccess={(d: any) => onNumPagesChange(d.numPages)}
         onLoadError={() => setError("Failed to load PDF")}
         loading={
           <div className="flex items-center justify-center py-8">
