@@ -1,6 +1,18 @@
-import { Plus, Folder, FileText, ChevronRight } from "lucide-react";
+import {
+  Plus,
+  Folder,
+  FileText,
+  ChevronRight,
+  ChevronDown,
+  GitBranch,
+  GitCommit,
+  Upload,
+  Download,
+  FolderOpen,
+} from "lucide-react";
 import { getFileIcon } from "../utils/icons";
 import { FileEntry } from "../types";
+import { useState, useEffect } from "react";
 
 interface SidebarProps {
   projectRoot: string;
@@ -19,6 +31,12 @@ interface SidebarProps {
   onPull: () => Promise<void>;
 }
 
+interface TreeNode extends FileEntry {
+  path: string;
+  children?: TreeNode[];
+  depth: number;
+}
+
 export default function Sidebar({
   projectRoot,
   entries,
@@ -35,143 +53,341 @@ export default function Sidebar({
   onPush,
   onPull,
 }: SidebarProps) {
-  const breadcrumbs = currentDir
-    ? [{ name: "root", path: "" }, ...currentDir.split("/").reduce<Array<{ name: string; path: string }>>((acc, p) => {
-        const path = acc.length > 0 ? `${acc[acc.length - 1].path}/${p}` : p;
-        acc.push({ name: p, path });
-        return acc;
-      }, [])]
-    : [{ name: "root", path: "" }];
+  const [gitExpanded, setGitExpanded] = useState(true);
+  const [commitMessage, setCommitMessage] = useState("");
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
+    new Set(),
+  );
+  const [folderContents, setFolderContents] = useState<
+    Map<string, FileEntry[]>
+  >(new Map());
+
+  // Store folder contents when entries are loaded
+  useEffect(() => {
+    // Only store if we're at root level (no currentDir) or it's the initial load
+    if (currentDir === "" || currentDir === undefined) {
+      setFolderContents((prev) => {
+        const next = new Map(prev);
+        next.set("", entries);
+        return next;
+      });
+    } else if (currentDir) {
+      // Store nested folder contents
+      setFolderContents((prev) => {
+        const next = new Map(prev);
+        next.set(currentDir, entries);
+        return next;
+      });
+    }
+  }, [currentDir, entries]);
+
+  const toggleFolder = (path: string) => {
+    setExpandedFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) {
+        // Just collapse, don't navigate
+        next.delete(path);
+      } else {
+        // Expand
+        next.add(path);
+        // Only navigate if we don't have the contents cached
+        if (!folderContents.has(path)) {
+          onNavigate(path);
+        }
+      }
+      return next;
+    });
+  };
+
+  // Build tree structure recursively
+  const buildTree = (
+    parentPath: string = "",
+    depth: number = 0,
+  ): TreeNode[] => {
+    const contents = folderContents.get(parentPath) || [];
+
+    return contents.map((entry) => {
+      const path = parentPath ? `${parentPath}/${entry.name}` : entry.name;
+      const isExpanded = expandedFolders.has(path);
+
+      return {
+        ...entry,
+        path,
+        depth,
+        children:
+          entry.isDir && isExpanded ? buildTree(path, depth + 1) : undefined,
+      };
+    });
+  };
+
+  const renderTreeNode = (node: TreeNode) => {
+    const isExpanded = expandedFolders.has(node.path);
+    const isActive = currentFile === node.path;
+    const hasChildren = node.isDir;
+
+    return (
+      <div key={node.path}>
+        <div
+          className={`
+            group relative flex items-center gap-2 px-2 py-1.5 rounded
+            transition-all duration-150
+            ${isActive
+              ? "bg-primary text-primary-content shadow-sm"
+              : "hover:bg-base-300/50"
+            }
+          `}
+          style={{ paddingLeft: `${0.5 + node.depth * 1}rem` }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            onFileMenu(e.clientX, e.clientY, node.path, node.isDir);
+          }}
+        >
+          {/* Expand/collapse chevron for folders */}
+          {hasChildren && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleFolder(node.path);
+              }}
+              className={`
+                shrink-0 p-0.5 rounded transition-transform
+                ${isActive ? "hover:bg-primary-focus" : "hover:bg-base-300"}
+              `}
+            >
+              <ChevronRight
+                size={14}
+                className={`transition-transform ${isExpanded ? "rotate-90" : ""}`}
+              />
+            </button>
+          )}
+          {!hasChildren && <div className="w-[22px]" />}
+
+          {/* Main clickable area */}
+          <button
+            onClick={() => {
+              if (node.isDir) {
+                toggleFolder(node.path);
+              } else {
+                onOpenFile(node.path);
+              }
+            }}
+            className="flex-1 flex items-center gap-2 min-w-0 text-left"
+          >
+            <span
+              className={`shrink-0 transition-transform ${isActive ? "scale-110" : ""}`}
+            >
+              {node.isDir ? (
+                isExpanded ? (
+                  <FolderOpen size={16} />
+                ) : (
+                  <Folder size={16} />
+                )
+              ) : (
+                getFileIcon(node.name, false)
+              )}
+            </span>
+            <span
+              className={`
+              truncate text-sm
+              ${node.isDir ? "font-medium" : ""}
+              ${isActive ? "" : "text-base-content/90"}
+            `}
+            >
+              {node.name}
+            </span>
+          </button>
+
+          {/* Context menu button */}
+          <button
+            className={`
+              shrink-0 p-1 rounded opacity-0 group-hover:opacity-100
+              transition-opacity
+              ${isActive ? "hover:bg-primary-focus" : "hover:bg-base-300"}
+            `}
+            onClick={(e) => {
+              e.stopPropagation();
+              const rect = e.currentTarget.getBoundingClientRect();
+              onFileMenu(
+                rect.right - 140,
+                rect.bottom + 4,
+                node.path,
+                node.isDir,
+              );
+            }}
+            title="More options"
+          >
+            <span className="text-xs">⋮</span>
+          </button>
+        </div>
+
+        {/* Render children if expanded */}
+        {hasChildren && isExpanded && node.children && (
+          <div>{node.children.map((child) => renderTreeNode(child))}</div>
+        )}
+      </div>
+    );
+  };
+
+  const treeNodes = buildTree("", 0);
+
+  const handleCommit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (commitMessage.trim()) {
+      await onCommit(commitMessage);
+      setCommitMessage("");
+    }
+  };
 
   return (
     <aside className="sidebar h-full bg-base-200 border-r border-base-300 flex flex-col overflow-hidden">
-      {/* File Browser Header */}
-      <div className="p-4 border-b border-base-300">
-        <h2 className="text-lg font-semibold mb-1">Files</h2>
-        {projectRoot && (
-          <p className="text-xs text-base-content/60 mb-3 truncate">{projectRoot}</p>
-        )}
+      {/* Header with Project Name */}
+      <div className="p-4 border-b border-base-300 space-y-3">
+        <div>
+          <h2 className="text-sm font-semibold text-base-content/70 uppercase tracking-wide mb-1">
+            Explorer
+          </h2>
+          {projectRoot && (
+            <p
+              className="text-xs text-base-content/50 truncate font-mono"
+              title={projectRoot}
+            >
+              {projectRoot.split("/").pop() || projectRoot}
+            </p>
+          )}
+        </div>
+
+        {/* Action Buttons */}
         <div className="flex gap-2">
           <button
             onClick={onCreateFile}
-            className="btn btn-sm btn-ghost gap-1 flex-1"
-            title="New file"
+            className="btn btn-sm btn-outline flex-1 gap-1.5 hover:btn-primary group"
+            title="New file (Ctrl+N)"
           >
-            <FileText size={16} />
-            File
+            <FileText
+              size={14}
+              className="group-hover:scale-110 transition-transform"
+            />
+            <span className="text-xs">File</span>
           </button>
           <button
             onClick={onCreateFolder}
-            className="btn btn-sm btn-ghost gap-1 flex-1"
+            className="btn btn-sm btn-outline flex-1 gap-1.5 hover:btn-primary group"
             title="New folder"
           >
-            <Folder size={16} />
-            Folder
+            <Folder
+              size={14}
+              className="group-hover:scale-110 transition-transform"
+            />
+            <span className="text-xs">Folder</span>
           </button>
         </div>
       </div>
 
-      {/* Breadcrumbs */}
-      <div className="px-4 py-2 flex items-center gap-1 text-sm overflow-x-auto border-b border-base-300">
-        {breadcrumbs.map((b, i) => (
-          <div key={b.path} className="flex items-center gap-1">
-            <button
-              onClick={() => onNavigate(b.path)}
-              className="btn btn-xs btn-ghost"
-            >
-              {b.name}
-            </button>
-            {i < breadcrumbs.length - 1 && <ChevronRight size={14} />}
-          </div>
-        ))}
-      </div>
-
-      {/* File List */}
-      <div className="flex-1 overflow-y-auto">
-        <ul className="menu menu-compact w-full p-2 gap-1">
-          {entries.map((f) => {
-            const path = currentDir ? `${currentDir}/${f.name}` : f.name;
-            const isActive = currentFile === path;
-
-            return (
-              <li key={f.name}>
-                <div
-                  className={`flex items-center gap-2 ${isActive ? "active" : ""}`}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    onFileMenu(e.clientX, e.clientY, path, f.isDir);
-                  }}
-                >
-                  {f.isDir ? (
-                    <button
-                      onClick={() => onNavigate(path)}
-                      className="flex-1 flex items-center gap-2 justify-start"
-                    >
-                      {getFileIcon(f.name, true)}
-                      <span className="truncate">{f.name}</span>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => onOpenFile(path)}
-                      className="flex-1 flex items-center gap-2 justify-start"
-                    >
-                      {getFileIcon(f.name, false)}
-                      <span className="truncate">{f.name}</span>
-                    </button>
-                  )}
-                  <button
-                    className="btn btn-xs btn-ghost"
-                    onClick={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      onFileMenu(rect.right - 140, rect.bottom + 4, path, f.isDir);
-                    }}
-                  >
-                    ⋮
-                  </button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+      {/* File Tree */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin">
+        <div className="p-2 space-y-0.5">
+          {treeNodes.length === 0 ? (
+            <div className="text-center py-8 text-base-content/40 text-sm">
+              <Folder size={32} className="mx-auto mb-2 opacity-30" />
+              <p>Empty folder</p>
+            </div>
+          ) : (
+            treeNodes.map((node) => renderTreeNode(node))
+          )}
+        </div>
       </div>
 
       {/* Git Panel */}
-      <div className="border-t border-base-300 p-4 space-y-3">
-        <h3 className="font-semibold text-sm">Git</h3>
-        <pre
-          className={`text-xs bg-base-300 p-2 rounded overflow-y-auto max-h-32 ${
-            gitError ? "text-error" : ""
-          }`}
+      <div className="border-t border-base-300 bg-base-200">
+        {/* Git Header - Collapsible */}
+        <button
+          onClick={() => setGitExpanded(!gitExpanded)}
+          className="w-full px-4 py-3 flex items-center justify-between hover:bg-base-300/30 transition-colors"
         >
-          {gitStatus || "clean"}
-        </pre>
-        <form
-          onSubmit={async (e) => {
-            e.preventDefault();
-            const input = (e.currentTarget.elements.namedItem("message") as HTMLInputElement);
-            if (input?.value) {
-              await onCommit(input.value);
-              input.value = "";
-            }
-          }}
-          className="flex gap-1"
-        >
-          <input
-            name="message"
-            placeholder="Commit message"
-            className="input input-sm input-bordered flex-1"
+          <div className="flex items-center gap-2">
+            <GitBranch size={14} className="text-base-content/70" />
+            <h3 className="font-semibold text-sm">Source Control</h3>
+          </div>
+          <ChevronRight
+            size={14}
+            className={`transition-transform ${gitExpanded ? "rotate-90" : ""}`}
           />
-          <button type="submit" className="btn btn-sm btn-ghost">
-            ✓
-          </button>
-        </form>
-        <div className="flex gap-2">
-          <button onClick={onPush} className="btn btn-xs btn-ghost flex-1">
-            Push
-          </button>
-          <button onClick={onPull} className="btn btn-xs btn-ghost flex-1">
-            Pull
-          </button>
+        </button>
+
+        {/* Git Content - Expandable */}
+        <div
+          className={`
+            transition-all duration-200 overflow-hidden
+            ${gitExpanded ? "max-h-96" : "max-h-0"}
+          `}
+        >
+          <div className="px-4 pb-4 space-y-3">
+            {/* Git Status */}
+            <div>
+              <label className="text-xs text-base-content/60 mb-1 block">
+                Status
+              </label>
+              <pre
+                className={`
+                  text-xs bg-base-300/50 p-2.5 rounded-md
+                  overflow-y-auto max-h-24 font-mono
+                  scrollbar-thin
+                  ${gitError ? "text-error border border-error/30" : "text-base-content/80"}
+                `}
+              >
+                {gitStatus || "Working tree clean"}
+              </pre>
+            </div>
+
+            {/* Commit Form */}
+            <form onSubmit={handleCommit} className="space-y-2">
+              <label className="text-xs text-base-content/60 block">
+                Commit Message
+              </label>
+              <div className="flex gap-2">
+                <input
+                  value={commitMessage}
+                  onChange={(e) => setCommitMessage(e.target.value)}
+                  placeholder="Enter commit message..."
+                  className="input input-sm input-bordered flex-1 text-sm"
+                />
+                <button
+                  type="submit"
+                  className="btn btn-sm btn-primary gap-1.5"
+                  disabled={!commitMessage.trim()}
+                  title="Commit changes"
+                >
+                  <GitCommit size={14} />
+                </button>
+              </div>
+            </form>
+
+            {/* Push/Pull Buttons */}
+            <div className="flex gap-2">
+              <button
+                onClick={onPush}
+                className="btn btn-sm btn-outline flex-1 gap-1.5 hover:btn-success group"
+                title="Push to remote"
+              >
+                <Upload
+                  size={14}
+                  className="group-hover:translate-y-[-2px] transition-transform"
+                />
+                <span className="text-xs">Push</span>
+              </button>
+              <button
+                onClick={onPull}
+                className="btn btn-sm btn-outline flex-1 gap-1.5 hover:btn-info group"
+                title="Pull from remote"
+              >
+                <Download
+                  size={14}
+                  className="group-hover:translate-y-[2px] transition-transform"
+                />
+                <span className="text-xs">Pull</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </aside>
