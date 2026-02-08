@@ -463,8 +463,8 @@ export default function Editor() {
       />
 
        {/* Main Content */}
-       <div className="flex-1 flex flex-row overflow-hidden" ref={mainRef} style={_isResizing ? { userSelect: "none" } as React.CSSProperties : {}}
-        {allPanesHidden ? (
+       <div className="flex-1 flex flex-row overflow-hidden" ref={mainRef} style={_isResizing ? { userSelect: "none" } as React.CSSProperties : {}}>
+         {allPanesHidden ? (
           <EmptyPlaceholder />
         ) : (
           <>
@@ -499,6 +499,7 @@ export default function Editor() {
                   <div
                     className="w-0.5 bg-base-content/10 hover:bg-primary/50 cursor-col-resize transition-all duration-200 hover:w-1 hover:shadow-lg hover:shadow-primary/20"
                     onMouseDown={(e) => handleResizeStart("sidebar-editor", e)}
+                    style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}
                   />
                 )}
               </>
@@ -526,6 +527,7 @@ export default function Editor() {
                   <div
                     className="w-0.5 bg-base-content/10 hover:bg-primary/50 cursor-col-resize transition-all duration-200 hover:w-1 hover:shadow-lg hover:shadow-primary/20"
                     onMouseDown={(e) => handleResizeStart("editor-preview", e)}
+                    style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}
                   />
                 )}
               </>
