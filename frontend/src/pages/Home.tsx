@@ -213,14 +213,16 @@ export default function Home({ onSelectProject, loading }: HomeProps) {
           </div>
         </main>
 
-        {/* Settings Modal */}
-        <SettingsModal
-          isOpen={showSettings}
-          onClose={() => setShowSettings(false)}
-          builderUrl={builderUrl}
-          builderToken={builderToken}
-          onSave={handleSaveSettings}
-        />
+         {/* Settings Modal */}
+         {showSettings && (
+           <SettingsModal
+             isOpen={showSettings}
+             onClose={() => setShowSettings(false)}
+             builderUrl={builderUrl}
+             builderToken={builderToken}
+             onSave={handleSaveSettings}
+           />
+         )}
       </div>
     </FramelessWindow>
   );

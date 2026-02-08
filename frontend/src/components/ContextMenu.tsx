@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Edit2, Copy, ChevronRight, File, Folder, Trash2 } from "lucide-react";
+import { Edit2, Copy, ArrowRight, File, Folder, Trash2, Plus } from "lucide-react";
 
 interface ContextMenuProps {
   visible: boolean;
@@ -47,80 +47,74 @@ export default function ContextMenu({
   if (!visible) return null;
 
   const itemStyle =
-    "w-full flex items-center gap-3 px-2.5 py-2 rounded-lg cursor-pointer transition-colors duration-150 hover:bg-base-200 active:bg-base-300";
+    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-150 hover:bg-primary/15 active:bg-primary/20 text-sm font-medium";
 
   const separator = (
-    <li className="my-1">
-      <div className="border-t border-base-300/70 mx-2" />
-    </li>
+    <div className="my-2 h-px bg-gradient-to-r from-base-content/10 via-base-content/5 to-transparent" />
   );
 
   return (
     <div
       ref={ref}
-      className="fixed dropdown dropdown-open"
+      className="fixed"
       style={{ top: `${y}px`, left: `${x}px`, zIndex: 50 }}
     >
-      <div className="dropdown-content min-w-[200px] max-w-[260px] bg-base-100 rounded-xl panel-shadow border border-base-300">
-        {/* Header */}
-        <div className="px-3 pt-2 pb-2 border-b border-base-300">
-          <p className="text-xs text-base-content/60 truncate">{path}</p>
+      <div className="min-w-[240px] bg-base-100 rounded-xl shadow-2xl border border-base-content/10 backdrop-blur-sm overflow-hidden animate-fade-in">
+        {/* Header - File Path */}
+        <div className="px-4 py-3 border-b border-base-content/5 bg-gradient-to-r from-base-100/50 to-transparent">
+          <p className="text-xs text-base-content/60 truncate font-mono" title={path}>
+            {path.split("/").pop() || path}
+          </p>
         </div>
 
-        <ul className="menu p-1 text-sm">
-          <li>
-            <button onClick={onRename} className={itemStyle}>
-              <Edit2 size={16} className="opacity-70 shrink-0" />
-              Rename
-            </button>
-          </li>
+        {/* Menu Items */}
+        <div className="p-2 space-y-1">
+          {/* Edit Section */}
+          <button onClick={onRename} className={itemStyle}>
+            <Edit2 size={16} className="text-primary opacity-80" />
+            <span>Rename</span>
+          </button>
 
-          <li>
-            <button onClick={onDuplicate} className={itemStyle}>
-              <Copy size={16} className="opacity-70 shrink-0" />
-              Duplicate
-            </button>
-          </li>
+          <button onClick={onDuplicate} className={itemStyle}>
+            <Copy size={16} className="text-primary opacity-80" />
+            <span>Duplicate</span>
+          </button>
 
-          <li>
-            <button onClick={onMove} className={itemStyle}>
-              <ChevronRight size={16} className="opacity-70 shrink-0" />
-              Move
-            </button>
-          </li>
+          <button onClick={onMove} className={itemStyle}>
+            <ArrowRight size={16} className="text-primary opacity-80" />
+            <span>Move</span>
+          </button>
 
+          {/* Create Section - Only for directories */}
           {isDir && (
             <>
               {separator}
 
-              <li>
-                <button onClick={onCreateFile} className={itemStyle}>
-                  <File size={16} className="opacity-70 shrink-0" />
-                  New File
-                </button>
-              </li>
+              <button onClick={onCreateFile} className={itemStyle}>
+                <Plus size={16} className="text-success opacity-80" />
+                <File size={14} className="text-success opacity-80" />
+                <span>New File</span>
+              </button>
 
-              <li>
-                <button onClick={onCreateFolder} className={itemStyle}>
-                  <Folder size={16} className="opacity-70 shrink-0" />
-                  New Folder
-                </button>
-              </li>
+              <button onClick={onCreateFolder} className={itemStyle}>
+                <Plus size={16} className="text-success opacity-80" />
+                <Folder size={14} className="text-success opacity-80" />
+                <span>New Folder</span>
+              </button>
             </>
           )}
 
+          {/* Delete Section */}
           {separator}
 
-          <li>
-            <button
-              onClick={onDelete}
-              className={`${itemStyle} text-error hover:bg-error/10`}
-            >
-              <Trash2 size={16} className="shrink-0" />
-              Delete
-            </button>
-          </li>
-        </ul>
+          <button
+            onClick={onDelete}
+            className={`${itemStyle} text-error hover:bg-error/20 active:bg-error/25`}
+          >
+            <Trash2 size={16} />
+            <span>Delete</span>
+          </button>
+        </div>
       </div>
     </div>
   );
