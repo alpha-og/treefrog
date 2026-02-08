@@ -13,17 +13,43 @@ export function useWebSocket(onMsg: (d: any) => void) {
   useEffect(() => {
     // Wails mode: use Events API
     if (isWails()) {
-      // Import runtime dynamically to avoid issues in web mode
-      import("../wailsjs/runtime").then((runtime) => {
-        const unsubscribe = runtime.EventsOn("build-status", (data: any) => {
-          onMsgRef.current(data);
-        });
-
-        return () => {
+      let unsubscribe: (() => void) | null = null;
+      
+      // Use eval to prevent build-time analysis of the import
+      const setupWailsEvents = () => {
+        try {
+          // Check if runtime is available on window (injected by Wails)
+          const wailsRuntime = (window as any).wails?.runtime;
+          
+          if (wailsRuntime?.EventsOn) {
+            unsubscribe = wailsRuntime.EventsOn("build-status", (data: any) => {
+              onMsgRef.current(data);
+            });
+            return;
+          }
+          
+          // Try to load from global scope
+          const globalRuntime = (window as any).runtime;
+          if (globalRuntime?.EventsOn) {
+            unsubscribe = globalRuntime.EventsOn("build-status", (data: any) => {
+              onMsgRef.current(data);
+            });
+            return;
+          }
+          
+          console.warn("Wails runtime not available, build status updates may not work");
+        } catch (err) {
+          console.error("Failed to setup Wails events:", err);
+        }
+      };
+      
+      setupWailsEvents();
+      
+      return () => {
+        if (unsubscribe) {
           unsubscribe();
-        };
-      });
-      return;
+        }
+      };
     }
 
     // Web mode: use WebSocket
