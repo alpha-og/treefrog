@@ -9,6 +9,7 @@ interface PreviewPaneProps {
   zoom: number;
   onZoomChange: (zoom: number) => void;
   numPages: number;
+  onNumPagesChange: (numPages: number) => void;
   currentPage: number;
   onPageChange: (page: number) => void;
   projectRoot: string;
@@ -27,6 +28,7 @@ export default function PreviewPane({
   zoom,
   onZoomChange,
   numPages,
+  onNumPagesChange,
   currentPage,
   onPageChange,
   projectRoot,
@@ -41,7 +43,7 @@ export default function PreviewPane({
   const clampZoom = (z: number) => Math.min(2.4, Math.max(0.6, Math.round(z * 10) / 10));
 
   return (
-    <section className="preview flex-1 flex flex-col bg-base-100 border-l border-base-300">
+    <section className="h-full flex flex-col bg-base-100 border-l border-base-300">
       {/* Header */}
       <div className="border-b border-base-300 px-4 py-3 flex items-center justify-between">
         <div className="font-semibold text-sm flex items-center gap-2">
@@ -156,14 +158,14 @@ export default function PreviewPane({
       </div>
 
       {/* PDF Viewer */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto min-h-0 bg-base-300">
         {projectRoot ? (
           <PDFPreview
             key={pdfKey}
             url={`${apiUrl}/export/pdf?ts=${pdfKey}`}
             zoom={zoom}
             numPages={numPages}
-            onPageCount={() => {}}
+            onPageCount={onNumPagesChange}
             registerPageRef={registerPageRef}
             pageProxyRef={pageProxyRef}
             onKeyShortcut={onKeyShortcut}

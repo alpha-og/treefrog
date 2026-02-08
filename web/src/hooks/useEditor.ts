@@ -1,5 +1,9 @@
 import { useEffect, useRef } from "react";
 import * as monaco from "monaco-editor";
+import { setupLatexLanguage } from "../utils/latex";
+
+// Initialize LaTeX support once
+let latexSetupDone = false;
 
 export function useEditor(
   containerRef: React.RefObject<HTMLDivElement>,
@@ -20,6 +24,12 @@ export function useEditor(
   // Create editor on mount
   useEffect(() => {
     if (!containerRef.current || isBinary) return;
+
+    // Setup LaTeX support once
+    if (!latexSetupDone) {
+      setupLatexLanguage();
+      latexSetupDone = true;
+    }
 
     console.log("[useEditor] Creating editor in container:", containerRef.current);
     console.log("[useEditor] Container dimensions:", {

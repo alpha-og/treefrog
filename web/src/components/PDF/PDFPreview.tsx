@@ -2,29 +2,62 @@ import { useState, useEffect } from "react";
 import { Document } from "react-pdf";
 import PDFPage from "./PDFPage";
 
-export default function PDFPreview(props: any) {
+interface PDFPreviewProps {
+  url: string;
+  zoom: number;
+  numPages: number;
+  onPageCount: (numPages: number) => void;
+  registerPageRef: (page: number, el: HTMLDivElement | null) => void;
+  pageProxyRef: React.MutableRefObject<Map<number, any>>;
+  onKeyShortcut: (e: React.KeyboardEvent) => void;
+  onClickSync: (page: number, x: number, y: number) => Promise<void>;
+  syncTarget: any;
+  onSyncScroll: (page: number) => void;
+}
+
+export default function PDFPreview({
+  url,
+  zoom,
+  numPages,
+  onPageCount,
+  registerPageRef,
+  pageProxyRef,
+  onClickSync,
+}: PDFPreviewProps) {
   const [error, setError] = useState("");
 
-  useEffect(() => setError(""), [props.url]);
+  useEffect(() => setError(""), [url]);
 
-  if (error)
-    return <div className="empty">{error}</div>;
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full text-error">
+        {error}
+      </div>
+    );
+  }
 
   return (
-    <div className="pdf">
+    <div className="flex flex-col items-center gap-4 p-4">
       <Document
-        file={props.url}
-        onLoadSuccess={(d: any) => props.onPageCount(d.numPages)}
+        file={url}
+        onLoadSuccess={(d: any) => onPageCount(d.numPages)}
         onLoadError={() => setError("Failed to load PDF")}
+        loading={
+          <div className="flex items-center justify-center py-8">
+            <span className="loading loading-spinner loading-lg"></span>
+          </div>
+        }
       >
-        {Array.from({ length: props.numPages }, (_, i) => i + 1)
-          .map(p => (
-            <PDFPage
-              key={p}
-              pageNum={p}
-              {...props}
-            />
-          ))}
+        {Array.from({ length: numPages }, (_, i) => i + 1).map((pageNum) => (
+          <PDFPage
+            key={pageNum}
+            pageNum={pageNum}
+            zoom={zoom}
+            pageProxyRef={pageProxyRef}
+            registerPageRef={registerPageRef}
+            onClickSync={onClickSync}
+          />
+        ))}
       </Document>
     </div>
   );

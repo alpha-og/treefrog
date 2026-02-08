@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import * as monaco from "monaco-editor";
 import { pdfjs } from "react-pdf";
 
@@ -13,19 +13,32 @@ import FileMenu from "./components/FileMenu";
 import EmptyPlaceholder from "./components/EmptyPlaceholder";
 
 // Types
-import { FileEntry, BuildStatus, SyncView, SyncEdit, ModalState } from "./types";
+import { BuildStatus, SyncEdit, ModalState } from "./types";
 
-// Constants
-import { API_DEFAULT, ZOOM_LEVELS } from "./constants";
+// Stores
+import { useAppStore } from "./stores/appStore";
+import { useFileStore } from "./stores/fileStore";
+import { usePaneStore, useDimensionStore } from "./stores/layoutStore";
+import { useModalStore } from "./stores/modalStore";
+
+// Hooks
+import { useProject } from "./hooks/useProject";
+import { useFiles } from "./hooks/useFiles";
+import { useBuild } from "./hooks/useBuild";
+import { useGit } from "./hooks/useGit";
+import { useWebSocket } from "./hooks/useWebSocket";
+import { useSyncTeX } from "./hooks/useSyncTex";
+
+// Services
+import { syncConfig } from "./services/configService";
+
+// Utils
+import { joinPath } from "./utils/path";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
   import.meta.url
 ).toString();
-
-function getThemeName(themeMode: "light" | "dark"): string {
-  return themeMode === "dark" ? "dracula" : "latte";
-}
 
 function baseName(path: string) {
   const parts = path.split("/");
@@ -87,72 +100,28 @@ function modalHint(modal: ModalState) {
 }
 
 export default function App() {
-  // File state
-  const [entries, setEntries] = useState<FileEntry[]>([]);
-  const [currentDir, setCurrentDir] = useState<string>("");
-  const [currentFile, setCurrentFile] = useState<string>("");
-  const [isBinary, setIsBinary] = useState<boolean>(false);
-  const [fileContent, setFileContent] = useState<string>("");
+  // ========== STORES ==========
+  const { theme, setTheme, apiUrl, builderUrl, builderToken } = useAppStore();
+  const { entries, currentDir, currentFile, isBinary, fileContent, setCurrentDir } = useFileStore();
+  const { sidebar, editor, preview, toggle: togglePane } = usePaneStore();
+  const { sidebarWidth, editorWidth, setSidebarWidth, setEditorWidth } = useDimensionStore();
+  const { modal, modalInput, openModal, closeModal, setModalInput } = useModalStore();
 
-  // Build state
-  const [buildStatus, setBuildStatus] = useState<BuildStatus | null>(null);
-  const [pdfKey, setPdfKey] = useState<number>(Date.now());
+  // ========== HOOKS ==========
+  const { root: projectRoot, showPicker, setShowPicker, select: selectProject, loading: projectLoading } = useProject();
+  const { loadEntries, openFile, saveFile, createFile, renameFile, moveFile, duplicateFile, deleteFile, refresh: refreshFiles, clear: clearFiles } = useFiles();
+  const { status: buildStatus, build } = useBuild();
+  const { status: gitStatus, isError: gitError, refresh: refreshGit, commit, push, pull } = useGit();
+  const { fromClick: syncFromClick } = useSyncTeX();
+
+  // ========== LOCAL STATE (UI-specific) ==========
   const [engine, setEngine] = useState<string>("pdflatex");
   const [shellEscape, setShellEscape] = useState<boolean>(true);
-
-  // Git state
-  const [gitStatus, setGitStatus] = useState<string>("");
-  const [gitError, setGitError] = useState<boolean>(false);
-
-  // Sync state
-  const [syncTarget, setSyncTarget] = useState<SyncView | null>(null);
-
-  // Project state
-  const [projectRoot, setProjectRoot] = useState<string>("");
-  const [showProjectPicker, setShowProjectPicker] = useState<boolean>(false);
-
-  // Modal state
-  const [modal, setModal] = useState<ModalState | null>(null);
-  const [modalInput, setModalInput] = useState<string>("");
-
-  // Settings state
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    const saved = localStorage.getItem("treefrog-theme");
-    const prefersDark = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-    return (saved as "light" | "dark") || (prefersDark ? "dark" : "light");
-  });
-
-  const [apiUrl, setApiUrl] = useState<string>(() => {
-    return localStorage.getItem("treefrog-api-url") || API_DEFAULT;
-  });
-
-  const [builderToken, setBuilderToken] = useState<string>(() => {
-    return localStorage.getItem("treefrog-builder-token") || "";
-  });
-
-  const [builderUrl, setBuilderUrl] = useState<string>(() => {
-    return localStorage.getItem("treefrog-builder-url") || "https://treefrog-renderer.onrender.com";
-  });
-
-  const [configSynced, setConfigSynced] = useState<boolean>(false);
-
-  // PDF state
+  const [pdfKey, setPdfKey] = useState<number>(Date.now());
   const [zoom, setZoom] = useState<number>(1.2);
   const [numPages, setNumPages] = useState<number>(0);
   const [pageInput, setPageInput] = useState<string>("1");
-
-  // Layout state
-  const [visiblePanes, setVisiblePanes] = useState<{ sidebar: boolean; editor: boolean; preview: boolean }>(() => {
-    const saved = localStorage.getItem("treefrog-panes");
-    return saved ? JSON.parse(saved) : { sidebar: true, editor: true, preview: true };
-  });
-
-  const [paneDimensions, setPaneDimensions] = useState<{ sidebar: number; editor: number }>(() => {
-    const saved = localStorage.getItem("treefrog-pane-dims");
-    return saved ? JSON.parse(saved) : { sidebar: 280, editor: 0 };
-  });
-
-  // Context menu state
+  const [configSynced, setConfigSynced] = useState<boolean>(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string; isDir: boolean } | null>(null);
   const [fileMenu, setFileMenu] = useState<{ x: number; y: number; path: string; isDir: boolean } | null>(null);
 
@@ -163,59 +132,59 @@ export default function App() {
   const startDimsRef = useRef<{ sidebar: number; editor: number }>({ sidebar: 0, editor: 0 });
   const resizingRef = useRef<"sidebar-editor" | "editor-preview" | null>(null);
 
-  // Refs
-  const buildPollRef = useRef<number | null>(null);
+  // ========== REFS ==========
   const currentFileRef = useRef<string>("");
   const pageProxyRef = useRef<Map<number, pdfjs.PDFPageProxy>>(new Map());
-  const saveTimer = useRef<number | null>(null);
   const buildTimer = useRef<number | null>(null);
   const editorInstance = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
-  // Effects
+  // Keep currentFileRef in sync
   useEffect(() => {
-    loadProject();
-    connectWS();
-  }, []);
+    currentFileRef.current = currentFile;
+  }, [currentFile]);
 
+  // ========== WEBSOCKET ==========
+  const handleBuildMessage = useCallback((data: BuildStatus) => {
+    if (data.state === "success") {
+      setPdfKey(Date.now());
+      refreshGit();
+    }
+  }, [refreshGit]);
+
+  useWebSocket(handleBuildMessage);
+
+  // ========== EFFECTS ==========
+
+  // Apply theme
   useEffect(() => {
-    const sendConfigToServer = async () => {
+    const themeName = theme === "dark" ? "dracula" : "cupcake";
+    document.documentElement.setAttribute("data-theme", themeName);
+  }, [theme]);
+
+  // Sync config to server
+  useEffect(() => {
+    const doSync = async () => {
       try {
-        await fetch(`${apiUrl}/config`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ builderUrl, builderToken }),
-        });
+        await syncConfig(builderUrl, builderToken);
         setConfigSynced(true);
         window.setTimeout(() => setConfigSynced(false), 2000);
       } catch (err) {
         console.warn("Could not send config to server:", err);
       }
     };
-    sendConfigToServer();
-  }, [apiUrl, builderUrl, builderToken]);
+    doSync();
+  }, [builderUrl, builderToken]);
 
+  // Load files when project is set
   useEffect(() => {
-    document.documentElement.dataset.theme = getThemeName(theme);
-    localStorage.setItem("treefrog-theme", theme);
-  }, [theme]);
+    if (projectRoot && !projectLoading) {
+      loadEntries("");
+      refreshGit();
+    }
+  }, [projectRoot, projectLoading]);
 
-  useEffect(() => {
-    localStorage.setItem("treefrog-api-url", apiUrl);
-  }, [apiUrl]);
-
-  useEffect(() => {
-    localStorage.setItem("treefrog-builder-token", builderToken);
-  }, [builderToken]);
-
-  useEffect(() => {
-    localStorage.setItem("treefrog-builder-url", builderUrl);
-  }, [builderUrl]);
-
-  useEffect(() => {
-    localStorage.setItem("treefrog-panes", JSON.stringify(visiblePanes));
-  }, [visiblePanes]);
-
+  // Clamp page input when numPages changes
   useEffect(() => {
     if (numPages > 0) {
       const next = String(clampPage(Number(pageInput || "1"), numPages));
@@ -225,220 +194,78 @@ export default function App() {
     }
   }, [numPages]);
 
-  // API functions
-  async function loadProject() {
-    try {
-      const res = await fetch(`${apiUrl}/project`);
-      if (!res.ok) {
-        console.error(`Failed to load project: ${res.status} ${res.statusText}`);
-        setShowProjectPicker(true);
-        return;
-      }
-      const data = await res.json();
-      setProjectRoot(data.root || "");
-      if (!data.root) {
-        setShowProjectPicker(true);
-        return;
-      }
-      setShowProjectPicker(false);
-      await loadEntries("");
-      await refreshGit();
-    } catch (err) {
-      console.error("Error loading project:", err);
-      setShowProjectPicker(true);
-    }
-  }
-
-  async function setProjectRootFromUI(path: string) {
-    if (!path.trim()) {
-      throw new Error("Please enter a project path");
-    }
-    const res = await fetch(`${apiUrl}/project/set`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ root: path.trim() }),
-    });
-    if (!res.ok) {
-      const msg = await res.text();
-      throw new Error(msg);
-    }
-    const data = await res.json();
-    setProjectRoot(data.root || "");
-    setShowProjectPicker(false);
-    setCurrentDir("");
-    setCurrentFile("");
-    currentFileRef.current = "";
-    setFileContent("");
-    await loadEntries("");
-    await refreshGit();
-  }
-
-  async function loadEntries(dir: string) {
-    const path = dir === "" ? "." : dir;
-    const res = await fetch(`${apiUrl}/files?path=${encodeURIComponent(path)}`);
-    if (!res.ok) return;
-    const data = await res.json();
-    setEntries(data);
-    setCurrentDir(dir);
-  }
-
-  async function openFile(path: string) {
-    setCurrentFile(path);
-    currentFileRef.current = path;
-    const res = await fetch(`${apiUrl}/file?path=${encodeURIComponent(path)}`);
-    if (!res.ok) return;
-    const data = await res.json();
-    setIsBinary(data.isBinary);
-    if (!data.isBinary) {
-      setFileContent(data.content || "");
-    } else {
-      setFileContent("");
-    }
-  }
-
-  function scheduleSave(newContent: string) {
-    if (!currentFileRef.current) return;
-    if (saveTimer.current) window.clearTimeout(saveTimer.current);
-    saveTimer.current = window.setTimeout(async () => {
-      await saveFile(currentFileRef.current, newContent);
-      scheduleBuild();
-    }, 600);
-  }
-
-  async function saveFile(path: string, content: string) {
-    await fetch(`${apiUrl}/file?path=${encodeURIComponent(path)}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, isBinary: false }),
-    });
-  }
-
-  function scheduleBuild() {
+  // ========== BUILD FUNCTIONS ==========
+  const scheduleBuild = useCallback(() => {
     if (buildTimer.current) window.clearTimeout(buildTimer.current);
     buildTimer.current = window.setTimeout(async () => {
-      await triggerBuild();
+      const mainFile = currentFileRef.current || "main.tex";
+      await build(mainFile, engine, shellEscape);
     }, 700);
-  }
+  }, [build, engine, shellEscape]);
 
-  async function triggerBuild() {
+  const triggerBuild = useCallback(async () => {
     const mainFile = currentFileRef.current || "main.tex";
-    await fetch(`${apiUrl}/build`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mainFile, engine, shellEscape }),
-    });
-    startBuildPolling();
-  }
+    await build(mainFile, engine, shellEscape);
+  }, [build, engine, shellEscape]);
 
-  function startBuildPolling() {
-    if (buildPollRef.current) window.clearInterval(buildPollRef.current);
-    buildPollRef.current = window.setInterval(async () => {
-      const res = await fetch(`${apiUrl}/build/status`);
-      if (!res.ok) return;
-      const data = (await res.json()) as BuildStatus;
-      setBuildStatus(data);
-      if (data.state === "success") {
-        setPdfKey(Date.now());
-        refreshGit();
-        if (buildPollRef.current) window.clearInterval(buildPollRef.current);
-      }
-      if (data.state === "error") {
-        if (buildPollRef.current) window.clearInterval(buildPollRef.current);
-      }
-    }, 1000);
-  }
+  // ========== PROJECT SELECTION ==========
+  const handleSelectProject = useCallback(async (path: string) => {
+    await selectProject(path);
+    clearFiles();
+    await loadEntries("");
+    await refreshGit();
+  }, [selectProject, clearFiles, loadEntries, refreshGit]);
 
-  function connectWS() {
-    const wsProto = location.protocol === "https:" ? "wss" : "ws";
-    const ws = new WebSocket(`${wsProto}://${location.host}/ws/build`);
-    ws.onmessage = (evt) => {
-      try {
-        const data = JSON.parse(evt.data) as BuildStatus;
-        setBuildStatus(data);
-        if (data.state === "success") {
-          setPdfKey(Date.now());
-          refreshGit();
-        }
-      } catch {
-        // ignore
-      }
-    };
-  }
+  // ========== SAVE HANDLER ==========
+  const handleSave = useCallback(async (content: string) => {
+    if (!currentFileRef.current) return;
+    await saveFile(currentFileRef.current, content);
+    scheduleBuild();
+  }, [saveFile, scheduleBuild]);
 
-  async function refreshGit() {
-    const res = await fetch(`${apiUrl}/git/status`);
-    if (!res.ok) {
-      const msg = await res.text();
-      setGitStatus(msg || "git error");
-      setGitError(true);
-      return;
-    }
-    const data = await res.json();
-    setGitStatus(data.raw || "");
-    setGitError(false);
-  }
-
-  async function commitAll(msg: string) {
-    if (!msg.trim()) return;
-    await fetch(`${apiUrl}/git/commit`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: msg, all: true }),
-    });
-    refreshGit();
-  }
-
-  async function push() {
-    await fetch(`${apiUrl}/git/push`, { method: "POST", headers: { "Content-Type": "application/json" } });
-    refreshGit();
-  }
-
-  async function pull() {
-    await fetch(`${apiUrl}/git/pull`, { method: "POST", headers: { "Content-Type": "application/json" } });
-    refreshGit();
-  }
-
-  async function runFS(endpoint: string, body: any) {
-    const res = await fetch(`${apiUrl}${endpoint}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const msg = await res.text();
-      alert(msg);
-      return false;
-    }
-    await loadEntries(currentDir);
-    return true;
-  }
-
-  // UI handlers
-  function openModal(next: ModalState) {
-    setModal(next);
-    setModalInput("");
+  // ========== MODAL HANDLERS ==========
+  const handleOpenModal = useCallback((next: ModalState) => {
+    openModal(next);
     if (next.kind === "rename") setModalInput(next.path);
     if (next.kind === "move") setModalInput(currentDir || "");
     if (next.kind === "duplicate") setModalInput(next.path + " copy");
-  }
+  }, [openModal, setModalInput, currentDir]);
 
-  function togglePane(pane: "sidebar" | "editor" | "preview") {
-    setVisiblePanes((prev) => {
-      const newPanes = { ...prev, [pane]: !prev[pane] };
-      const visibleCount = Object.values(newPanes).filter(Boolean).length;
-      if (visibleCount === 0) {
-        return { ...newPanes, sidebar: true };
+  const confirmModal = useCallback(async () => {
+    if (!modal) return;
+    try {
+      if (modal.kind === "create") {
+        if (!modalInput.trim()) return;
+        await createFile(joinPath(currentDir, modalInput.trim()), modal.type);
       }
-      return newPanes;
-    });
-  }
+      if (modal.kind === "rename") {
+        if (!modalInput.trim()) return;
+        await renameFile(modal.path, modalInput.trim());
+      }
+      if (modal.kind === "move") {
+        if (!modalInput.trim()) return;
+        await moveFile(modal.path, modalInput.trim());
+      }
+      if (modal.kind === "duplicate") {
+        if (!modalInput.trim()) return;
+        await duplicateFile(modal.path, modalInput.trim());
+      }
+      if (modal.kind === "delete") {
+        await deleteFile(modal.path, modal.isDir || false);
+      }
+    } catch (err: any) {
+      alert(err.message || "Operation failed");
+    }
+    closeModal();
+  }, [modal, modalInput, currentDir, createFile, renameFile, moveFile, duplicateFile, deleteFile, closeModal]);
 
-  function handleResizeStart(which: "sidebar-editor" | "editor-preview", e: React.MouseEvent) {
+  // ========== RESIZE HANDLERS ==========
+  const handleResizeStart = useCallback((which: "sidebar-editor" | "editor-preview", e: React.MouseEvent) => {
     e.preventDefault();
     resizingRef.current = which;
     setIsResizing(which);
     startPosRef.current = e.clientX;
-    startDimsRef.current = { ...paneDimensions };
+    startDimsRef.current = { sidebar: sidebarWidth, editor: editorWidth };
 
     const handleResizeMove = (moveEvent: MouseEvent) => {
       if (!resizingRef.current || !mainRef.current) return;
@@ -448,10 +275,10 @@ export default function App() {
 
       if (resizingRef.current === "sidebar-editor") {
         const newSidebar = Math.max(200, Math.min(400, startDimsRef.current.sidebar + delta));
-        setPaneDimensions((prev) => ({ ...prev, sidebar: newSidebar }));
+        setSidebarWidth(newSidebar);
       } else if (resizingRef.current === "editor-preview") {
         const newEditor = Math.max(200, Math.min(mainWidth - startDimsRef.current.sidebar - 200, startDimsRef.current.editor + delta));
-        setPaneDimensions((prev) => ({ ...prev, editor: newEditor }));
+        setEditorWidth(newEditor);
       }
     };
 
@@ -464,68 +291,48 @@ export default function App() {
 
     document.addEventListener("mousemove", handleResizeMove);
     document.addEventListener("mouseup", handleResizeEnd);
-  }
+  }, [sidebarWidth, editorWidth, setSidebarWidth, setEditorWidth]);
 
-  function registerPageRef(page: number, el: HTMLDivElement | null) {
+  // ========== PDF HELPERS ==========
+  const registerPageRef = useCallback((page: number, el: HTMLDivElement | null) => {
     if (!el) return;
     pageRefs.current.set(page, el);
-  }
+  }, []);
 
-  function scrollToPage(page: number) {
+  const scrollToPage = useCallback((page: number) => {
     const ref = pageRefs.current.get(page);
     if (ref) {
       ref.scrollIntoView({ behavior: "smooth", block: "start" });
       setPageInput(String(page));
     }
-  }
+  }, []);
 
-  async function confirmModal() {
-    if (!modal) return;
-    if (modal.kind === "create") {
-      if (!modalInput.trim()) return;
-      await runFS("/fs/create", { path: joinPath(currentDir, modalInput.trim()), type: modal.type });
-    }
-    if (modal.kind === "rename") {
-      if (!modalInput.trim()) return;
-      const ok = await runFS("/fs/rename", { from: modal.path, to: modalInput.trim() });
-      if (ok && currentFile === modal.path) {
-        setCurrentFile(modalInput.trim());
-        openFile(modalInput.trim());
+  // ========== SYNCTEX HANDLER ==========
+  const handleClickSync = useCallback(async (page: number, x: number, y: number) => {
+    try {
+      // Round coordinates to integers for compatibility
+      const data = await syncFromClick(page, Math.round(x), Math.round(y)) as SyncEdit | null;
+      if (data?.file) {
+        await openFile(data.file);
+        editorInstance.current?.setPosition({ lineNumber: data.line || 1, column: data.col || 1 });
+        editorInstance.current?.revealLineInCenter(data.line || 1);
       }
+    } catch (err) {
+      // SyncTeX may fail if no PDF has been built or synctex file doesn't exist
+      console.debug("[SyncTeX] Click sync failed:", err);
     }
-    if (modal.kind === "move") {
-      if (!modalInput.trim()) return;
-      const ok = await runFS("/fs/move", { from: modal.path, toDir: modalInput.trim() });
-      if (ok && currentFile === modal.path) {
-        const newPath = joinPath(modalInput.trim(), baseName(modal.path));
-        setCurrentFile(newPath);
-        openFile(newPath);
-      }
-    }
-    if (modal.kind === "duplicate") {
-      if (!modalInput.trim()) return;
-      await runFS("/fs/duplicate", { from: modal.path, to: modalInput.trim() });
-    }
-    if (modal.kind === "delete") {
-      const ok = await runFS("/fs/delete", { path: modal.path, recursive: modal.isDir });
-      if (ok && currentFile === modal.path) {
-        setCurrentFile("");
-        setFileContent("");
-      }
-    }
-    setModal(null);
-  }
+  }, [syncFromClick, openFile]);
 
-  const allPanesHidden = useMemo(() => {
-    return !visiblePanes.sidebar && !visiblePanes.editor && !visiblePanes.preview;
-  }, [visiblePanes]);
+  // ========== COMPUTED ==========
+  const visiblePanes = useMemo(() => ({ sidebar, editor, preview }), [sidebar, editor, preview]);
+  const allPanesHidden = useMemo(() => !sidebar && !editor && !preview, [sidebar, editor, preview]);
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-base-100" data-theme={getThemeName(theme)}>
+    <div className="h-screen w-screen flex flex-col bg-base-100">
       {/* Toolbar */}
       <Toolbar
         projectRoot={projectRoot}
-        onOpenProject={() => setShowProjectPicker(true)}
+        onOpenProject={() => setShowPicker(true)}
         onBuild={triggerBuild}
         engine={engine}
         onEngineChange={setEngine}
@@ -545,9 +352,9 @@ export default function App() {
         ) : (
           <>
             {/* Sidebar */}
-            {visiblePanes.sidebar && (
+            {sidebar && (
               <>
-                <div style={{ width: `${paneDimensions.sidebar}px`, flexShrink: 0 }}>
+                <div style={{ width: `${sidebarWidth}px`, flexShrink: 0 }}>
                   <Sidebar
                     projectRoot={projectRoot}
                     entries={entries}
@@ -555,17 +362,17 @@ export default function App() {
                     currentFile={currentFile}
                     onNavigate={loadEntries}
                     onOpenFile={openFile}
-                    onCreateFile={() => openModal({ kind: "create", type: "file" })}
-                    onCreateFolder={() => openModal({ kind: "create", type: "dir" })}
+                    onCreateFile={() => handleOpenModal({ kind: "create", type: "file" })}
+                    onCreateFolder={() => handleOpenModal({ kind: "create", type: "dir" })}
                     onFileMenu={(x, y, path, isDir) => setFileMenu({ x, y, path, isDir })}
                     gitStatus={gitStatus}
                     gitError={gitError}
-                    onCommit={commitAll}
+                    onCommit={commit}
                     onPush={push}
                     onPull={pull}
                   />
                 </div>
-                {(visiblePanes.editor || visiblePanes.preview) && (
+                {(editor || preview) && (
                   <div
                     className="w-1 bg-base-300 hover:bg-primary cursor-col-resize transition-colors"
                     onMouseDown={(e) => handleResizeStart("sidebar-editor", e)}
@@ -575,24 +382,20 @@ export default function App() {
             )}
 
             {/* Editor */}
-            {visiblePanes.editor && (
+            {editor && (
               <>
                 <div
                   className="flex-1 min-w-0"
-                  style={{ width: paneDimensions.editor > 0 ? `${paneDimensions.editor}px` : undefined, flex: paneDimensions.editor > 0 ? "none" : 1 }}
+                  style={{ width: editorWidth > 0 ? `${editorWidth}px` : undefined, flex: editorWidth > 0 ? "none" : 1 }}
                 >
                   <EditorPane
                     theme={theme}
                     fileContent={fileContent}
                     isBinary={isBinary}
-                    onSave={async (content: string) => {
-                      if (!currentFileRef.current) return;
-                      await saveFile(currentFileRef.current, content);
-                      scheduleBuild();
-                    }}
+                    onSave={handleSave}
                   />
                 </div>
-                {visiblePanes.preview && (
+                {preview && (
                   <div
                     className="w-1 bg-base-300 hover:bg-primary cursor-col-resize transition-colors"
                     onMouseDown={(e) => handleResizeStart("editor-preview", e)}
@@ -602,7 +405,7 @@ export default function App() {
             )}
 
             {/* Preview */}
-            {visiblePanes.preview && (
+            {preview && (
               <div className="flex-1 min-w-0">
                 <PreviewPane
                   apiUrl={apiUrl}
@@ -610,6 +413,7 @@ export default function App() {
                   zoom={zoom}
                   onZoomChange={setZoom}
                   numPages={numPages}
+                  onNumPagesChange={setNumPages}
                   currentPage={Number(pageInput) || 1}
                   onPageChange={(page) => {
                     setPageInput(String(page));
@@ -618,16 +422,7 @@ export default function App() {
                   projectRoot={projectRoot}
                   pdfKey={pdfKey}
                   pageProxyRef={pageProxyRef}
-                  onClickSync={async (page, x, y) => {
-                    const res = await fetch(`${apiUrl}/synctex/edit?page=${page}&x=${x}&y=${y}`);
-                    if (!res.ok) return;
-                    const data = (await res.json()) as SyncEdit;
-                    if (data.file) {
-                      await openFile(data.file);
-                      editorInstance.current?.setPosition({ lineNumber: data.line || 1, column: data.col || 1 });
-                      editorInstance.current?.revealLineInCenter(data.line || 1);
-                    }
-                  }}
+                  onClickSync={handleClickSync}
                   onKeyShortcut={(e) => {
                     if ((e.ctrlKey || e.metaKey) && (e.key === "+" || e.key === "=")) {
                       e.preventDefault();
@@ -644,7 +439,7 @@ export default function App() {
                       scrollToPage(Math.max(1, Number(pageInput) - 1));
                     }
                   }}
-                  syncTarget={syncTarget}
+                  syncTarget={null}
                   onSyncScroll={scrollToPage}
                   registerPageRef={registerPageRef}
                 />
@@ -663,29 +458,29 @@ export default function App() {
         isDir={contextMenu?.isDir || false}
         onClose={() => setContextMenu(null)}
         onRename={() => {
-          if (contextMenu) openModal({ kind: "rename", path: contextMenu.path });
+          if (contextMenu) handleOpenModal({ kind: "rename", path: contextMenu.path });
           setContextMenu(null);
         }}
         onDuplicate={() => {
-          if (contextMenu) openModal({ kind: "duplicate", path: contextMenu.path });
+          if (contextMenu) handleOpenModal({ kind: "duplicate", path: contextMenu.path });
           setContextMenu(null);
         }}
         onMove={() => {
-          if (contextMenu) openModal({ kind: "move", path: contextMenu.path });
+          if (contextMenu) handleOpenModal({ kind: "move", path: contextMenu.path });
           setContextMenu(null);
         }}
         onDelete={() => {
-          if (contextMenu) openModal({ kind: "delete", path: contextMenu.path, isDir: contextMenu.isDir });
+          if (contextMenu) handleOpenModal({ kind: "delete", path: contextMenu.path, isDir: contextMenu.isDir });
           setContextMenu(null);
         }}
         onCreateFile={() => {
           if (contextMenu) setCurrentDir(contextMenu.path);
-          openModal({ kind: "create", type: "file" });
+          handleOpenModal({ kind: "create", type: "file" });
           setContextMenu(null);
         }}
         onCreateFolder={() => {
           if (contextMenu) setCurrentDir(contextMenu.path);
-          openModal({ kind: "create", type: "dir" });
+          handleOpenModal({ kind: "create", type: "dir" });
           setContextMenu(null);
         }}
       />
@@ -699,38 +494,38 @@ export default function App() {
         isDir={fileMenu?.isDir || false}
         onClose={() => setFileMenu(null)}
         onRename={() => {
-          if (fileMenu) openModal({ kind: "rename", path: fileMenu.path });
+          if (fileMenu) handleOpenModal({ kind: "rename", path: fileMenu.path });
           setFileMenu(null);
         }}
         onDuplicate={() => {
-          if (fileMenu) openModal({ kind: "duplicate", path: fileMenu.path });
+          if (fileMenu) handleOpenModal({ kind: "duplicate", path: fileMenu.path });
           setFileMenu(null);
         }}
         onMove={() => {
-          if (fileMenu) openModal({ kind: "move", path: fileMenu.path });
+          if (fileMenu) handleOpenModal({ kind: "move", path: fileMenu.path });
           setFileMenu(null);
         }}
         onDelete={() => {
-          if (fileMenu) openModal({ kind: "delete", path: fileMenu.path, isDir: fileMenu.isDir });
+          if (fileMenu) handleOpenModal({ kind: "delete", path: fileMenu.path, isDir: fileMenu.isDir });
           setFileMenu(null);
         }}
         onCreateFile={() => {
           if (fileMenu) setCurrentDir(fileMenu.path);
-          openModal({ kind: "create", type: "file" });
+          handleOpenModal({ kind: "create", type: "file" });
           setFileMenu(null);
         }}
         onCreateFolder={() => {
           if (fileMenu) setCurrentDir(fileMenu.path);
-          openModal({ kind: "create", type: "dir" });
+          handleOpenModal({ kind: "create", type: "dir" });
           setFileMenu(null);
         }}
       />
 
       {/* Project Picker Modal */}
       <ProjectPicker
-        visible={showProjectPicker}
-        confirm={setProjectRootFromUI}
-        close={() => setShowProjectPicker(false)}
+        visible={showPicker}
+        confirm={handleSelectProject}
+        close={() => setShowPicker(false)}
       />
 
       {/* File Operations Modal */}
@@ -750,7 +545,7 @@ export default function App() {
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === "Enter") confirmModal();
-                  if (e.key === "Escape") setModal(null);
+                  if (e.key === "Escape") closeModal();
                 }}
               />
             )}
@@ -765,13 +560,13 @@ export default function App() {
               <button onClick={confirmModal} className={`btn ${modal.kind === "delete" ? "btn-error" : "btn-primary"}`}>
                 Confirm
               </button>
-              <button onClick={() => setModal(null)} className="btn">
+              <button onClick={closeModal} className="btn">
                 Cancel
               </button>
             </div>
           </div>
           <form method="dialog" className="modal-backdrop">
-            <button onClick={() => setModal(null)}>close</button>
+            <button onClick={closeModal}>close</button>
           </form>
         </dialog>
       )}

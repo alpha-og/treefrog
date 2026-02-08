@@ -13,7 +13,7 @@ export function useWebSocket(onMsg: (d: any) => void) {
     const wsURL = `${protocol}//${window.location.host}/ws/build`;
 
     let ws: WebSocket | null = null;
-    let reconnectTimeout: NodeJS.Timeout | null = null;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const connect = () => {
       try {

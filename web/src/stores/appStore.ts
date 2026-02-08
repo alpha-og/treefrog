@@ -23,7 +23,7 @@ export const useAppStore = create<AppState>()(
       setBuilderUrl: (url) => set({ builderUrl: url }),
       setBuilderToken: (token) => set({ builderToken: token }),
       setTheme: (theme) => {
-        const themeName = theme === "dark" ? "dracula" : "latte";
+        const themeName = theme === "dark" ? "dracula" : "cupcake";
         document.documentElement.setAttribute("data-theme", themeName);
         set({ theme });
       },

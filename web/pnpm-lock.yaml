@@ -14,6 +14,9 @@ importers:
       monaco-editor:
         specifier: ^0.47.0
         version: 0.47.0
+      monaco-latex:
+        specifier: ^0.1.1
+        version: 0.1.1(monaco-editor@0.47.0)
       pdfjs-dist:
         specifier: 5.4.296
         version: 5.4.296
@@ -946,6 +949,11 @@ packages:
   monaco-editor@0.47.0:
     resolution: {integrity: sha512-VabVvHvQ9QmMwXu4du008ZDuyLnHs9j7ThVFsiJoXSOQk18+LF89N4ADzPbFenm0W4V2bGHnFBztIRQTgBfxzw==}
 
+  monaco-latex@0.1.1:
+    resolution: {integrity: sha512-/KUR5/CEHi2yUKdEloggwquzPY1x44QbDTydiRLkydStnbPd7Sb0r1ehbtS+h3cLmJ3nTkJqBDBukqoaXwNjKw==}
+    peerDependencies:
+      monaco-editor: '>=0.20.0'
+
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
 
@@ -1839,6 +1847,10 @@ snapshots:
       mime-db: 1.52.0
 
   monaco-editor@0.47.0: {}
+
+  monaco-latex@0.1.1(monaco-editor@0.47.0):
+    dependencies:
+      monaco-editor: 0.47.0
 
   ms@2.1.3: {}
 
