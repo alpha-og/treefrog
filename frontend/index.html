@@ -14,8 +14,20 @@
         overflow: hidden;
       }
       
-      /* Prevent text selection on title bar */
-      [style*="WebkitAppRegion"] {
+      /* Wails frameless window dragging */
+      body {
+        --wails-draggable: drag;
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      
+      /* Content areas should not be draggable */
+      input, textarea, select, button, [role="button"], [role="tablist"] {
+        --wails-draggable: no-drag;
+      }
+      
+      /* Prevent text selection on draggable areas */
+      [style*="--wails-draggable"] {
         -webkit-user-select: none;
         user-select: none;
       }

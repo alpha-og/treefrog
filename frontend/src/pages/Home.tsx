@@ -72,7 +72,7 @@ export default function Home({ onSelectProject, loading }: HomeProps) {
 
   return (
     <FramelessWindow title="Treefrog">
-      <div className="min-h-screen bg-gradient-to-br from-base-200 via-base-100 to-base-200 flex flex-col">
+      <div className="flex-1 overflow-y-auto bg-gradient-to-br from-base-200 via-base-100 to-base-200 flex flex-col">
         {/* Header - Minimalist and Clean */}
         <header className="border-b border-base-content/5 bg-base-100/40 backdrop-blur-xl sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-6 py-6 md:py-8">

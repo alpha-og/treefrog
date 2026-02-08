@@ -8,8 +8,9 @@ interface FramelessWindowProps {
 }
 
 /**
- * FramelessWindow wraps content with a native-looking title bar
- * Handles platform-specific styling for macOS and Windows/Linux
+ * FramelessWindow wraps content with a floating pill title bar
+ * Uses Wails' --wails-draggable CSS property for window dragging
+ * The entire window is draggable except where --wails-draggable:no-drag is set
  */
 export default function FramelessWindow({
   title = "Treefrog",
@@ -17,11 +18,14 @@ export default function FramelessWindow({
   onClose,
 }: FramelessWindowProps) {
   return (
-    <div className="w-full h-full flex flex-col">
-      {/* Native title bar with platform-specific styling */}
+    <div
+      className="w-full h-full flex flex-col"
+      style={{ "--wails-draggable": "drag" } as React.CSSProperties}
+    >
+      {/* Floating pill title bar with window controls */}
       <TitleBar title={title} onClose={onClose} />
 
-      {/* Content area */}
+      {/* Content area - fully draggable unless specified otherwise */}
       {children}
     </div>
   );
