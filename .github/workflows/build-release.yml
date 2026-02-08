@@ -1,0 +1,189 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          # macOS builds
+          - os: macos-latest
+            platform: darwin/amd64
+            arch: x86_64
+            output_name: treefrog-macos-x86_64
+            artifact_path: wails/build/bin/Treefrog.app
+
+          - os: macos-latest
+            platform: darwin/arm64
+            arch: arm64
+            output_name: treefrog-macos-arm64
+            artifact_path: wails/build/bin/Treefrog.app
+
+          # Linux builds
+          - os: ubuntu-latest
+            platform: linux/amd64
+            arch: x86_64
+            output_name: treefrog-linux-x86_64
+            artifact_path: wails/build/bin/treefrog
+
+          # Windows builds
+          - os: windows-latest
+            platform: windows/amd64
+            arch: x64
+            output_name: treefrog-windows-x64
+            artifact_path: wails/build/bin/treefrog.exe
+
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Setup Go
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      # Setup Node.js and pnpm
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
+      # Platform-specific setup
+      - name: Setup macOS dependencies
+        if: runner.os == 'macos'
+        run: |
+          brew install pkg-config
+          echo "Building for ${{ matrix.arch }}"
+
+      - name: Setup Linux dependencies
+        if: runner.os == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - name: Setup Windows dependencies
+        if: runner.os == 'windows'
+        run: choco install msedge-stable
+
+      # Install Wails CLI
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      # Build step
+      - name: Build frontend
+        run: |
+          cd frontend
+          pnpm install
+          pnpm build
+
+      - name: Copy frontend dist
+        run: |
+          mkdir -p wails/frontend/dist
+          cp -r frontend/dist/* wails/frontend/dist/
+        shell: bash
+
+      - name: Build Treefrog for ${{ matrix.platform }}
+        run: |
+          cd wails
+          wails build -platform ${{ matrix.platform }}
+
+      # Create installer/archive
+      - name: Create macOS DMG (Intel)
+        if: matrix.platform == 'darwin/amd64'
+        run: |
+          cd wails/build/bin
+          mkdir -p Treefrog.dmg-source
+          cp -r Treefrog.app Treefrog.dmg-source/
+          hdiutil create -srcfolder Treefrog.dmg-source -volname Treefrog -ov -format UDZO -o treefrog-macos-x86_64.dmg
+          mv treefrog-macos-x86_64.dmg ../../../treefrog-macos-x86_64.dmg
+          rm -rf Treefrog.dmg-source
+
+      - name: Create macOS DMG (ARM64)
+        if: matrix.platform == 'darwin/arm64'
+        run: |
+          cd wails/build/bin
+          mkdir -p Treefrog.dmg-source
+          cp -r Treefrog.app Treefrog.dmg-source/
+          hdiutil create -srcfolder Treefrog.dmg-source -volname Treefrog -ov -format UDZO -o treefrog-macos-arm64.dmg
+          mv treefrog-macos-arm64.dmg ../../../treefrog-macos-arm64.dmg
+          rm -rf Treefrog.dmg-source
+
+      - name: Create Linux tarball
+        if: runner.os == 'linux'
+        run: |
+          cd wails/build/bin
+          tar -czf treefrog-linux-x86_64.tar.gz treefrog
+          mv treefrog-linux-x86_64.tar.gz ../../../treefrog-linux-x86_64.tar.gz
+
+      - name: Create Windows installer (NSIS)
+        if: runner.os == 'windows'
+        run: |
+          choco install nsis
+          cd wails
+          # Build NSIS installer if wails.json is configured for it
+          # For now, we'll create a simple zip
+        shell: powershell
+
+      - name: Create Windows ZIP
+        if: runner.os == 'windows'
+        run: |
+          cd wails\build\bin
+          7z a treefrog-windows-x64.zip treefrog.exe
+          move treefrog-windows-x64.zip ..\..\..
+        shell: powershell
+
+      # Upload artifacts to workflow
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.output_name }}
+          path: |
+            treefrog-*.dmg
+            treefrog-*.tar.gz
+            treefrog-*.zip
+          if-no-files-found: ignore
+          retention-days: 1
+
+  # Create release after all builds complete
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Flatten artifacts directory
+        run: |
+          mkdir -p release
+          find artifacts -type f -name "treefrog-*" -exec mv {} release/ \;
+          ls -lah release/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release/treefrog-*
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
