@@ -1,3 +1,4 @@
+import { useState } from "react";
 import PDFPreview from "./PDF/PDFPreview";
 import { BuildStatus } from "../types";
 import {
@@ -16,6 +17,8 @@ import {
 } from "lucide-react";
 import { ZOOM_LEVELS } from "../constants";
 import { usePDFUrl } from "../hooks/usePDFUrl";
+import { isWails } from "../utils/env";
+import { getBuildLog, exportPDFFile, exportSourceFile } from "../services/buildService";
 
 interface PreviewPaneProps {
   apiUrl: string;
@@ -51,6 +54,48 @@ export default function PreviewPane({
 
   // Get PDF URL that works in both web and Wails modes
   const { pdfUrl, loading: pdfLoading, error: pdfError } = usePDFUrl(apiUrl, pdfKey);
+  
+  // Log viewer state for desktop mode
+  const [showLog, setShowLog] = useState(false);
+  const [logContent, setLogContent] = useState("");
+  const [logLoading, setLogLoading] = useState(false);
+
+  const handleViewLog = async () => {
+    if (isWails()) {
+      setLogLoading(true);
+      try {
+        const log = await getBuildLog();
+        setLogContent(log || "No log available");
+        setShowLog(true);
+      } catch (err) {
+        console.error("Failed to load log:", err);
+        setLogContent("Failed to load build log");
+        setShowLog(true);
+      } finally {
+        setLogLoading(false);
+      }
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (isWails()) {
+      try {
+        await exportPDFFile();
+      } catch (err) {
+        console.error("Failed to export PDF:", err);
+      }
+    }
+  };
+
+  const handleExportSource = async () => {
+    if (isWails()) {
+      try {
+        await exportSourceFile();
+      } catch (err) {
+        console.error("Failed to export source:", err);
+      }
+    }
+  };
 
   return (
     <section className="h-full flex flex-col bg-base-100 border-l border-base-300">
@@ -102,16 +147,44 @@ export default function PreviewPane({
               <p className="text-xs text-error/80 break-words">
                 {buildStatus.message || "Unknown error occurred"}
               </p>
-              <a
-                href={`${apiUrl}/build/log`}
-                target="_blank"
-                rel="noreferrer"
-                className="link link-hover text-xs mt-2 inline-flex items-center gap-1 text-error/70 hover:text-error"
-              >
-                <FileText size={12} />
-                View full log
-              </a>
+              {isWails() ? (
+                <button
+                  onClick={handleViewLog}
+                  disabled={logLoading}
+                  className="link link-hover text-xs mt-2 inline-flex items-center gap-1 text-error/70 hover:text-error"
+                >
+                  <FileText size={12} />
+                  {logLoading ? "Loading..." : "View full log"}
+                </button>
+              ) : (
+                <a
+                  href={`${apiUrl}/build/log`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="link link-hover text-xs mt-2 inline-flex items-center gap-1 text-error/70 hover:text-error"
+                >
+                  <FileText size={12} />
+                  View full log
+                </a>
+              )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Log Modal for Desktop */}
+      {showLog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-base-100 rounded-lg p-6 max-w-2xl w-full max-h-[80vh] flex flex-col m-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg">Build Log</h3>
+              <button onClick={() => setShowLog(false)} className="btn btn-sm btn-ghost">
+                Close
+              </button>
+            </div>
+            <pre className="bg-base-200 p-4 rounded-lg overflow-auto flex-1 text-xs font-mono whitespace-pre-wrap">
+              {logContent}
+            </pre>
           </div>
         </div>
       )}
@@ -209,32 +282,61 @@ export default function PreviewPane({
 
         {/* Export Actions */}
         <div className="flex gap-1.5">
-          <a
-            href={`${apiUrl}/export/pdf`}
-            target="_blank"
-            rel="noreferrer"
-            className="btn btn-sm btn-ghost gap-1.5 group"
-            title="Download PDF"
-          >
-            <Download
-              size={14}
-              className="group-hover:translate-y-0.5 transition-transform"
-            />
-            <span className="text-xs hidden sm:inline">PDF</span>
-          </a>
-          <a
-            href={`${apiUrl}/export/source-zip`}
-            target="_blank"
-            rel="noreferrer"
-            className="btn btn-sm btn-ghost gap-1.5 group"
-            title="Download source files"
-          >
-            <FileArchive
-              size={14}
-              className="group-hover:scale-110 transition-transform"
-            />
-            <span className="text-xs hidden sm:inline">Source</span>
-          </a>
+          {isWails() ? (
+            <>
+              <button
+                onClick={handleExportPDF}
+                className="btn btn-sm btn-ghost gap-1.5 group"
+                title="Export PDF"
+              >
+                <Download
+                  size={14}
+                  className="group-hover:translate-y-0.5 transition-transform"
+                />
+                <span className="text-xs hidden sm:inline">PDF</span>
+              </button>
+              <button
+                onClick={handleExportSource}
+                className="btn btn-sm btn-ghost gap-1.5 group"
+                title="Export source files"
+              >
+                <FileArchive
+                  size={14}
+                  className="group-hover:scale-110 transition-transform"
+                />
+                <span className="text-xs hidden sm:inline">Source</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <a
+                href={`${apiUrl}/export/pdf`}
+                target="_blank"
+                rel="noreferrer"
+                className="btn btn-sm btn-ghost gap-1.5 group"
+                title="Download PDF"
+              >
+                <Download
+                  size={14}
+                  className="group-hover:translate-y-0.5 transition-transform"
+                />
+                <span className="text-xs hidden sm:inline">PDF</span>
+              </a>
+              <a
+                href={`${apiUrl}/export/source-zip`}
+                target="_blank"
+                rel="noreferrer"
+                className="btn btn-sm btn-ghost gap-1.5 group"
+                title="Download source files"
+              >
+                <FileArchive
+                  size={14}
+                  className="group-hover:scale-110 transition-transform"
+                />
+                <span className="text-xs hidden sm:inline">Source</span>
+              </a>
+            </>
+          )}
         </div>
       </div>
 
