@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { isWails } from "../utils/env";
 
 export function useWebSocket(onMsg: (d: any) => void) {
   const onMsgRef = useRef(onMsg);
@@ -10,7 +11,22 @@ export function useWebSocket(onMsg: (d: any) => void) {
   }, [onMsg]);
 
   useEffect(() => {
-    // Construct websocket URL based on current location
+    // Wails mode: use Events API
+    if (isWails()) {
+      // Import runtime dynamically to avoid issues in web mode
+      import("../wailsjs/runtime").then((runtime) => {
+        const unsubscribe = runtime.EventsOn("build-status", (data: any) => {
+          onMsgRef.current(data);
+        });
+
+        return () => {
+          unsubscribe();
+        };
+      });
+      return;
+    }
+
+    // Web mode: use WebSocket
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsURL = `${protocol}//${window.location.host}/ws/build`;
 
@@ -22,7 +38,6 @@ export function useWebSocket(onMsg: (d: any) => void) {
         ws = new WebSocket(wsURL);
 
         ws.onopen = () => {
-          // Reset reconnection attempts on successful connection
           reconnectAttemptsRef.current = 0;
         };
 
@@ -39,9 +54,8 @@ export function useWebSocket(onMsg: (d: any) => void) {
         };
 
         ws.onclose = () => {
-          // Attempt to reconnect with exponential backoff
           reconnectAttemptsRef.current += 1;
-          
+
           if (reconnectAttemptsRef.current <= maxReconnectAttempts) {
             const backoffDelay = Math.min(
               1000 + reconnectAttemptsRef.current * 500,
@@ -56,9 +70,8 @@ export function useWebSocket(onMsg: (d: any) => void) {
         };
       } catch (err) {
         console.error("Failed to create WebSocket:", err);
-        // Connection failed, retry after delay with exponential backoff
         reconnectAttemptsRef.current += 1;
-        
+
         if (reconnectAttemptsRef.current <= maxReconnectAttempts) {
           const backoffDelay = Math.min(
             1000 + reconnectAttemptsRef.current * 500,
