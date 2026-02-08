@@ -127,7 +127,11 @@ func main() {
 
 	r.Get("/ws/build", s.handleBuildWS)
 
+	fmt.Printf("═══════════════════════════════════════════════════════════\n")
 	fmt.Printf("Local server running on http://localhost:%s\n", cfg.Port)
+	fmt.Printf("Builder URL: %s\n", s.getBuilderURL())
+	fmt.Printf("Project Root: %s\n", s.getRoot())
+	fmt.Printf("═══════════════════════════════════════════════════════════\n")
 	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -180,9 +184,11 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 	s.configMu.Lock()
 	if body.BuilderURL != "" {
 		s.builderURL = body.BuilderURL
+		fmt.Printf("[CONFIG] Builder URL updated to: %s\n", body.BuilderURL)
 	}
 	if body.BuilderToken != "" {
 		s.builderToken = body.BuilderToken
+		fmt.Printf("[CONFIG] Builder Token updated (length: %d)\n", len(body.BuilderToken))
 	}
 	s.configMu.Unlock()
 
@@ -330,6 +336,8 @@ func (s *Server) runBuild(buildID string, opts BuildOptions) {
 	}
 
 	buildURL := strings.TrimRight(s.getBuilderURL(), "/") + "/build"
+	fmt.Printf("[BUILD] Sending build to: %s\n", buildURL)
+
 	buf := &bytes.Buffer{}
 	mw := multipart.NewWriter(buf)
 	_ = mw.WriteField("options", mustJSON(opts))
