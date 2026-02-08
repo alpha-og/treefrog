@@ -272,28 +272,31 @@ export default function App() {
     }
   }, [numPages]);
 
-   async function loadProject() {
-     try {
-       const res = await fetch(`${apiUrl}/project`);
-       if (!res.ok) {
-         console.error("Failed to load project:", res.statusText);
-         setShowProjectPicker(true);
-         return;
-       }
-       const data = await res.json();
-       setProjectRoot(data.root || "");
-       if (!data.root) {
-         setShowProjectPicker(true);
-         return;
-       }
-       setShowProjectPicker(false);
-       await loadEntries("");
-       await refreshGit();
-     } catch (err) {
-       console.error("Error loading project:", err);
-       setShowProjectPicker(true);
-     }
-   }
+    async function loadProject() {
+      try {
+        const res = await fetch(`${apiUrl}/project`);
+        if (!res.ok) {
+          console.error(`Failed to load project: ${res.status} ${res.statusText}`);
+          console.error(`Make sure the local Treefrog server is running at: ${apiUrl}`);
+          setShowProjectPicker(true);
+          return;
+        }
+        const data = await res.json();
+        setProjectRoot(data.root || "");
+        if (!data.root) {
+          setShowProjectPicker(true);
+          return;
+        }
+        setShowProjectPicker(false);
+        await loadEntries("");
+        await refreshGit();
+      } catch (err) {
+        console.error("Error loading project:", err);
+        console.error(`Cannot connect to server at: ${apiUrl}`);
+        console.error("To fix: Open Settings and configure the correct Local Server URL");
+        setShowProjectPicker(true);
+      }
+    }
 
    async function setProjectRootFromUI() {
      console.log("setProjectRootFromUI called with projectInput:", projectInput);
@@ -1029,35 +1032,38 @@ export default function App() {
         />
       )}
 
-       {showProjectPicker && (
-         <div className="modal">
-           <div className="modal-card">
-             <h3>Select Project Folder</h3>
-             <p>Enter an absolute path to your LaTeX project.</p>
-             <input
-               autoFocus
-               placeholder="/path/to/project"
-               value={projectInput}
-               onChange={(e) => setProjectInput(e.target.value)}
-               onKeyDown={(e) => {
-                 if (e.key === "Enter") setProjectRootFromUI();
-               }}
-             />
-             <div className="modal-actions">
-               <button onClick={() => {
-                 console.log("Set project clicked, projectInput:", projectInput);
-                 setProjectRootFromUI();
-               }}>Set project</button>
-               <button onClick={() => {
-                 console.log("Skip/Cancel clicked, projectRoot:", projectRoot);
-                 setShowProjectPicker(false);
-               }}>
-                 {projectRoot ? "Cancel" : "Skip"}
-               </button>
-             </div>
-           </div>
-         </div>
-       )}
+        {showProjectPicker && (
+          <div className="modal">
+            <div className="modal-card">
+              <h3>Select Project Folder</h3>
+              <p>Enter an absolute path to your LaTeX project.</p>
+              <input
+                autoFocus
+                placeholder="/path/to/project"
+                value={projectInput}
+                onChange={(e) => setProjectInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") setProjectRootFromUI();
+                }}
+              />
+              <div style={{ fontSize: "11px", color: "var(--ink-secondary)", marginTop: "8px", marginBottom: "12px" }}>
+                Local Server: <code style={{ background: "var(--panel-hover)", padding: "2px 4px", borderRadius: "3px" }}>{apiUrl}</code>
+              </div>
+              <div className="modal-actions">
+                <button onClick={() => {
+                  console.log("Set project clicked, projectInput:", projectInput);
+                  setProjectRootFromUI();
+                }}>Set project</button>
+                <button onClick={() => {
+                  console.log("Skip/Cancel clicked, projectRoot:", projectRoot);
+                  setShowProjectPicker(false);
+                }}>
+                  {projectRoot ? "Cancel" : "Skip"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
        {showSettings && (
          <SettingsModal
