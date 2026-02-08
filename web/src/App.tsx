@@ -110,6 +110,10 @@ export default function App() {
     return localStorage.getItem("treefrog-api-url") || "/api";
   });
 
+  const [builderToken, setBuilderToken] = useState<string>(() => {
+    return localStorage.getItem("treefrog-builder-token") || "";
+  });
+
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [buildMenu, setBuildMenu] = useState<boolean>(false);
   const [viewMenu, setViewMenu] = useState<boolean>(false);
@@ -168,6 +172,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("treefrog-api-url", apiUrl);
   }, [apiUrl]);
+
+  useEffect(() => {
+    localStorage.setItem("treefrog-builder-token", builderToken);
+  }, [builderToken]);
 
   useEffect(() => {
     localStorage.setItem("treefrog-panes", JSON.stringify(visiblePanes));
@@ -239,7 +247,11 @@ export default function App() {
   // Layout editor when visibility or pane dimensions change
   useEffect(() => {
     if (visiblePanes.editor && editorInstance.current && !isBinary) {
-      editorInstance.current.layout();
+      // Give browser a chance to paint the element first
+      const timeoutId = window.setTimeout(() => {
+        editorInstance.current?.layout();
+      }, 50);
+      return () => clearTimeout(timeoutId);
     }
   }, [visiblePanes.editor, paneDimensions, isBinary]);
 
@@ -802,7 +814,7 @@ export default function App() {
               {isBinary ? (
                 <div className="binary">Binary file selected</div>
               ) : null}
-              <div className="monaco" ref={editorContainer} style={{ display: isBinary ? "none" : "block", height: isBinary ? 0 : "auto" }} />
+              <div className="monaco" ref={editorContainer} style={{ visibility: isBinary ? "hidden" : "visible", height: isBinary ? 0 : "auto", flex: isBinary ? 0 : 1, minHeight: isBinary ? 0 : "auto" }} />
             </section>
             {visiblePanes.preview ? (
               <div
@@ -999,7 +1011,11 @@ export default function App() {
        {showSettings && (
          <SettingsModal
            apiUrl={apiUrl}
-           onSave={(url) => setApiUrl(url)}
+           builderToken={builderToken}
+           onSave={(url, token) => {
+             setApiUrl(url);
+             setBuilderToken(token);
+           }}
            onClose={() => setShowSettings(false)}
          />
        )}
@@ -1032,19 +1048,23 @@ export default function App() {
 
 function SettingsModal({
   apiUrl,
+  builderToken,
   onSave,
   onClose,
 }: {
   apiUrl: string;
-  onSave: (url: string) => void;
+  builderToken: string;
+  onSave: (url: string, token: string) => void;
   onClose: () => void;
 }) {
-  const [input, setInput] = useState<string>(apiUrl);
+  const [apiInput, setApiInput] = useState<string>(apiUrl);
+  const [tokenInput, setTokenInput] = useState<string>(builderToken);
   const [saved, setSaved] = useState<boolean>(false);
 
   const handleSave = () => {
-    const trimmed = input.trim() || API_DEFAULT;
-    onSave(trimmed);
+    const trimmedUrl = apiInput.trim() || API_DEFAULT;
+    const trimmedToken = tokenInput.trim();
+    onSave(trimmedUrl, trimmedToken);
     setSaved(true);
     window.setTimeout(() => {
       onClose();
@@ -1055,7 +1075,7 @@ function SettingsModal({
     <div className="modal">
       <div className="modal-card">
         <h3>Settings</h3>
-        <p>Configure the API endpoint for this application.</p>
+        <p>Configure the API endpoint and builder token for this application.</p>
         <div style={{ marginBottom: "16px" }}>
           <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "8px", color: "var(--ink-secondary)" }}>
             API URL
@@ -1063,8 +1083,8 @@ function SettingsModal({
           <input
             type="text"
             placeholder={API_DEFAULT}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
+            value={apiInput}
+            onChange={(e) => setApiInput(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") handleSave();
               if (e.key === "Escape") onClose();
@@ -1073,6 +1093,25 @@ function SettingsModal({
           />
           <div style={{ fontSize: "11px", color: "var(--ink-secondary)", marginTop: "6px", fontStyle: "italic" }}>
             Default: {API_DEFAULT}
+          </div>
+        </div>
+        <div style={{ marginBottom: "16px" }}>
+          <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "8px", color: "var(--ink-secondary)" }}>
+            Builder Token (optional)
+          </label>
+          <input
+            type="password"
+            placeholder="Leave empty if not required"
+            value={tokenInput}
+            onChange={(e) => setTokenInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSave();
+              if (e.key === "Escape") onClose();
+            }}
+            style={{ width: "100%" }}
+          />
+          <div style={{ fontSize: "11px", color: "var(--ink-secondary)", marginTop: "6px", fontStyle: "italic" }}>
+            Token for authenticating with the remote builder
           </div>
         </div>
         {saved && (
