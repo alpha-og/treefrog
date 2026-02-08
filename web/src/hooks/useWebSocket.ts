@@ -2,6 +2,8 @@ import { useEffect, useRef } from "react";
 
 export function useWebSocket(onMsg: (d: any) => void) {
   const onMsgRef = useRef(onMsg);
+  const reconnectAttemptsRef = useRef(0);
+  const maxReconnectAttempts = 10;
 
   useEffect(() => {
     onMsgRef.current = onMsg;
@@ -19,23 +21,51 @@ export function useWebSocket(onMsg: (d: any) => void) {
       try {
         ws = new WebSocket(wsURL);
 
+        ws.onopen = () => {
+          // Reset reconnection attempts on successful connection
+          reconnectAttemptsRef.current = 0;
+        };
+
         ws.onmessage = (e) => {
           try {
             onMsgRef.current(JSON.parse(e.data));
-          } catch { }
+          } catch (err) {
+            console.error("Failed to parse WebSocket message:", err);
+          }
         };
 
-        ws.onerror = () => {
-          // Silently fail, will reconnect
+        ws.onerror = (event) => {
+          console.error("WebSocket error:", event);
         };
 
         ws.onclose = () => {
-          // Attempt to reconnect after 3 seconds
-          reconnectTimeout = setTimeout(connect, 3000);
+          // Attempt to reconnect with exponential backoff
+          reconnectAttemptsRef.current += 1;
+          
+          if (reconnectAttemptsRef.current <= maxReconnectAttempts) {
+            const backoffDelay = Math.min(
+              1000 + reconnectAttemptsRef.current * 500,
+              10000
+            );
+            reconnectTimeout = setTimeout(connect, backoffDelay);
+          } else {
+            console.warn(
+              "WebSocket reconnection failed after max attempts. Build status updates will be unavailable."
+            );
+          }
         };
       } catch (err) {
-        // Connection failed, retry after delay
-        reconnectTimeout = setTimeout(connect, 3000);
+        console.error("Failed to create WebSocket:", err);
+        // Connection failed, retry after delay with exponential backoff
+        reconnectAttemptsRef.current += 1;
+        
+        if (reconnectAttemptsRef.current <= maxReconnectAttempts) {
+          const backoffDelay = Math.min(
+            1000 + reconnectAttemptsRef.current * 500,
+            10000
+          );
+          reconnectTimeout = setTimeout(connect, backoffDelay);
+        }
       }
     };
 
