@@ -42,13 +42,10 @@ export function useFiles() {
   const openFile = useCallback(
     async (path: string) => {
       try {
-        console.log("[useFiles] Opening file:", path);
         setCurrentFile(path);
         const data = await readFile(path);
-        console.log("[useFiles] File read response:", { isBinary: data.isBinary, contentLength: data.content?.length || 0 });
         setIsBinary(data.isBinary);
         setFileContent(data.content || "");
-        console.log("[useFiles] Store updated with file content");
       } catch (err) {
         console.error("Failed to open file:", err);
       }

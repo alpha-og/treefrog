@@ -34,7 +34,6 @@ export function setupLatexLanguage() {
   try {
     // Register LaTeX language using the official registration function
     registerLaTeXLanguage(monaco as any);
-    console.log("[LaTeX Setup] LaTeX language registered via registerLaTeXLanguage");
 
     // Register augmented completion provider with both built-in and additional commands
     monaco.languages.registerCompletionItemProvider("latex", {
@@ -81,8 +80,6 @@ export function setupLatexLanguage() {
       },
       triggerCharacters: ["\\"],
     });
-
-    console.log("[LaTeX Setup] Completion provider registered with " + (MONACO_LATEX_COMMANDS.length + ADDITIONAL_COMMANDS.length) + " commands");
   } catch (error) {
     console.error("[LaTeX Setup] Error setting up LaTeX language:", error);
   }
