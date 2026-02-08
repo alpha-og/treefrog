@@ -16,6 +16,8 @@ dev:
 
 build:
 	@echo "Building Treefrog for current platform..."
+	@echo "Building frontend..."
+	@cd frontend && pnpm install && pnpm build
 	@echo "Copying frontend dist to wails..."
 	@mkdir -p wails/frontend/dist
 	@cp -r frontend/dist/* wails/frontend/dist/
@@ -23,6 +25,8 @@ build:
 
 build-all:
 	@echo "Building Treefrog for all platforms..."
+	@echo "Building frontend..."
+	@cd frontend && pnpm install && pnpm build
 	@echo "Copying frontend dist to wails..."
 	@mkdir -p wails/frontend/dist
 	@cp -r frontend/dist/* wails/frontend/dist/
