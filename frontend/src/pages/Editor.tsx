@@ -17,6 +17,7 @@ import PreviewPane from "../components/PreviewPane";
 import ProjectPicker from "../components/ProjectPicker";
 import ContextMenu from "../components/ContextMenu";
 import EmptyPlaceholder from "../components/EmptyPlaceholder";
+import TitleBar from "../components/TitleBar";
 
 // Types
 import { BuildStatus, ModalState } from "../types";
@@ -162,6 +163,88 @@ export default function Editor() {
     const themeName = theme === "dark" ? "rusty-dark" : "rusty-light";
     document.documentElement.setAttribute("data-theme", themeName);
   }, [theme]);
+
+  // Menu event listeners
+  useEffect(() => {
+    // @ts-ignore - Wails runtime
+    if (!window.runtime?.EventsOn) return;
+
+    // File menu events
+    // @ts-ignore
+    window.runtime.EventsOn("menu-open-project", () => {
+      setShowPicker(true);
+    });
+
+    // @ts-ignore
+    window.runtime.EventsOn("menu-go-home", () => {
+      navigate({ to: "/" });
+    });
+
+    // Build menu events
+    // @ts-ignore
+    window.runtime.EventsOn("menu-build", () => {
+      triggerBuild();
+    });
+
+    // View menu events
+    // @ts-ignore
+    window.runtime.EventsOn("menu-toggle-sidebar", () => {
+      togglePane("sidebar");
+    });
+
+    // @ts-ignore
+    window.runtime.EventsOn("menu-toggle-editor", () => {
+      togglePane("editor");
+    });
+
+    // @ts-ignore
+    window.runtime.EventsOn("menu-toggle-preview", () => {
+      togglePane("preview");
+    });
+
+    // @ts-ignore
+    window.runtime.EventsOn("menu-zoom-in", () => {
+      setZoom((z) => Math.min(z + 0.1, 2));
+    });
+
+    // @ts-ignore
+    window.runtime.EventsOn("menu-zoom-out", () => {
+      setZoom((z) => Math.max(z - 0.1, 0.5));
+    });
+
+    // @ts-ignore
+    window.runtime.EventsOn("menu-zoom-reset", () => {
+      setZoom(1.2);
+    });
+
+    // @ts-ignore
+    window.runtime.EventsOn("menu-toggle-theme", () => {
+      setTheme(theme === "dark" ? "light" : "dark");
+    });
+
+    // Git menu events
+    // @ts-ignore
+    window.runtime.EventsOn("menu-git-commit", () => {
+      if (gitStatus.state === "dirty") {
+        handleOpenModal({ kind: "create", type: "file" });
+      }
+    });
+
+    // @ts-ignore
+    window.runtime.EventsOn("menu-git-push", async () => {
+      await push();
+    });
+
+    // @ts-ignore
+    window.runtime.EventsOn("menu-git-pull", async () => {
+      await pull();
+    });
+
+    // @ts-ignore
+    window.runtime.EventsOn("menu-git-refresh", () => {
+      refreshGit();
+    });
+  }, [theme, setTheme, togglePane, triggerBuild, navigate, setShowPicker, setZoom, gitStatus, push, pull, refreshGit, handleOpenModal]);
 
   // Sync config to server
   useEffect(() => {
@@ -359,6 +442,9 @@ export default function Editor() {
 
   return (
     <div className="h-screen w-screen flex flex-col bg-base-100">
+      {/* Frameless Title Bar */}
+      <TitleBar title={projectRoot ? `${projectRoot.split("/").pop()} - Treefrog` : "Treefrog"} />
+
       {/* Toolbar */}
       <Toolbar
         projectRoot={projectRoot}

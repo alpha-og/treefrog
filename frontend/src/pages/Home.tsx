@@ -1,8 +1,12 @@
-import { useState } from "react";
-import { Plus, Clock, Trash2, FolderOpen, ArrowRight, FolderPlus } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Clock, FolderPlus, Settings } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useRecentProjectsStore } from "../stores/recentProjectsStore";
+import { useAppStore } from "../stores/appStore";
 import { openProjectDialog } from "../services/projectService";
+import SettingsModal from "../components/SettingsModal";
+import ProjectCard from "../components/ProjectCard";
+import TitleBar from "../components/TitleBar";
 
 interface HomeProps {
   onSelectProject?: (path: string) => Promise<void>;
@@ -12,8 +16,16 @@ interface HomeProps {
 export default function Home({ onSelectProject, loading }: HomeProps) {
   const navigate = useNavigate();
   const { projects, removeProject } = useRecentProjectsStore();
+  const { builderUrl, builderToken, setBuilderUrl, setBuilderToken } = useAppStore();
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [storeHydrated, setStoreHydrated] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+
+  // Wait for Zustand stores to hydrate from localStorage
+  useEffect(() => {
+    setStoreHydrated(true);
+  }, []);
 
   const handleOpenProjectDialog = async () => {
     setError("");
@@ -49,181 +61,207 @@ export default function Home({ onSelectProject, loading }: HomeProps) {
     }
   };
 
-  const handleRemoveProject = (e: React.MouseEvent, path: string) => {
-    e.stopPropagation();
+  const handleRemoveProject = (path: string) => {
     removeProject(path);
   };
 
+  const handleSaveSettings = (url: string, token: string) => {
+    setBuilderUrl(url);
+    setBuilderToken(token);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-base-300 via-base-200 to-base-300 flex flex-col">
-      {/* Header */}
-      <header className="border-b border-base-content/10 bg-base-100/50 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto px-6 py-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-              <span className="text-white font-bold text-lg">ƒ</span>
+    <div className="min-h-screen bg-gradient-to-br from-base-200 via-base-100 to-base-200 flex flex-col">
+      {/* Frameless Title Bar */}
+      <TitleBar title="Treefrog" />
+
+      {/* Header - Minimalist and Clean */}
+      <header className="border-b border-base-content/5 bg-base-100/40 backdrop-blur-xl sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-6 py-6 md:py-8">
+          <div className="flex items-center justify-between gap-4">
+            {/* Logo Section */}
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary via-secondary to-primary flex items-center justify-center shadow-lg">
+                <span className="text-white font-bold text-xl">ƒ</span>
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
+                  Treefrog
+                </h1>
+                <p className="text-xs md:text-sm text-base-content/60 mt-0.5">
+                  Modern LaTeX editor with remote compilation
+                </p>
+              </div>
             </div>
-            <h1 className="text-3xl font-bold">Treefrog</h1>
+
+            {/* Settings Button */}
+            <button
+              onClick={() => setShowSettings(true)}
+              className="btn btn-ghost btn-circle hover:bg-primary/10 transition-all"
+              title="Builder settings"
+            >
+              <Settings size={20} className="text-primary" />
+            </button>
           </div>
-          <p className="text-base-content/70">LaTeX editor with remote compilation</p>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Open Project */}
-          <div className="lg:col-span-2 space-y-8">
-            <div>
-              <h2 className="text-2xl font-bold mb-6">Open Project</h2>
-
-              {/* File Picker Button */}
-              <button
-                onClick={handleOpenProjectDialog}
-                disabled={isSubmitting || loading}
-                className="w-full btn btn-lg btn-primary gap-3 shadow-lg hover:shadow-xl transition-all"
-              >
-                {isSubmitting ? (
-                  <>
-                    <span className="loading loading-spinner loading-sm"></span>
-                    Opening...
-                  </>
-                ) : (
-                  <>
-                    <FolderPlus size={20} />
-                    Choose Project Folder
-                  </>
-                )}
-              </button>
-
-              {error && (
-                <div className="alert alert-error shadow-sm mt-4">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="stroke-current shrink-0 h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M10 14l-2-2m0 0l-2-2m2 2l2-2m-2 2l-2 2m2-2l2 2m1-11a9 9 0 110 18 9 9 0 010-18z"
-                    />
-                  </svg>
-                  <span>{error}</span>
-                </div>
-              )}
-
-              {/* Tips */}
-              <div className="mt-8 bg-base-100/50 border border-base-content/10 rounded-lg p-6">
-                <h3 className="font-semibold mb-4 text-base-content/90">Quick Tips</h3>
-                <ul className="space-y-3 text-sm text-base-content/70">
-                  <li className="flex gap-3">
-                    <span className="text-primary font-bold flex-shrink-0">•</span>
-                    <span>Select your LaTeX project folder from your file system</span>
-                  </li>
-                  <li className="flex gap-3">
-                    <span className="text-primary font-bold flex-shrink-0">•</span>
-                    <span>Project must contain a <code className="bg-base-200 px-2 py-1 rounded text-xs">main.tex</code> file</span>
-                  </li>
-                  <li className="flex gap-3">
-                    <span className="text-primary font-bold flex-shrink-0">•</span>
-                    <span>Git repository is optional but recommended</span>
-                  </li>
-                  <li className="flex gap-3">
-                    <span className="text-primary font-bold flex-shrink-0">•</span>
-                    <span>Recent projects are saved for quick access</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column - Recent Projects or Empty State */}
-          <div>
-            {projects.length > 0 ? (
+      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-12 md:py-16">
+        <div className="space-y-16">
+          {/* Section 1: Create/Open Project */}
+          <section>
+            <div className="space-y-6">
+              {/* Section Header */}
               <div>
-                <div className="flex items-center gap-2 mb-6">
-                  <Clock size={20} className="text-primary" />
-                  <h2 className="text-2xl font-bold">Recent</h2>
-                  <span className="badge badge-primary badge-lg">{projects.length}</span>
-                </div>
-                <div className="space-y-3">
-                  {projects.map((project) => (
-                    <button
-                      key={project.path}
-                      onClick={() => handleRecentProjectClick(project.path)}
-                      disabled={isSubmitting}
-                      className="w-full text-left group relative"
-                    >
-                      <div className="bg-base-100 border border-base-content/10 hover:border-primary/50 rounded-lg p-4 transition-all duration-200 hover:shadow-md hover:bg-primary/5">
-                        <div className="flex items-start gap-3">
-                          <FolderOpen
-                            size={18}
-                            className="text-primary flex-shrink-0 mt-1"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-base-content truncate group-hover:text-primary transition-colors">
-                              {project.name}
-                            </p>
-                            <p className="text-xs text-base-content/60 truncate mt-1">
-                              {project.path}
-                            </p>
-                            <p className="text-xs text-base-content/50 mt-2">
-                              {new Date(project.timestamp).toLocaleDateString(
-                                undefined,
-                                {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                }
-                              )}
-                            </p>
-                          </div>
-                          <ArrowRight
-                            size={18}
-                            className="text-base-content/40 flex-shrink-0 group-hover:text-primary group-hover:translate-x-1 transition-all"
-                          />
-                        </div>
-
-                        {/* Delete button on hover */}
-                        <button
-                          onClick={(e) => handleRemoveProject(e, project.path)}
-                          className="absolute top-3 right-3 btn btn-ghost btn-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="Remove from recent"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="bg-base-100/30 border border-base-content/10 rounded-lg p-8 text-center">
-                <div className="w-12 h-12 rounded-lg bg-base-content/10 flex items-center justify-center mx-auto mb-4">
-                  <Clock size={24} className="text-base-content/40" />
-                </div>
-                <p className="text-base-content/60 text-sm">
-                  No recent projects yet. Open one to get started!
+                <h2 className="text-2xl md:text-3xl font-bold mb-2">Get Started</h2>
+                <p className="text-base-content/70 text-sm md:text-base">
+                  Create a new project or choose an existing one from your file system
                 </p>
               </div>
-            )}
+
+              {/* Primary Action Card */}
+              <div className="bg-gradient-to-br from-primary/10 via-secondary/5 to-base-100 border border-primary/20 rounded-2xl p-8 md:p-10 hover:border-primary/40 transition-all duration-300 shadow-xl hover:shadow-2xl hover:-translate-y-1">
+                <div className="flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-8">
+                  <div className="flex-1">
+                    <h3 className="text-xl md:text-2xl font-bold mb-2">Open Your Project</h3>
+                    <p className="text-base-content/70 text-sm md:text-base leading-relaxed">
+                      Select your LaTeX project folder. Treefrog will detect your main.tex file and set up
+                      everything automatically. Your project will be saved to your recent list for quick access.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleOpenProjectDialog}
+                    disabled={isSubmitting || loading}
+                    className="btn btn-primary btn-lg gap-3 whitespace-nowrap shadow-lg hover:shadow-xl transition-all flex-shrink-0"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <span className="loading loading-spinner loading-sm"></span>
+                        Opening...
+                      </>
+                    ) : (
+                      <>
+                        <FolderPlus size={20} />
+                        Choose Folder
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="bg-error/10 border border-error/30 rounded-xl p-4 flex items-start gap-3 animate-pulse">
+                  <div className="w-5 h-5 rounded-full bg-error flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-white text-xs font-bold">!</span>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-error text-sm">{error}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Divider */}
+          <div className="flex items-center gap-4">
+            <div className="flex-1 h-px bg-gradient-to-r from-base-content/10 to-transparent" />
+            <span className="text-xs text-base-content/60 font-medium">OR</span>
+            <div className="flex-1 h-px bg-gradient-to-l from-base-content/10 to-transparent" />
           </div>
+
+          {/* Section 2: Recent Projects */}
+          <section>
+            <div className="space-y-6">
+              {/* Section Header */}
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <Clock size={24} className="text-primary" />
+                  <h2 className="text-2xl md:text-3xl font-bold">Recent Projects</h2>
+                </div>
+                <p className="text-base-content/70 text-sm md:text-base">
+                  {storeHydrated && projects.length > 0
+                    ? `You have ${projects.length} recent project${projects.length !== 1 ? "s" : ""}`
+                    : "No recent projects yet"}
+                </p>
+              </div>
+
+              {/* Recent Projects Grid */}
+              {storeHydrated && projects && projects.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {projects.map((project) => (
+                    <ProjectCard
+                      key={project.path}
+                      project={project}
+                      onSelect={async (path) => {
+                        setIsSubmitting(true);
+                        try {
+                          if (onSelectProject) {
+                            await onSelectProject(path);
+                          }
+                          navigate({ to: "/editor" });
+                        } catch (err) {
+                          setError(err instanceof Error ? err.message : "Failed to open project");
+                        } finally {
+                          setIsSubmitting(false);
+                        }
+                      }}
+                      onRemove={handleRemoveProject}
+                      isLoading={isSubmitting}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-base-100/50 border border-base-content/10 rounded-2xl p-12 text-center">
+                  <div className="flex justify-center mb-4">
+                    <div className="w-16 h-16 rounded-full bg-base-content/10 flex items-center justify-center">
+                      <Clock size={32} className="text-base-content/30" />
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-semibold text-base-content/70 mb-2">
+                    No recent projects
+                  </h3>
+                  <p className="text-sm text-base-content/60 max-w-sm mx-auto">
+                    When you open a project, it will appear here for quick access next time
+                  </p>
+                </div>
+              )}
+            </div>
+          </section>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-base-content/10 bg-base-100/30 backdrop-blur-sm mt-auto">
-        <div className="max-w-6xl mx-auto px-6 py-6 text-center text-sm text-base-content/60">
-          <p>
-            Made with{" "}
-            <span className="text-error inline-block mx-1">♥</span>
-            for LaTeX enthusiasts
-          </p>
+      <footer className="border-t border-base-content/5 bg-base-100/30 backdrop-blur-xl mt-auto">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-sm text-base-content/60">
+              Made with <span className="text-error">♥</span> for LaTeX enthusiasts
+            </p>
+            <div className="flex items-center gap-6 text-xs text-base-content/60">
+              <a href="#" className="hover:text-primary transition-colors">
+                Documentation
+              </a>
+              <a href="#" className="hover:text-primary transition-colors">
+                GitHub
+              </a>
+              <a href="#" className="hover:text-primary transition-colors">
+                Support
+              </a>
+            </div>
+          </div>
         </div>
       </footer>
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        builderUrl={builderUrl}
+        builderToken={builderToken}
+        onSave={handleSaveSettings}
+      />
     </div>
   );
 }

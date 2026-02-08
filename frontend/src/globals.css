@@ -79,17 +79,17 @@
   --color-base-300: oklch(24% 0.008 250);   /* #2a2d2f - borders */
   --color-base-content: oklch(93% 0.008 75); /* #eceae7 - main text */
 
-  /* Primary: warm orange/amber for dark mode (shifted away from red) */
-  --color-primary: oklch(68% 0.14 55);            /* warm orange, not red */
-  --color-primary-content: oklch(15% 0.01 55);
+   /* Primary: warm brown for dark mode */
+   --color-primary: oklch(56% 0.12 35);            /* warm brown */
+   --color-primary-content: oklch(95% 0.008 75);
 
-  /* Secondary: warm gold accent for dark mode */
-  --color-secondary: oklch(72% 0.12 85);          /* warm gold */
-  --color-secondary-content: oklch(15% 0.01 85);
+   /* Secondary: light brown accent for dark mode */
+   --color-secondary: oklch(64% 0.10 40);          /* light brown */
+   --color-secondary-content: oklch(15% 0.01 40);
 
-  /* Accent: muted amber */
-  --color-accent: oklch(68% 0.10 70);
-  --color-accent-content: oklch(15% 0.01 70);
+   /* Accent: muted brown */
+   --color-accent: oklch(60% 0.09 38);
+   --color-accent-content: oklch(95% 0.008 75);
 
   /* Neutral: muted warm gray */
   --color-neutral: oklch(68% 0.015 70);          /* #a4a09a - muted */
