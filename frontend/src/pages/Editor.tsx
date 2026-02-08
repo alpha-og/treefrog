@@ -247,262 +247,87 @@ export default function Editor() {
     [openModal, setModalInput, currentDir],
   );
 
-  // Menu event listeners
-  useEffect(() => {
-    // @ts-ignore - Wails runtime
-    if (!window.runtime?.EventsOn) return;
+   // Menu event listeners
+   useEffect(() => {
+     // @ts-ignore - Wails runtime
+     if (!window.runtime?.EventsOn) return;
 
-    // File menu events
-    // @ts-ignore
-    window.runtime.EventsOn("menu-open-project", () => {
-      setShowPicker(true);
-    });
+     // File menu events
+     // @ts-ignore
+     window.runtime.EventsOn("menu-open-project", () => {
+       setShowPicker(true);
+     });
 
-    // @ts-ignore
-    window.runtime.EventsOn("menu-go-home", () => {
-      navigate({ to: "/" });
-    });
+     // @ts-ignore
+     window.runtime.EventsOn("menu-go-home", () => {
+       navigate({ to: "/" });
+     });
 
-    // Build menu events
-    // @ts-ignore
-    window.runtime.EventsOn("menu-build", () => {
-      triggerBuild();
-    });
+     // Build menu events
+     // @ts-ignore
+     window.runtime.EventsOn("menu-build", () => {
+       triggerBuild();
+     });
 
-    // View menu events
-    // @ts-ignore
-    window.runtime.EventsOn("menu-toggle-sidebar", () => {
-      togglePane("sidebar");
-    });
+     // View menu events
+     // @ts-ignore
+     window.runtime.EventsOn("menu-toggle-sidebar", () => {
+       togglePane("sidebar");
+     });
 
-    // @ts-ignore
-    window.runtime.EventsOn("menu-toggle-editor", () => {
-      togglePane("editor");
-    });
+     // @ts-ignore
+     window.runtime.EventsOn("menu-toggle-editor", () => {
+       togglePane("editor");
+     });
 
-    // @ts-ignore
-    window.runtime.EventsOn("menu-toggle-preview", () => {
-      togglePane("preview");
-    });
+     // @ts-ignore
+     window.runtime.EventsOn("menu-toggle-preview", () => {
+       togglePane("preview");
+     });
 
-    // @ts-ignore
-    window.runtime.EventsOn("menu-zoom-in", () => {
-      setZoom((z) => Math.min(z + 0.1, 2));
-    });
+     // @ts-ignore
+     window.runtime.EventsOn("menu-zoom-in", () => {
+       setZoom((z) => Math.min(z + 0.1, 2));
+     });
 
-    // @ts-ignore
-    window.runtime.EventsOn("menu-zoom-out", () => {
-      setZoom((z) => Math.max(z - 0.1, 0.5));
-    });
+     // @ts-ignore
+     window.runtime.EventsOn("menu-zoom-out", () => {
+       setZoom((z) => Math.max(z - 0.1, 0.5));
+     });
 
-    // @ts-ignore
-    window.runtime.EventsOn("menu-zoom-reset", () => {
-      setZoom(1.2);
-    });
+     // @ts-ignore
+     window.runtime.EventsOn("menu-zoom-reset", () => {
+       setZoom(1.2);
+     });
 
-    // @ts-ignore
-    window.runtime.EventsOn("menu-toggle-theme", () => {
-      setTheme(theme === "dark" ? "light" : "dark");
-    });
+     // @ts-ignore
+     window.runtime.EventsOn("menu-toggle-theme", () => {
+       setTheme(theme === "dark" ? "light" : "dark");
+     });
 
-    // Git menu events
-    // @ts-ignore
-    window.runtime.EventsOn("menu-git-commit", () => {
-      if (gitStatus.state === "dirty") {
-        handleOpenModal({ kind: "create", type: "file" });
-      }
-    });
+     // Git menu events
+     // @ts-ignore
+     window.runtime.EventsOn("menu-git-commit", () => {
+       if (gitStatus.state === "dirty") {
+         handleOpenModal({ kind: "create", type: "file" });
+       }
+     });
 
-    // @ts-ignore
-    window.runtime.EventsOn("menu-git-push", async () => {
-      await push();
-    });
+     // @ts-ignore
+     window.runtime.EventsOn("menu-git-push", async () => {
+       await push();
+     });
 
-    // @ts-ignore
-    window.runtime.EventsOn("menu-git-pull", async () => {
-      await pull();
-    });
+     // @ts-ignore
+     window.runtime.EventsOn("menu-git-pull", async () => {
+       await pull();
+     });
 
-    // @ts-ignore
-    window.runtime.EventsOn("menu-git-refresh", () => {
-      refreshGit();
-    });
-  }, [theme, setTheme, togglePane, triggerBuild, navigate, setShowPicker, setZoom, gitStatus, push, pull, refreshGit, handleOpenModal]);
-
-  useWebSocket(handleBuildMessage);
-
-  // ========== EFFECTS ==========
-
-  // Apply theme
-  useEffect(() => {
-    const themeName = theme === "dark" ? "rusty-dark" : "rusty-light";
-    document.documentElement.setAttribute("data-theme", themeName);
-  }, [theme]);
-
-  // Menu event listeners
-  useEffect(() => {
-    // @ts-ignore - Wails runtime
-    if (!window.runtime?.EventsOn) return;
-
-    // File menu events
-    // @ts-ignore
-    window.runtime.EventsOn("menu-open-project", () => {
-      setShowPicker(true);
-    });
-
-    // @ts-ignore
-    window.runtime.EventsOn("menu-go-home", () => {
-      navigate({ to: "/" });
-    });
-
-    // Build menu events
-    // @ts-ignore
-    window.runtime.EventsOn("menu-build", () => {
-      triggerBuild();
-    });
-
-    // View menu events
-    // @ts-ignore
-    window.runtime.EventsOn("menu-toggle-sidebar", () => {
-      togglePane("sidebar");
-    });
-
-    // @ts-ignore
-    window.runtime.EventsOn("menu-toggle-editor", () => {
-      togglePane("editor");
-    });
-
-    // @ts-ignore
-    window.runtime.EventsOn("menu-toggle-preview", () => {
-      togglePane("preview");
-    });
-
-    // @ts-ignore
-    window.runtime.EventsOn("menu-zoom-in", () => {
-      setZoom((z) => Math.min(z + 0.1, 2));
-    });
-
-    // @ts-ignore
-    window.runtime.EventsOn("menu-zoom-out", () => {
-      setZoom((z) => Math.max(z - 0.1, 0.5));
-    });
-
-    // @ts-ignore
-    window.runtime.EventsOn("menu-zoom-reset", () => {
-      setZoom(1.2);
-    });
-
-    // @ts-ignore
-    window.runtime.EventsOn("menu-toggle-theme", () => {
-      setTheme(theme === "dark" ? "light" : "dark");
-    });
-
-    // Git menu events
-    // @ts-ignore
-    window.runtime.EventsOn("menu-git-commit", () => {
-      if (gitStatus.state === "dirty") {
-        handleOpenModal({ kind: "create", type: "file" });
-      }
-    });
-
-    // @ts-ignore
-    window.runtime.EventsOn("menu-git-push", async () => {
-      await push();
-    });
-
-    // @ts-ignore
-    window.runtime.EventsOn("menu-git-pull", async () => {
-      await pull();
-    });
-
-    // @ts-ignore
-    window.runtime.EventsOn("menu-git-refresh", () => {
-      refreshGit();
-    });
-  }, [theme, setTheme, togglePane, triggerBuild, navigate, setShowPicker, setZoom, gitStatus, push, pull, refreshGit, handleOpenModal]);
-
-  // Sync config to server
-  useEffect(() => {
-    const doSync = async () => {
-      try {
-        await syncConfig(builderUrl, builderToken);
-        setConfigSynced(true);
-        window.setTimeout(() => setConfigSynced(false), 2000);
-      } catch (err) {
-        console.warn("Could not send config to server:", err);
-      }
-    };
-    doSync();
-  }, [builderUrl, builderToken]);
-
-  // Load files when project is set
-  useEffect(() => {
-    if (projectRoot && !projectLoading) {
-      loadEntries("");
-      refreshGit();
-      // Auto-open main.tex if it exists
-      openFile("main.tex").catch(() => {
-        // File doesn't exist, that's fine - show empty state
-      });
-    }
-  }, [projectRoot, projectLoading]);
-
-  // Clamp page input when numPages changes
-  useEffect(() => {
-    if (numPages > 0) {
-      const next = String(clampPage(Number(pageInput || "1"), numPages));
-      if (next !== pageInput) {
-        setPageInput(next);
-      }
-    }
-  }, [numPages]);
-
-  // ========== BUILD FUNCTIONS ==========
-  const scheduleBuild = useCallback(() => {
-    if (buildTimer.current) window.clearTimeout(buildTimer.current);
-    buildTimer.current = window.setTimeout(async () => {
-      const mainFile = currentFileRef.current || "main.tex";
-      await build(mainFile, engine, shellEscape);
-    }, 500);
-  }, [build, engine, shellEscape]);
-
-  const triggerBuild = useCallback(async () => {
-    const mainFile = currentFileRef.current || "main.tex";
-    await build(mainFile, engine, shellEscape);
-  }, [build, engine, shellEscape]);
-
-  // ========== PROJECT SELECTION ==========
-  const handleSelectProject = useCallback(
-    async (path: string) => {
-      addProject(path);
-      await selectProject(path);
-      clearFiles();
-      await loadEntries("");
-      await refreshGit();
-    },
-    [selectProject, clearFiles, loadEntries, refreshGit, addProject],
-  );
-
-  // ========== SAVE HANDLER ==========
-  const handleSave = useCallback(
-    async (content: string) => {
-      if (!currentFileRef.current) return;
-      await saveFile(currentFileRef.current, content);
-      scheduleBuild();
-    },
-    [saveFile, scheduleBuild],
-  );
-
-  // ========== MODAL HANDLERS ==========
-  const handleOpenModal = useCallback(
-    (next: ModalState) => {
-      openModal(next);
-      if (next.kind === "rename") setModalInput(next.path);
-      if (next.kind === "move") setModalInput(currentDir || "");
-      if (next.kind === "duplicate") setModalInput(next.path + " copy");
-    },
-    [openModal, setModalInput, currentDir],
-  );
+     // @ts-ignore
+     window.runtime.EventsOn("menu-git-refresh", () => {
+       refreshGit();
+     });
+   }, [theme, setTheme, togglePane, triggerBuild, navigate, setShowPicker, setZoom, gitStatus, push, pull, refreshGit, handleOpenModal]);
 
   const confirmModal = useCallback(async () => {
     if (!modal) return;
@@ -616,7 +441,10 @@ export default function Editor() {
   );
 
   return (
-    <FramelessWindow title={projectRoot ? `${projectRoot.split("/").pop()} - Treefrog` : "Treefrog"}>
+    <FramelessWindow 
+      title="Treefrog" 
+      subtitle={projectRoot ? <span className="font-mono text-xs">{projectRoot}</span> : undefined}
+    >
       <div className="flex-1 flex flex-col bg-base-100 overflow-hidden">
         {/* Toolbar */}
         <Toolbar

@@ -1,4 +1,4 @@
-import { Trash2, FolderOpen, ArrowRight, Calendar } from "lucide-react";
+import { Trash2, FolderOpen, Calendar, FileText } from "lucide-react";
 import { RecentProject } from "../stores/recentProjectsStore";
 
 interface ProjectCardProps {
@@ -21,9 +21,9 @@ export default function ProjectCard({
     yesterday.setDate(yesterday.getDate() - 1);
 
     if (date.toDateString() === today.toDateString()) {
-      return "Today at " + date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+      return "Today";
     } else if (date.toDateString() === yesterday.toDateString()) {
-      return "Yesterday at " + date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+      return "Yesterday";
     } else {
       return date.toLocaleDateString("en-US", {
         month: "short",
@@ -33,49 +33,89 @@ export default function ProjectCard({
     }
   };
 
+  const getProjectInitials = (name: string) => {
+    return name
+      .split(/[\s\-_]/)
+      .filter((word) => word.length > 0)
+      .slice(0, 2)
+      .map((word) => word[0].toUpperCase())
+      .join("");
+  };
+
+  const initials = getProjectInitials(project.name);
+
   return (
     <button
       onClick={() => onSelect(project.path)}
       disabled={isLoading}
-      className="group w-full text-left relative"
+      className="group w-full text-left"
     >
-      <div className="bg-base-100 border border-base-content/10 hover:border-primary/50 hover:bg-primary/5 rounded-xl p-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 flex items-stretch gap-4">
-        {/* Icon Container */}
-        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center flex-shrink-0 group-hover:from-primary/40 group-hover:to-secondary/40 transition-colors">
-          <FolderOpen size={18} className="text-primary" />
-        </div>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-base-100 to-base-100/50 border border-base-content/5 hover:border-primary/30 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5">
+        {/* Top accent bar */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-secondary to-primary opacity-0 group-hover:opacity-100 transition-opacity" />
 
-        {/* Content - Flexible */}
-        <div className="flex-1 min-w-0 flex flex-col justify-center">
-          <h3 className="font-semibold text-base-content truncate group-hover:text-primary transition-colors">
-            {project.name}
-          </h3>
-          <p className="text-xs text-base-content/60 truncate mt-1 font-mono">
-            {project.path}
-          </p>
-          <div className="flex items-center gap-1 text-xs text-base-content/50 mt-2">
-            <Calendar size={12} />
-            {formatDate(project.timestamp)}
+        {/* Main content */}
+        <div className="p-5">
+          {/* Header with icon and actions */}
+          <div className="flex items-start justify-between gap-3 mb-4">
+            {/* Icon with gradient background */}
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/25 via-primary/15 to-secondary/20 flex items-center justify-center flex-shrink-0 group-hover:from-primary/35 group-hover:via-primary/25 group-hover:to-secondary/30 transition-all duration-300 shadow-md">
+                {initials ? (
+                  <span className="text-sm font-bold text-primary">{initials}</span>
+                ) : (
+                  <FolderOpen size={20} className="text-primary" />
+                )}
+              </div>
+
+              {/* Title - Primary content */}
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-base text-base-content group-hover:text-primary transition-colors truncate leading-tight">
+                  {project.name}
+                </h3>
+              </div>
+            </div>
+
+            {/* Delete button - On hover */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove(project.path);
+              }}
+              className="flex-shrink-0 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-error/15 hover:text-error text-base-content/40"
+              title="Remove from recent"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+
+          {/* Path - Secondary content */}
+          <div className="mb-4 px-0.5">
+            <p className="text-xs font-mono text-base-content/50 truncate hover:text-base-content/70 transition-colors break-all line-clamp-2">
+              {project.path}
+            </p>
+          </div>
+
+          {/* Footer with metadata */}
+          <div className="flex items-center justify-between pt-3 border-t border-base-content/5">
+            <div className="flex items-center gap-2 text-xs text-base-content/50">
+              <Calendar size={14} className="flex-shrink-0" />
+              <span>{formatDate(project.timestamp)}</span>
+            </div>
+
+            {/* Time hint on hover */}
+            <div className="text-xs text-base-content/40 opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="text-primary font-medium">Open</span>
+            </div>
           </div>
         </div>
 
-        {/* Arrow - Always visible on right */}
-        <ArrowRight
-          size={18}
-          className="text-base-content/30 flex-shrink-0 self-center group-hover:text-primary group-hover:translate-x-1 transition-all"
-        />
-
-        {/* Delete button on hover */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove(project.path);
-          }}
-          className="absolute top-3 right-3 btn btn-ghost btn-xs opacity-0 group-hover:opacity-100 transition-opacity hover:bg-error/20 hover:text-error"
-          title="Remove from recent"
-        >
-          <Trash2 size={14} />
-        </button>
+        {/* Loading state overlay */}
+        {isLoading && (
+          <div className="absolute inset-0 bg-base-100/50 backdrop-blur-sm flex items-center justify-center">
+            <span className="loading loading-spinner loading-sm text-primary"></span>
+          </div>
+        )}
       </div>
     </button>
   );
