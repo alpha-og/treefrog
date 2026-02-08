@@ -112,9 +112,10 @@ export default function App() {
     return localStorage.getItem("treefrog-builder-url") || "https://treefrog-renderer.onrender.com";
   });
 
-  const [showSettings, setShowSettings] = useState<boolean>(false);
-  const [buildMenu, setBuildMenu] = useState<boolean>(false);
-  const [viewMenu, setViewMenu] = useState<boolean>(false);
+   const [showSettings, setShowSettings] = useState<boolean>(false);
+   const [buildMenu, setBuildMenu] = useState<boolean>(false);
+   const [viewMenu, setViewMenu] = useState<boolean>(false);
+   const [configSynced, setConfigSynced] = useState<boolean>(false);
 
   const [zoom, setZoom] = useState<number>(1.2);
   const [numPages, setNumPages] = useState<number>(0);
@@ -158,11 +159,33 @@ export default function App() {
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   useEffect(() => {
-    loadProject();
-    connectWS();
-  }, []);
+     loadProject();
+     connectWS();
+   }, []);
 
-  useEffect(() => {
+    // Send builder config to local server on app load and when values change
+    useEffect(() => {
+      const sendConfigToServer = async () => {
+        try {
+          await fetch(`${apiUrl}/config`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              builderUrl,
+              builderToken,
+            }),
+          });
+          // Show feedback briefly
+          setConfigSynced(true);
+          window.setTimeout(() => setConfigSynced(false), 2000);
+        } catch (err) {
+          console.warn("Could not send config to server:", err);
+        }
+      };
+      sendConfigToServer();
+    }, [apiUrl, builderUrl, builderToken]);
+
+   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem("treefrog-theme", theme);
   }, [theme]);
@@ -750,13 +773,18 @@ export default function App() {
             {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
           </button>
 
-          {/* Settings */}
-          <button
-            onClick={() => setShowSettings(true)}
-            title="Settings"
-          >
-            <Settings size={16} />
-          </button>
+           {/* Settings */}
+           <button
+             onClick={() => setShowSettings(true)}
+             title="Settings"
+           >
+             <Settings size={16} />
+           </button>
+           {configSynced && (
+             <div style={{ fontSize: "11px", color: "var(--accent)", marginLeft: "4px", display: "flex", alignItems: "center", gap: "4px" }}>
+               ✓ Config synced
+             </div>
+           )}
         </div>
       </header>
       <div className="main" ref={mainRef}>
@@ -1122,31 +1150,17 @@ function SettingsModal({
   const [saved, setSaved] = useState<boolean>(false);
 
   const handleSave = async () => {
-    const trimmedUrl = apiInput.trim() || API_DEFAULT;
-    const trimmedBuilderUrl = builderUrlInput.trim() || "https://treefrog-renderer.onrender.com";
-    const trimmedToken = tokenInput.trim();
-    
-    // Send config to local server
-    try {
-      await fetch(`${trimmedUrl}/config`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          builderUrl: trimmedBuilderUrl,
-          builderToken: trimmedToken,
-        }),
-      });
-    } catch (err) {
-      console.warn("Could not send config to server:", err);
-      // Continue anyway - config will be saved locally
-    }
-    
-    onSave(trimmedUrl, trimmedBuilderUrl, trimmedToken);
-    setSaved(true);
-    window.setTimeout(() => {
-      onClose();
-    }, 500);
-  };
+     const trimmedUrl = apiInput.trim() || API_DEFAULT;
+     const trimmedBuilderUrl = builderUrlInput.trim() || "https://treefrog-renderer.onrender.com";
+     const trimmedToken = tokenInput.trim();
+     
+     // Config will be sent automatically via useEffect when state changes
+     onSave(trimmedUrl, trimmedBuilderUrl, trimmedToken);
+     setSaved(true);
+     window.setTimeout(() => {
+       onClose();
+     }, 500);
+   };
 
   return (
     <div className="modal">
