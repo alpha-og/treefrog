@@ -1,7 +1,7 @@
 import { GET, POST, PUT, getWailsApp } from "./api";
 import { isWails } from "../utils/env";
 
-export const listFiles = (path: string) => {
+export const listFiles = async (path: string) => {
   if (isWails()) {
     const app = getWailsApp();
     return app?.ListFiles(path);
@@ -9,7 +9,7 @@ export const listFiles = (path: string) => {
   return GET(`/files?path=${encodeURIComponent(path)}`);
 };
 
-export const readFile = (path: string) => {
+export const readFile = async (path: string) => {
   if (isWails()) {
     const app = getWailsApp();
     return app?.ReadFile(path);
@@ -17,7 +17,7 @@ export const readFile = (path: string) => {
   return GET(`/file?path=${encodeURIComponent(path)}`);
 };
 
-export const writeFile = (path: string, content: string) => {
+export const writeFile = async (path: string, content: string) => {
   if (isWails()) {
     const app = getWailsApp();
     return app?.WriteFile(path, content);
@@ -28,7 +28,7 @@ export const writeFile = (path: string, content: string) => {
   });
 };
 
-export const fsCreate = (path: string, type: "file" | "dir") => {
+export const fsCreate = async (path: string, type: "file" | "dir") => {
   if (isWails()) {
     const app = getWailsApp();
     return app?.CreateFile(path, type);
@@ -36,7 +36,7 @@ export const fsCreate = (path: string, type: "file" | "dir") => {
   return POST("/fs/create", { path, type });
 };
 
-export const fsRename = (from: string, to: string) => {
+export const fsRename = async (from: string, to: string) => {
   if (isWails()) {
     const app = getWailsApp();
     return app?.RenameFile(from, to);
@@ -44,7 +44,7 @@ export const fsRename = (from: string, to: string) => {
   return POST("/fs/rename", { from, to });
 };
 
-export const fsMove = (from: string, toDir: string) => {
+export const fsMove = async (from: string, toDir: string) => {
   if (isWails()) {
     const app = getWailsApp();
     return app?.MoveFile(from, toDir);
@@ -52,7 +52,7 @@ export const fsMove = (from: string, toDir: string) => {
   return POST("/fs/move", { from, toDir });
 };
 
-export const fsDuplicate = (from: string, to: string) => {
+export const fsDuplicate = async (from: string, to: string) => {
   if (isWails()) {
     const app = getWailsApp();
     return app?.DuplicateFile(from, to);
@@ -60,7 +60,7 @@ export const fsDuplicate = (from: string, to: string) => {
   return POST("/fs/duplicate", { from, to });
 };
 
-export const fsDelete = (path: string, recursive: boolean) => {
+export const fsDelete = async (path: string, recursive: boolean) => {
   if (isWails()) {
     const app = getWailsApp();
     return app?.DeleteFile(path, recursive);

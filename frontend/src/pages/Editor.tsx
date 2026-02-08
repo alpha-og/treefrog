@@ -181,6 +181,7 @@ export default function Editor() {
   // Load files when project is set
   useEffect(() => {
     if (projectRoot && !projectLoading) {
+      console.log("[Editor] Loading files for project:", projectRoot);
       loadEntries("");
       refreshGit();
       // Auto-open main.tex if it exists
@@ -188,7 +189,7 @@ export default function Editor() {
         // File doesn't exist, that's fine - show empty state
       });
     }
-  }, [projectRoot, projectLoading]);
+  }, [projectRoot, projectLoading, loadEntries, refreshGit, openFile]);
 
   // Clamp page input when numPages changes
   useEffect(() => {

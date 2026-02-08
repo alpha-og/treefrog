@@ -62,6 +62,11 @@ export default function Sidebar({
 
   // Store folder contents when entries are loaded
   useEffect(() => {
+    // Don't cache empty entries - wait for actual data
+    if (!entries || entries.length === 0) {
+      return;
+    }
+    
     // Only store if we're at root level (no currentDir) or it's the initial load
     if (currentDir === "" || currentDir === undefined) {
       cacheFolderContents("", entries);
@@ -94,7 +99,12 @@ export default function Sidebar({
     parentPath: string = "",
     depth: number = 0,
   ): TreeNode[] => {
-    const contents = getCachedFolderContents(parentPath) || [];
+    const contents = getCachedFolderContents(parentPath);
+    
+    // Defensive check - ensure contents is an array
+    if (!contents || !Array.isArray(contents)) {
+      return [];
+    }
 
     return contents.map((entry) => {
       const path = parentPath ? `${parentPath}/${entry.name}` : entry.name;

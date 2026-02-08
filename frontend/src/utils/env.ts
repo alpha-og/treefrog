@@ -8,3 +8,17 @@ export const isWails = (): boolean => {
 export const getEnvironment = (): 'wails' | 'web' => {
   return isWails() ? 'wails' : 'web';
 };
+
+// Wait for Wails runtime to be ready (window.go to be injected)
+// Returns true if Wails is available, false if timeout
+export const waitForWails = async (maxWaitMs: number = 3000): Promise<boolean> => {
+  if (isWails()) return true;
+  
+  const startTime = Date.now();
+  while (Date.now() - startTime < maxWaitMs) {
+    if (isWails()) return true;
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  
+  return isWails();
+};

@@ -10,14 +10,16 @@ const log = createLogger("useProject");
 export function useProject() {
   const [root, setRoot] = useState("");
   const [showPicker, setShowPicker] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    log.debug("useProject mounted - loading current project");
+    log.debug("useProject mounted - loading current project from backend");
+    
     (async () => {
       setLoading(true);
       try {
         const data = await getProject();
+        log.info(`Got project from backend: ${JSON.stringify(data)}`);
         if (data.root) {
           log.info(`Project loaded: ${data.root}`);
           setRoot(data.root);
