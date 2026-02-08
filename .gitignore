@@ -4,7 +4,11 @@ dist/
 .env
 .DS_Store
 wails/frontend/wailsjs/
-wails/build/
 wails/treefrog
 wails/*.app/
 wails/*.exe
+
+# Build artifacts (but not source files)
+wails/build/bin/
+wails/build/*.app/
+wails/build/*.exe
