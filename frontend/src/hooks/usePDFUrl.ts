@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getWailsApp } from '../services/api';
 import { isWails } from '../utils/env';
+import * as App from 'wailsjs/go/main/App';
 
 /**
  * Hook to get a PDF URL that works in both web and Wails desktop modes.
@@ -31,28 +31,27 @@ export function usePDFUrl(apiUrl: string, pdfKey: number): {
       try {
         if (isWails()) {
           // Wails mode: Get PDF content via Go bindings and create blob URL
-          const app = getWailsApp();
-          if (!app) {
-            throw new Error('Wails app not available');
+          try {
+            const base64Content = await App.GetPDFContent();
+            
+            if (!base64Content) {
+              throw new Error('No PDF content returned');
+            }
+            
+            // Decode base64 to binary
+            const binaryString = atob(base64Content);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            
+            // Create blob from decoded bytes
+            const blob = new Blob([bytes], { type: 'application/pdf' });
+            objectUrl = URL.createObjectURL(blob);
+            setPdfUrl(objectUrl);
+          } catch (wailerr) {
+            throw new Error(`Wails error: ${wailerr instanceof Error ? wailerr.message : 'Unknown error'}`);
           }
-
-          const base64Content = await app.GetPDFContent();
-          
-          if (!base64Content) {
-            throw new Error('No PDF content returned');
-          }
-          
-          // Decode base64 to binary
-          const binaryString = atob(base64Content);
-          const bytes = new Uint8Array(binaryString.length);
-          for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
-          
-          // Create blob from decoded bytes
-          const blob = new Blob([bytes], { type: 'application/pdf' });
-          objectUrl = URL.createObjectURL(blob);
-          setPdfUrl(objectUrl);
         } else {
           // Web mode: Use HTTP URL directly
           setPdfUrl(`${apiUrl}/export/pdf?ts=${pdfKey}`);
@@ -60,6 +59,7 @@ export function usePDFUrl(apiUrl: string, pdfKey: number): {
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Failed to load PDF';
         setError(errorMsg);
+        console.error('PDF loading error:', err);
       } finally {
         setLoading(false);
       }
