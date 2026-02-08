@@ -409,6 +409,9 @@ func (s *Server) runBuild(buildID string, opts BuildOptions) {
 
 func (s *Server) waitForRemote(statusURL string, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
+	backoff := 100 * time.Millisecond
+	maxBackoff := 2 * time.Second
+
 	for {
 		if time.Now().After(deadline) {
 			return fmt.Errorf("remote build timeout")
@@ -420,7 +423,14 @@ func (s *Server) waitForRemote(statusURL string, timeout time.Duration) error {
 		if status, ok := resp["status"].(string); ok {
 			switch status {
 			case "running":
-				time.Sleep(500 * time.Millisecond)
+				time.Sleep(backoff)
+				// Exponential backoff up to maxBackoff
+				if backoff < maxBackoff {
+					backoff = time.Duration(float64(backoff) * 1.5)
+					if backoff > maxBackoff {
+						backoff = maxBackoff
+					}
+				}
 				continue
 			case "success":
 				return nil
@@ -431,7 +441,14 @@ func (s *Server) waitForRemote(statusURL string, timeout time.Duration) error {
 				return fmt.Errorf("remote build error")
 			}
 		}
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(backoff)
+		// Exponential backoff up to maxBackoff
+		if backoff < maxBackoff {
+			backoff = time.Duration(float64(backoff) * 1.5)
+			if backoff > maxBackoff {
+				backoff = maxBackoff
+			}
+		}
 	}
 }
 
