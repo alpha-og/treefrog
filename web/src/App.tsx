@@ -196,47 +196,55 @@ export default function App() {
   }, [contextMenu]);
 
   useEffect(() => {
-    if (!editorContainer.current || editorInstance.current) return;
-    
-    editorInstance.current = monaco.editor.create(editorContainer.current, {
-      value: "",
-      language: "latex",
-      theme: theme === "dark" ? "vs-dark" : "vs",
-      automaticLayout: true,
-      minimap: { enabled: false },
-      fontFamily: "IBM Plex Mono, monospace",
-      fontSize: 14,
-    });
+    // When editor pane becomes hidden, dispose the editor
+    if (!visiblePanes.editor && editorInstance.current) {
+      editorInstance.current.dispose();
+      editorInstance.current = null;
+      return;
+    }
 
-    editorInstance.current.onDidChangeModelContent(() => {
-      if (ignoreChangeRef.current) return;
-      const value = editorInstance.current?.getValue() ?? "";
-      scheduleSave(value);
-    });
+    // When editor pane becomes visible, create the editor
+    if (visiblePanes.editor && !editorInstance.current && editorContainer.current) {
+      editorInstance.current = monaco.editor.create(editorContainer.current, {
+        value: "",
+        language: "latex",
+        theme: theme === "dark" ? "vs-dark" : "vs",
+        automaticLayout: true,
+        minimap: { enabled: false },
+        fontFamily: "IBM Plex Mono, monospace",
+        fontSize: 14,
+      });
 
-    editorInstance.current.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-      saveAndBuildNow();
-    });
+      editorInstance.current.onDidChangeModelContent(() => {
+        if (ignoreChangeRef.current) return;
+        const value = editorInstance.current?.getValue() ?? "";
+        scheduleSave(value);
+      });
 
-    editorInstance.current.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
-      saveAndBuildNow();
-    });
+      editorInstance.current.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+        saveAndBuildNow();
+      });
 
-    // Layout the editor to ensure it's properly sized
-    window.setTimeout(() => {
-      editorInstance.current?.layout();
-    }, 100);
+      editorInstance.current.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
+        saveAndBuildNow();
+      });
 
-    // Observe size changes to trigger layout
-    const resizeObserver = new ResizeObserver(() => {
-      editorInstance.current?.layout();
-    });
-    resizeObserver.observe(editorContainer.current);
-    
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, []);
+      // Layout the editor to ensure it's properly sized
+      window.setTimeout(() => {
+        editorInstance.current?.layout();
+      }, 100);
+
+      // Observe size changes to trigger layout
+      const resizeObserver = new ResizeObserver(() => {
+        editorInstance.current?.layout();
+      });
+      resizeObserver.observe(editorContainer.current);
+      
+      return () => {
+        resizeObserver.disconnect();
+      };
+    }
+  }, [visiblePanes.editor]);
 
   useEffect(() => {
     if (editorInstance.current) {
@@ -333,22 +341,32 @@ export default function App() {
      setCurrentDir(dir);
    }
 
-  async function openFile(path: string) {
-    setCurrentFile(path);
-    currentFileRef.current = path;
-    const res = await fetch(`${apiUrl}/file?path=${encodeURIComponent(path)}`);
-    if (!res.ok) return;
-    const data = await res.json();
-    setIsBinary(data.isBinary);
-    if (!data.isBinary && editorInstance.current) {
-      ignoreChangeRef.current = true;
-      editorInstance.current.setValue(data.content || "");
-      editorInstance.current.layout();
-      window.setTimeout(() => {
-        ignoreChangeRef.current = false;
-      }, 0);
-    }
-  }
+   async function openFile(path: string) {
+     setCurrentFile(path);
+     currentFileRef.current = path;
+     const res = await fetch(`${apiUrl}/file?path=${encodeURIComponent(path)}`);
+     if (!res.ok) return;
+     const data = await res.json();
+     setIsBinary(data.isBinary);
+     
+     // Only set content if it's not binary
+     if (!data.isBinary) {
+       // Wait for editor to be ready if it doesn't exist yet
+       if (!editorInstance.current) {
+         // Give the DOM time to mount and React to render the editor
+         await new Promise(resolve => window.setTimeout(resolve, 50));
+       }
+       
+       if (editorInstance.current) {
+         ignoreChangeRef.current = true;
+         editorInstance.current.setValue(data.content || "");
+         editorInstance.current.layout();
+         window.setTimeout(() => {
+           ignoreChangeRef.current = false;
+         }, 0);
+       }
+     }
+   }
 
   function scheduleSave(newContent: string) {
     if (!currentFileRef.current) return;
