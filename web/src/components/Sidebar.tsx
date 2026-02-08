@@ -9,6 +9,8 @@ import {
   Upload,
   Download,
   FolderOpen,
+  FilePlus,
+  FolderPlus,
 } from "lucide-react";
 import { getFileIcon } from "../utils/icons";
 import { FileEntry } from "../types";
@@ -130,9 +132,9 @@ export default function Sidebar({
         <div
           className={`
             group relative flex items-center gap-2 px-2 py-1.5 rounded
-            transition-all duration-150
+            transition-all duration-150 cursor-pointer
             ${isActive
-              ? "bg-primary text-primary-content shadow-sm"
+              ? "bg-base-300 font-medium border-l-2 border-primary"
               : "hover:bg-base-300/50"
             }
           `}
@@ -140,6 +142,13 @@ export default function Sidebar({
           onContextMenu={(e) => {
             e.preventDefault();
             onFileMenu(e.clientX, e.clientY, node.path, node.isDir);
+          }}
+          onClick={() => {
+            if (node.isDir) {
+              toggleFolder(node.path);
+            } else {
+              onOpenFile(node.path);
+            }
           }}
         >
           {/* Expand/collapse chevron for folders */}
@@ -149,38 +158,26 @@ export default function Sidebar({
                 e.stopPropagation();
                 toggleFolder(node.path);
               }}
-              className={`
-                shrink-0 p-0.5 rounded transition-transform
-                ${isActive ? "hover:bg-primary-focus" : "hover:bg-base-300"}
-              `}
+              className="shrink-0 p-0.5 rounded hover:bg-base-300 transition-colors"
             >
               <ChevronRight
                 size={14}
-                className={`transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                className={`transition-transform text-base-content/60 ${isExpanded ? "rotate-90" : ""}`}
               />
             </button>
           )}
           {!hasChildren && <div className="w-[22px]" />}
 
-          {/* Main clickable area */}
-          <button
-            onClick={() => {
-              if (node.isDir) {
-                toggleFolder(node.path);
-              } else {
-                onOpenFile(node.path);
-              }
-            }}
-            className="flex-1 flex items-center gap-2 min-w-0 text-left"
-          >
+          {/* File/Folder icon and name */}
+          <div className="flex-1 flex items-center gap-2 min-w-0">
             <span
               className={`shrink-0 transition-transform ${isActive ? "scale-110" : ""}`}
             >
               {node.isDir ? (
                 isExpanded ? (
-                  <FolderOpen size={16} />
+                  <FolderOpen size={16} className="text-warning" />
                 ) : (
-                  <Folder size={16} />
+                  <Folder size={16} className="text-warning" />
                 )
               ) : (
                 getFileIcon(node.name, false)
@@ -190,20 +187,16 @@ export default function Sidebar({
               className={`
               truncate text-sm
               ${node.isDir ? "font-medium" : ""}
-              ${isActive ? "" : "text-base-content/90"}
+              ${isActive ? "text-base-content" : "text-base-content/90"}
             `}
             >
               {node.name}
             </span>
-          </button>
+          </div>
 
           {/* Context menu button */}
           <button
-            className={`
-              shrink-0 p-1 rounded opacity-0 group-hover:opacity-100
-              transition-opacity
-              ${isActive ? "hover:bg-primary-focus" : "hover:bg-base-300"}
-            `}
+            className="shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-base-300"
             onClick={(e) => {
               e.stopPropagation();
               const rect = e.currentTarget.getBoundingClientRect();
@@ -241,44 +234,35 @@ export default function Sidebar({
   return (
     <aside className="sidebar h-full bg-base-200 border-r border-base-300 flex flex-col overflow-hidden">
       {/* Header with Project Name */}
-      <div className="p-4 border-b border-base-300 space-y-3">
-        <div>
-          <h2 className="text-sm font-semibold text-base-content/70 uppercase tracking-wide mb-1">
-            Explorer
-          </h2>
-          {projectRoot && (
+      <div className="p-3 flex justify-between items-center border-b border-base-300">
+        {/* Project Root */}
+        {projectRoot && (
+          <div className="flex items-center gap-2">
+            <Folder size={16} className="text-base-content/50 shrink-0" />
             <p
-              className="text-xs text-base-content/50 truncate font-mono"
+              className="text-xs text-base-content/60 truncate font-medium"
               title={projectRoot}
             >
               {projectRoot.split("/").pop() || projectRoot}
             </p>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Action Buttons */}
-        <div className="flex gap-2">
+        <div className="flex">
           <button
             onClick={onCreateFile}
-            className="btn btn-sm btn-outline flex-1 gap-1.5 hover:btn-primary group"
-            title="New file (Ctrl+N)"
+            className="btn btn-ghost flex-1 group justify-start"
+            title="New file"
           >
-            <FileText
-              size={14}
-              className="group-hover:scale-110 transition-transform"
-            />
-            <span className="text-xs">File</span>
+            <FilePlus size={18} className="text-base-content/70" />
           </button>
           <button
             onClick={onCreateFolder}
-            className="btn btn-sm btn-outline flex-1 gap-1.5 hover:btn-primary group"
+            className="btn btn-ghost flex-1 group justify-start"
             title="New folder"
           >
-            <Folder
-              size={14}
-              className="group-hover:scale-110 transition-transform"
-            />
-            <span className="text-xs">Folder</span>
+            <FolderPlus size={18} className="text-base-content/70" />
           </button>
         </div>
       </div>
