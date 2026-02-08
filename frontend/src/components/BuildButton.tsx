@@ -21,7 +21,7 @@ export default function BuildButton({
   const engines = ["pdflatex", "xelatex", "lualatex"];
 
   return (
-    <div className="relative flex items-center">
+    <div className="relative flex items-center" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
       {/* Main Build Button */}
       <button
         className="btn btn-primary gap-2 shadow-md hover:shadow-lg transition-all rounded-r-none"

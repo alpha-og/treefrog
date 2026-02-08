@@ -37,25 +37,28 @@ export default function Toolbar({
 
   return (
     <>
-      {/* Main Toolbar */}
-      <header className="bg-base-100 border-b border-base-content/10 px-6 py-3 flex items-center justify-between gap-6 h-16">
-        {/* Left: Logo and Home */}
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <button
-            className="p-2 rounded-lg hover:bg-base-200 transition-colors"
-            onClick={() => navigate({ to: "/" })}
-            title="Go to home"
-          >
-            <Home size={20} className="text-primary" />
-          </button>
-          <span className="text-sm font-semibold text-base-content/80">Treefrog</span>
-        </div>
+      {/* Main Toolbar - Draggable */}
+      <header 
+        className="bg-base-100 border-b border-base-content/10 px-6 py-3 flex items-center justify-between gap-6 h-16"
+        style={{ "--wails-draggable": "drag" } as React.CSSProperties}
+      >
+         {/* Left: Logo and Home */}
+         <div className="flex items-center gap-3 flex-shrink-0" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
+           <button
+             className="p-2 rounded-lg hover:bg-base-200 transition-colors"
+             onClick={() => navigate({ to: "/" })}
+             title="Go to home"
+           >
+             <Home size={20} className="text-primary" />
+           </button>
+           <span className="text-sm font-semibold text-base-content/80">Treefrog</span>
+         </div>
 
         {/* Center: Spacer */}
         <div className="flex-1" />
 
-        {/* Right: Controls and Settings */}
-        <div className="flex items-center gap-3 flex-shrink-0">
+         {/* Right: Controls and Settings */}
+         <div className="flex items-center gap-3 flex-shrink-0" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
           {/* View Settings */}
           <div className="relative">
             <button

@@ -72,7 +72,7 @@ export default function Home({ onSelectProject, loading }: HomeProps) {
 
   return (
     <FramelessWindow title="Treefrog" subtitle="Home">
-      <div className="flex-1 bg-gradient-to-br from-base-200 via-base-100 to-base-200 flex flex-col overflow-hidden">
+      <div className="flex-1 bg-gradient-to-br from-base-200 via-base-100 to-base-200 flex flex-col overflow-hidden" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
         {/* Header with Settings */}
         <div className="flex items-center justify-between px-6 py-4 flex-shrink-0">
           <div></div>

@@ -445,7 +445,7 @@ export default function Editor() {
       title="Treefrog" 
       subtitle={projectRoot ? <span className="font-mono text-xs">{projectRoot}</span> : undefined}
     >
-      <div className="flex-1 flex flex-col bg-base-100 overflow-hidden relative">
+      <div className="flex-1 flex flex-col bg-base-100 overflow-hidden relative" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
         {/* Background gradient accent */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -mr-48 -mt-48"></div>
