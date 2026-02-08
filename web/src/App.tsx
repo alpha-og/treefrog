@@ -265,40 +265,57 @@ export default function App() {
   }, [numPages]);
 
    async function loadProject() {
-     const res = await fetch(`${apiUrl}/project`);
-     if (!res.ok) return;
-     const data = await res.json();
-     setProjectRoot(data.root || "");
-     if (!data.root) {
+     try {
+       const res = await fetch(`${apiUrl}/project`);
+       if (!res.ok) {
+         console.error("Failed to load project:", res.statusText);
+         setShowProjectPicker(true);
+         return;
+       }
+       const data = await res.json();
+       setProjectRoot(data.root || "");
+       if (!data.root) {
+         setShowProjectPicker(true);
+         return;
+       }
+       setShowProjectPicker(false);
+       await loadEntries("");
+       await refreshGit();
+     } catch (err) {
+       console.error("Error loading project:", err);
        setShowProjectPicker(true);
-       return;
      }
-     setShowProjectPicker(false);
-     await loadEntries("");
-     await refreshGit();
    }
 
    async function setProjectRootFromUI() {
-     if (!projectInput.trim()) return;
-     const res = await fetch(`${apiUrl}/project/set`, {
-       method: "POST",
-       headers: { "Content-Type": "application/json" },
-       body: JSON.stringify({ root: projectInput.trim() }),
-     });
-     if (!res.ok) {
-       const msg = await res.text();
-       alert(msg);
+     if (!projectInput.trim()) {
+       alert("Please enter a project path");
        return;
      }
-     const data = await res.json();
-     setProjectRoot(data.root || "");
-     setShowProjectPicker(false);
-     setCurrentDir("");
-     setCurrentFile("");
-     currentFileRef.current = "";
-     editorInstance.current?.setValue("");
-     await loadEntries("");
-     await refreshGit();
+     try {
+       const res = await fetch(`${apiUrl}/project/set`, {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({ root: projectInput.trim() }),
+       });
+       if (!res.ok) {
+         const msg = await res.text();
+         alert(`Error: ${msg}`);
+         return;
+       }
+       const data = await res.json();
+       setProjectRoot(data.root || "");
+       setProjectInput("");
+       setShowProjectPicker(false);
+       setCurrentDir("");
+       setCurrentFile("");
+       currentFileRef.current = "";
+       editorInstance.current?.setValue("");
+       await loadEntries("");
+       await refreshGit();
+     } catch (err) {
+       alert(`Failed to set project: ${err instanceof Error ? err.message : String(err)}`);
+     }
    }
 
    async function loadEntries(dir: string) {
@@ -994,15 +1011,26 @@ export default function App() {
              <h3>Select Project Folder</h3>
              <p>Enter an absolute path to your LaTeX project.</p>
              <input
+               autoFocus
                placeholder="/path/to/project"
                value={projectInput}
                onChange={(e) => setProjectInput(e.target.value)}
+               onKeyDown={(e) => {
+                 if (e.key === "Enter") setProjectRootFromUI();
+               }}
              />
              <div className="modal-actions">
                <button onClick={setProjectRootFromUI}>Set project</button>
-               {projectRoot && (
-                 <button onClick={() => setShowProjectPicker(false)}>Cancel</button>
-               )}
+               <button onClick={() => {
+                 if (!projectRoot) {
+                   // If no project is set, warn user before closing
+                   setShowProjectPicker(true);
+                 } else {
+                   setShowProjectPicker(false);
+                 }
+               }}>
+                 {projectRoot ? "Cancel" : "Skip"}
+               </button>
              </div>
            </div>
          </div>
