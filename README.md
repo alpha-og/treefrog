@@ -9,6 +9,7 @@ Treefrog is a desktop application that provides:
 - **Live PDF Preview** - SyncTeX support for source↔PDF navigation
 - **Git Integration** - Version control and repository management
 - **Remote Compilation** - Offload LaTeX builds to a remote builder service
+- **Local Docker Renderer** - Optional bundled Docker container for local LaTeX compilation
 - **Project Management** - File browser and LaTeX project support
 
 ## Quick Start
@@ -46,10 +47,33 @@ Built app will be in `wails/build/bin/`
 ## Usage
 
 1. **Launch** the application
-2. **Settings** → Enter your Builder URL and API Token
+2. **Settings** → Configure:
+   - **Builder Settings**: Enter your remote Builder URL and API Token (optional)
+   - **Renderer Settings**: Configure local Docker renderer (optional)
 3. **File** → **Open Project** → Select your LaTeX project folder
 4. **Edit** `.tex` files in the editor
 5. **Build** → Compile and view PDF in real-time
+
+### Local Docker Renderer
+
+The app supports an optional bundled Docker container for local LaTeX compilation:
+
+**Prerequisites:**
+- Docker installed on your system ([Download Docker](https://www.docker.com/products/docker-desktop))
+
+**Setup:**
+1. Go to **Settings** → **Renderer Settings**
+2. Click **Start Renderer** to launch the Docker container
+3. Configure port if needed (default: 8080)
+4. Enable **Auto-start** to automatically start the renderer when the app launches
+
+**Features:**
+- One-click start/stop/restart operations
+- Port configuration with automatic conflict detection
+- Real-time status monitoring
+- Live logs viewer
+- Auto-start option for convenience
+- Automatic shutdown when app closes
 
 ## Configuration
 
@@ -58,9 +82,14 @@ Settings are stored at:
 - **Linux**: `~/.config/treefrog/config.json`
 - **Windows**: `%APPDATA%/treefrog/config.json`
 
-Required settings:
+### Builder Settings (Optional)
 - **Builder URL**: Remote LaTeX compiler endpoint
 - **Builder Token**: API token for authentication
+
+### Renderer Settings (Optional)
+- **Port**: Container port (default: 8080, range: 1024-65535)
+- **Auto-start**: Automatically start renderer on app launch
+- **Status**: Current renderer state (Running/Stopped/Building/Error)
 
 ## Project Structure
 
@@ -68,12 +97,18 @@ Required settings:
 treefrog/
 ├── frontend/           # React UI code
 │   ├── src/components/ # UI components
+│   │   └── RendererSettings.tsx  # Docker renderer controls
+│   ├── src/pages/      # Page components
+│   │   └── Settings.tsx          # Premium settings page
 │   ├── src/hooks/      # React hooks
 │   ├── src/services/   # Go binding layer
+│   │   └── rendererService.ts    # Renderer API service
 │   └── src/stores/     # State management
 ├── wails/              # Desktop app (Wails v2)
 │   ├── app.go          # Config and state
 │   ├── bindings.go     # Go bindings (exported to frontend)
+│   ├── docker.go       # Docker renderer lifecycle management
+│   ├── docker_config.go # Docker configuration and validators
 │   ├── menu.go         # Native menu bar
 │   └── main.go         # Entry point
 ├── remote-builder/     # LaTeX compilation service
@@ -139,6 +174,11 @@ docker run -p 9000:9000 treefrog-builder
 - **Auto-Save**: Builds trigger automatically on file changes
 - **Shell Escape**: Optional shell execution in LaTeX builds
 - **Multiple Engines**: Support for pdflatex, xelatex, lualatex
+- **Local Docker Renderer**: Optional bundled LaTeX compilation environment
+  - One-click start/stop with health checks
+  - Automatic port conflict detection
+  - Real-time status monitoring
+  - Auto-start on app launch (configurable)
 
 ## Troubleshooting
 
@@ -150,11 +190,27 @@ cd wails && wails build  # Rebuild Go binary
 ```
 
 ### Build fails
-- Verify Builder URL is accessible
+- Verify Builder URL is accessible (if using remote builder)
 - Check API Token is correct
 - Ensure main `.tex` file is selected
 - Enable shell-escape if document needs it
 - Check remote builder logs
+
+### Docker Renderer issues
+
+**Renderer won't start:**
+- Ensure Docker is installed and running
+- Check if port is available (Settings → Renderer → change port)
+- View renderer logs in Settings for error details
+- Try rebuilding the image: Click "Build Renderer" in Settings
+
+**Port already in use:**
+- Change the port number in Settings (1024-65535)
+- Or stop the service using that port and try again
+
+**Docker not installed:**
+- Download [Docker Desktop](https://www.docker.com/products/docker-desktop) for your OS
+- Restart the app after installing Docker
 
 ### PDF doesn't display
 - Verify remote builder successfully compiled document
