@@ -1137,10 +1137,11 @@ function SettingsModal({
       <div className="modal-card">
         <h3>Settings</h3>
         <p style={{ fontSize: "12px", marginBottom: "16px" }}>
-          <strong>Local Server URL:</strong> The Treefrog server running on your machine (e.g., http://localhost:8080)<br />
-          <strong>Builder URL:</strong> Remote LaTeX builder instance (e.g., Render deployment)<br />
-          <strong>Builder Token:</strong> Optional authentication for remote LaTeX compilation
+          <strong>Local Server URL:</strong> The Treefrog server running on your machine<br />
+          <strong>Builder URL:</strong> Remote LaTeX builder instance<br />
+          <strong>Builder Token:</strong> Optional authentication for remote builder
         </p>
+
         <div style={{ marginBottom: "16px" }}>
           <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "8px", color: "var(--ink-secondary)" }}>
             Local Server URL
@@ -1154,12 +1155,13 @@ function SettingsModal({
               if (e.key === "Enter") handleSave();
               if (e.key === "Escape") onClose();
             }}
-            style={{ width: "100%" }}
+            style={{ width: "100%", boxSizing: "border-box" }}
           />
           <div style={{ fontSize: "11px", color: "var(--ink-secondary)", marginTop: "6px", fontStyle: "italic" }}>
-            Default: {API_DEFAULT} • Examples: http://localhost:8080, http://192.168.1.100:8080
+            Examples: http://localhost:8080, http://192.168.1.100:8080
           </div>
         </div>
+
         <div style={{ marginBottom: "16px" }}>
           <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "8px", color: "var(--ink-secondary)" }}>
             Builder URL
@@ -1173,12 +1175,13 @@ function SettingsModal({
               if (e.key === "Enter") handleSave();
               if (e.key === "Escape") onClose();
             }}
-            style={{ width: "100%" }}
+            style={{ width: "100%", boxSizing: "border-box" }}
           />
           <div style={{ fontSize: "11px", color: "var(--ink-secondary)", marginTop: "6px", fontStyle: "italic" }}>
-            Remote LaTeX builder instance (used by local server for compilation)
+            Remote LaTeX builder for compilation
           </div>
         </div>
+
         <div style={{ marginBottom: "16px" }}>
           <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "8px", color: "var(--ink-secondary)" }}>
             Builder Token (optional)
@@ -1192,40 +1195,23 @@ function SettingsModal({
               if (e.key === "Enter") handleSave();
               if (e.key === "Escape") onClose();
             }}
-            style={{ width: "100%" }}
+            style={{ width: "100%", boxSizing: "border-box" }}
           />
           <div style={{ fontSize: "11px", color: "var(--ink-secondary)", marginTop: "6px", fontStyle: "italic" }}>
-            Authentication token for remote LaTeX builder
+            Authentication token for remote builder
           </div>
         </div>
-      </div>
-      <div style={{ marginBottom: "16px" }}>
-        <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "8px", color: "var(--ink-secondary)" }}>
-          Builder Token (optional)
-        </label>
-        <input
-          type="password"
-          placeholder="Leave empty if not required"
-          value={tokenInput}
-          onChange={(e) => setTokenInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleSave();
-            if (e.key === "Escape") onClose();
-          }}
-          style={{ width: "100%" }}
-        />
-        <div style={{ fontSize: "11px", color: "var(--ink-secondary)", marginTop: "6px", fontStyle: "italic" }}>
-          Optional authentication token for remote LaTeX builder (sent via X-Builder-Token header)
+
+        {saved && (
+          <div style={{ fontSize: "12px", color: "var(--accent)", marginBottom: "16px" }}>
+            ✓ Settings saved
+          </div>
+        )}
+
+        <div className="modal-actions">
+          <button onClick={handleSave}>Save</button>
+          <button onClick={onClose}>Cancel</button>
         </div>
-      </div>
-      {saved && (
-        <div style={{ fontSize: "12px", color: "var(--accent)", marginBottom: "16px" }}>
-          ✓ Settings saved
-        </div>
-      )}
-      <div className="modal-actions">
-        <button onClick={handleSave}>Save</button>
-        <button onClick={onClose}>Cancel</button>
       </div>
     </div>
   );
