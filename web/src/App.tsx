@@ -20,6 +20,7 @@ import {
   Moon,
   Sun,
 } from "lucide-react";
+import { EditorPane } from "./components/EditorPane";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -81,6 +82,7 @@ export default function App() {
   const [currentDir, setCurrentDir] = useState<string>("");
   const [currentFile, setCurrentFile] = useState<string>("");
   const [isBinary, setIsBinary] = useState<boolean>(false);
+  const [fileContent, setFileContent] = useState<string>("");
   const [buildStatus, setBuildStatus] = useState<BuildStatus | null>(null);
   const [pdfKey, setPdfKey] = useState<number>(Date.now());
   const [engine, setEngine] = useState<string>("pdflatex");
@@ -344,12 +346,12 @@ export default function App() {
       setProjectRoot(data.root || "");
       setProjectInput("");
       setShowProjectPicker(false);
-      setCurrentDir("");
-      setCurrentFile("");
-      currentFileRef.current = "";
-      editorInstance.current?.setValue("");
-      await loadEntries("");
-      await refreshGit();
+       setCurrentDir("");
+       setCurrentFile("");
+       currentFileRef.current = "";
+       setFileContent("");
+       await loadEntries("");
+       await refreshGit();
     } catch (err) {
       console.error("Exception in setProjectRootFromUI:", err);
       alert(`Failed to set project: ${err instanceof Error ? err.message : String(err)}`);
@@ -375,20 +377,9 @@ export default function App() {
 
     // Only set content if it's not binary
     if (!data.isBinary) {
-      // Wait for editor to be ready if it doesn't exist yet
-      if (!editorInstance.current) {
-        // Give the DOM time to mount and React to render the editor
-        await new Promise(resolve => window.setTimeout(resolve, 50));
-      }
-
-      if (editorInstance.current) {
-        ignoreChangeRef.current = true;
-        editorInstance.current.setValue(data.content || "");
-        editorInstance.current.layout();
-        window.setTimeout(() => {
-          ignoreChangeRef.current = false;
-        }, 0);
-      }
+      setFileContent(data.content || "");
+    } else {
+      setFileContent("");
     }
   }
 
@@ -634,11 +625,11 @@ export default function App() {
       await runFS("/fs/duplicate", { from: modal.path, to: modalInput.trim() });
     }
     if (modal.kind === "delete") {
-      const ok = await runFS("/fs/delete", { path: modal.path, recursive: modal.isDir });
-      if (ok && currentFile === modal.path) {
-        setCurrentFile("");
-        editorInstance.current?.setValue("");
-      }
+       const ok = await runFS("/fs/delete", { path: modal.path, recursive: modal.isDir });
+       if (ok && currentFile === modal.path) {
+         setCurrentFile("");
+         setFileContent("");
+       }
     }
     setModal(null);
   }
@@ -877,15 +868,18 @@ export default function App() {
             )}
             {visiblePanes.editor && (
               <>
-                <section className="editor" style={{ width: paneDimensions.editor > 0 ? `${paneDimensions.editor}px` : undefined, flex: paneDimensions.editor > 0 ? undefined : 1 }}>
-                  <div className="pane-header">
-                    <div className="pane-title">Editor</div>
-                  </div>
-                  {isBinary ? (
-                    <div className="binary">Binary file selected</div>
-                  ) : null}
-                  <div className="monaco" ref={editorContainer} style={{ visibility: isBinary ? "hidden" : "visible", height: isBinary ? 0 : "auto", flex: isBinary ? 0 : 1, minHeight: isBinary ? 0 : "auto" }} />
-                </section>
+                <div style={{ width: paneDimensions.editor > 0 ? `${paneDimensions.editor}px` : undefined, flex: paneDimensions.editor > 0 ? undefined : 1 }}>
+                  <EditorPane
+                    theme={theme as "light" | "dark"}
+                    fileContent={fileContent}
+                    isBinary={isBinary}
+                    onSave={async (content: string) => {
+                      if (!currentFileRef.current) return;
+                      await saveFile(currentFileRef.current, content);
+                      scheduleBuild();
+                    }}
+                  />
+                </div>
                 {visiblePanes.preview ? (
                   <div
                     className="resize-handle"
