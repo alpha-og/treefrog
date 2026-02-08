@@ -11,7 +11,8 @@ import {
 } from "lucide-react";
 import { getFileIcon } from "../utils/icons";
 import { FileEntry } from "../types";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
+import { useFileStore } from "../stores/fileStore";
 
 interface SidebarProps {
   projectRoot: string;
@@ -52,23 +53,23 @@ export default function Sidebar({
   onPush,
   onPull,
 }: SidebarProps) {
+  const { cacheFolderContents, getCachedFolderContents } = useFileStore();
   const [gitExpanded, setGitExpanded] = useState(true);
   const [commitMessage, setCommitMessage] = useState("");
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
     new Set(),
   );
-  const folderContentsRef = useRef<Map<string, FileEntry[]>>(new Map());
 
   // Store folder contents when entries are loaded
   useEffect(() => {
     // Only store if we're at root level (no currentDir) or it's the initial load
     if (currentDir === "" || currentDir === undefined) {
-      folderContentsRef.current.set("", entries);
+      cacheFolderContents("", entries);
     } else if (currentDir) {
       // Store nested folder contents
-      folderContentsRef.current.set(currentDir, entries);
+      cacheFolderContents(currentDir, entries);
     }
-  }, [currentDir, entries]);
+  }, [currentDir, entries, cacheFolderContents]);
 
   const toggleFolder = (path: string) => {
     setExpandedFolders((prev) => {
@@ -80,7 +81,7 @@ export default function Sidebar({
         // Expand
         next.add(path);
         // Only navigate if we don't have the contents cached
-        if (!folderContentsRef.current.has(path)) {
+        if (!getCachedFolderContents(path)) {
           onNavigate(path);
         }
       }
@@ -93,7 +94,7 @@ export default function Sidebar({
     parentPath: string = "",
     depth: number = 0,
   ): TreeNode[] => {
-    const contents = folderContentsRef.current.get(parentPath) || [];
+    const contents = getCachedFolderContents(parentPath) || [];
 
     return contents.map((entry) => {
       const path = parentPath ? `${parentPath}/${entry.name}` : entry.name;
