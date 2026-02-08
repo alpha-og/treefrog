@@ -1,5 +1,5 @@
 import { X, Minus, Square } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useWailsRuntime } from "../hooks/useWailsRuntime";
 
 interface TitleBarProps {
   title?: string;
@@ -7,25 +7,22 @@ interface TitleBarProps {
 }
 
 export default function TitleBar({ title = "Treefrog", onClose }: TitleBarProps) {
-  const [isMaximized, setIsMaximized] = useState(false);
+  const { minimize, maximize, close, isAvailable } = useWailsRuntime();
 
   const handleMinimize = () => {
-    // @ts-ignore - Wails runtime
-    if (typeof window !== "undefined" && window.runtime?.WindowMinimise) {
-      window.runtime.WindowMinimise();
-    }
+    minimize();
   };
 
   const handleMaximize = () => {
-    // @ts-ignore - Wails runtime
-    if (typeof window !== "undefined" && window.runtime?.WindowToggleMaximise) {
-      window.runtime.WindowToggleMaximise();
-      setIsMaximized(!isMaximized);
-    }
+    maximize();
   };
 
   const handleClose = () => {
-    onClose ? onClose() : window.close();
+    if (onClose) {
+      onClose();
+    } else {
+      close();
+    }
   };
 
   return (
@@ -41,32 +38,34 @@ export default function TitleBar({ title = "Treefrog", onClose }: TitleBarProps)
       </div>
 
       {/* Window Controls */}
-      <div
-        className="flex items-center gap-1"
-        style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-      >
-        <button
-          onClick={handleMinimize}
-          className="hover:bg-base-200 rounded p-2 transition-colors"
-          title="Minimize"
+      {isAvailable && (
+        <div
+          className="flex items-center gap-1"
+          style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
         >
-          <Minus size={16} className="text-base-content/70" />
-        </button>
-        <button
-          onClick={handleMaximize}
-          className="hover:bg-base-200 rounded p-2 transition-colors"
-          title="Maximize"
-        >
-          <Square size={16} className="text-base-content/70" />
-        </button>
-        <button
-          onClick={handleClose}
-          className="hover:bg-error hover:text-error-content rounded p-2 transition-colors"
-          title="Close"
-        >
-          <X size={16} />
-        </button>
-      </div>
+          <button
+            onClick={handleMinimize}
+            className="hover:bg-base-200 rounded p-2 transition-colors"
+            title="Minimize"
+          >
+            <Minus size={16} className="text-base-content/70" />
+          </button>
+          <button
+            onClick={handleMaximize}
+            className="hover:bg-base-200 rounded p-2 transition-colors"
+            title="Maximize"
+          >
+            <Square size={16} className="text-base-content/70" />
+          </button>
+          <button
+            onClick={handleClose}
+            className="hover:bg-error hover:text-error-content rounded p-2 transition-colors"
+            title="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
