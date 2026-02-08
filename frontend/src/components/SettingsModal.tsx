@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useAppStore } from "../stores/appStore";
 import { initializeAPI, getAPI } from "../services/api";
+import { syncConfig } from "../services/configService";
+import { isWails } from "../utils/env";
 import { Settings, Server, Key, CheckCircle2, AlertCircle, Eye, EyeOff } from "lucide-react";
 
 interface SettingsModalProps {
@@ -22,20 +24,19 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
     const trimmedUrl = url.trim() || "https://treefrog-renderer.onrender.com";
     const trimmedToken = token.trim();
 
-    // Initialize API with new URL
-    initializeAPI(trimmedApi);
+    // Web mode: Initialize HTTP API
+    if (!isWails()) {
+      initializeAPI(trimmedApi);
+    }
 
     // Update store
     setApiUrl(trimmedApi);
     setBuilderUrl(trimmedUrl);
     setBuilderToken(trimmedToken);
 
-    // Send config to server using Axios
+    // Send config to backend
     try {
-      await getAPI().post("/config", {
-        builderUrl: trimmedUrl,
-        builderToken: trimmedToken,
-      });
+      await syncConfig(trimmedUrl, trimmedToken);
     } catch (err) {
       console.warn("Could not send config to server:", err);
     }
@@ -57,30 +58,34 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
           </div>
           <div>
             <h3 className="font-bold text-lg">Settings</h3>
-            <p className="text-xs text-base-content/60">Configure server connections</p>
+            <p className="text-xs text-base-content/60">
+              {isWails() ? "Configure builder connection" : "Configure server connections"}
+            </p>
           </div>
         </div>
 
         <div className="space-y-6 py-6">
-          {/* Local Server URL */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Server size={16} className="text-primary opacity-70" />
-              <label className="label-text font-semibold text-sm">Local Server URL</label>
-              <span className="badge badge-sm badge-ghost">Required</span>
+          {/* Local Server URL - Web only */}
+          {!isWails() && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Server size={16} className="text-primary opacity-70" />
+                <label className="label-text font-semibold text-sm">Local Server URL</label>
+                <span className="badge badge-sm badge-ghost">Required</span>
+              </div>
+              <input
+                type="text"
+                placeholder="/api"
+                value={api}
+                onChange={(e) => setApi(e.target.value)}
+                className="input input-bordered w-full text-sm"
+                disabled={isSaving}
+              />
+              <p className="text-xs text-base-content/60 mt-2">
+                The Treefrog server running on your machine (e.g., <code className="bg-base-300/50 px-1 rounded">http://localhost:3000/api</code>)
+              </p>
             </div>
-            <input
-              type="text"
-              placeholder="/api"
-              value={api}
-              onChange={(e) => setApi(e.target.value)}
-              className="input input-bordered w-full text-sm"
-              disabled={isSaving}
-            />
-            <p className="text-xs text-base-content/60 mt-2">
-              The Treefrog server running on your machine (e.g., <code className="bg-base-300/50 px-1 rounded">http://localhost:3000/api</code>)
-            </p>
-          </div>
+          )}
 
           {/* Builder URL */}
           <div>
@@ -184,4 +189,3 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
     </dialog>
   );
 }
-

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { isWails } from "../utils/env";
+import { FolderOpen } from "lucide-react";
 
 interface ProjectPickerProps {
   visible: boolean;
@@ -38,24 +40,55 @@ export default function ProjectPicker({
     }
   };
 
+  // In Wails mode, we could trigger the native dialog
+  // But for now, we'll keep the same UI for consistency
+  const handleBrowse = async () => {
+    if (isWails()) {
+      try {
+        const { openProjectDialog } = await import("../services/projectService");
+        const project = await openProjectDialog();
+        if (project && project.root) {
+          setInput(project.root);
+        }
+      } catch (err) {
+        console.error("Failed to open dialog:", err);
+      }
+    }
+  };
+
   return (
     <dialog className="modal modal-open">
       <div className="modal-box w-full max-w-md">
         <h3 className="font-bold text-lg mb-4">Select Project Folder</h3>
         <p className="text-sm text-base-content/70 mb-4">
-          Enter an absolute path to your LaTeX project.
+          {isWails() 
+            ? "Select your LaTeX project folder."
+            : "Enter an absolute path to your LaTeX project."}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="text"
-            placeholder="/absolute/path/to/project"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            disabled={loading || isSubmitting}
-            className="input input-bordered w-full"
-            autoFocus
-          />
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder={isWails() ? "/path/to/project" : "/absolute/path/to/project"}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              disabled={loading || isSubmitting}
+              className="input input-bordered w-full"
+              autoFocus
+            />
+            {isWails() && (
+              <button
+                type="button"
+                onClick={handleBrowse}
+                disabled={loading || isSubmitting}
+                className="btn btn-outline"
+                title="Browse..."
+              >
+                <FolderOpen size={20} />
+              </button>
+            )}
+          </div>
 
           {error && (
             <div className="alert alert-error">
