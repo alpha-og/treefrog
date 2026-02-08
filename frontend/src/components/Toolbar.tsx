@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
-import { Zap, Monitor, Settings, Sun, Moon, ChevronDown } from "lucide-react";
+import { Zap, Monitor, Settings, Sun, Moon, ChevronDown, Home } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import SettingsModal from "./SettingsModal";
 
 interface ToolbarProps {
@@ -31,6 +32,7 @@ export default function Toolbar({
   panesVisible,
   configSynced,
 }: ToolbarProps) {
+  const navigate = useNavigate();
   const [showSettings, setShowSettings] = useState(false);
   const buildMenuRef = useRef<HTMLDetailsElement>(null);
   const viewMenuRef = useRef<HTMLDetailsElement>(null);
@@ -38,12 +40,14 @@ export default function Toolbar({
   return (
     <>
       <header className="navbar bg-base-200 sticky top-0 z-40 border-b border-base-300 flex flex-row items-center justify-between px-4 py-2 gap-4">
-        {/* Left side - Logo */}
+        {/* Left side - Logo and Home */}
         <div className="flex items-center gap-4">
           <button
             className="btn btn-ghost btn-sm gap-2"
-            onClick={() => {}}
+            onClick={() => navigate({ to: "/" })}
+            title="Go to home"
           >
+            <Home size={20} />
             <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
               Treefrog
             </span>

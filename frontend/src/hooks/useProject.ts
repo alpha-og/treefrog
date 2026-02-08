@@ -3,6 +3,9 @@ import {
   getProject,
   setProject,
 } from "../services/projectService";
+import { createLogger } from "../utils/logger";
+
+const log = createLogger("useProject");
 
 export function useProject() {
   const [root, setRoot] = useState("");
@@ -10,18 +13,21 @@ export function useProject() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    log.debug("useProject mounted - loading current project");
     (async () => {
       setLoading(true);
       try {
         const data = await getProject();
         if (data.root) {
+          log.info(`Project loaded: ${data.root}`);
           setRoot(data.root);
           setShowPicker(false);
         } else {
+          log.debug("No project loaded, showing picker");
           setShowPicker(true);
         }
       } catch (err) {
-        console.error("Failed to load project:", err);
+        log.error("Failed to load project", err);
         setShowPicker(true);
       } finally {
         setLoading(false);
@@ -31,16 +37,19 @@ export function useProject() {
 
   const select = useCallback(
     async (path: string) => {
+      log.info(`Selecting project: ${path}`);
       if (!path.trim()) {
+        log.warn("Empty project path provided");
         alert("Please enter a project path");
         return;
       }
       try {
         const data = await setProject(path.trim());
+        log.info(`Project set successfully: ${data.root}`);
         setRoot(data.root);
         setShowPicker(false);
       } catch (err) {
-        console.error("Failed to set project:", err);
+        log.error("Failed to set project", err);
         alert(`Error: ${err instanceof Error ? err.message : "Unknown error"}`);
       }
     },

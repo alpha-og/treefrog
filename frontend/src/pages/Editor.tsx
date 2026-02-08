@@ -7,47 +7,53 @@ import React, {
 } from "react";
 import * as monaco from "monaco-editor";
 import { pdfjs } from "react-pdf";
+import { useNavigate } from "@tanstack/react-router";
 
 // Components
-import Toolbar from "./components/Toolbar";
-import Sidebar from "./components/Sidebar";
-import { EditorPane } from "./components/EditorPane";
-import PreviewPane from "./components/PreviewPane";
-import ProjectPicker from "./components/ProjectPicker";
-import ContextMenu from "./components/ContextMenu";
-import EmptyPlaceholder from "./components/EmptyPlaceholder";
+import Toolbar from "../components/Toolbar";
+import Sidebar from "../components/Sidebar";
+import { EditorPane } from "../components/EditorPane";
+import PreviewPane from "../components/PreviewPane";
+import ProjectPicker from "../components/ProjectPicker";
+import ContextMenu from "../components/ContextMenu";
+import EmptyPlaceholder from "../components/EmptyPlaceholder";
 
 // Types
-import { BuildStatus, ModalState } from "./types";
+import { BuildStatus, ModalState } from "../types";
 
 // Stores
-import { useAppStore } from "./stores/appStore";
-import { useFileStore } from "./stores/fileStore";
-import { usePaneStore, useDimensionStore } from "./stores/layoutStore";
-import { useModalStore } from "./stores/modalStore";
+import { useAppStore } from "../stores/appStore";
+import { useFileStore } from "../stores/fileStore";
+import { usePaneStore, useDimensionStore } from "../stores/layoutStore";
+import { useModalStore } from "../stores/modalStore";
+import { useRecentProjectsStore } from "../stores/recentProjectsStore";
 
 // Hooks
-import { useProject } from "./hooks/useProject";
-import { useFiles } from "./hooks/useFiles";
-import { useBuild } from "./hooks/useBuild";
-import { useGit } from "./hooks/useGit";
-import { useWebSocket } from "./hooks/useWebSocket";
+import { useProject } from "../hooks/useProject";
+import { useFiles } from "../hooks/useFiles";
+import { useBuild } from "../hooks/useBuild";
+import { useGit } from "../hooks/useGit";
+import { useWebSocket } from "../hooks/useWebSocket";
 
 // Services
-import { syncConfig } from "./services/configService";
+import { syncConfig } from "../services/configService";
 
 // Utils
-import { clampPage, modalTitle, modalPlaceholder, modalHint } from "./utils/ui";
-import { joinPath } from "./utils/path";
+import { clampPage, modalTitle, modalPlaceholder, modalHint } from "../utils/ui";
+import { joinPath } from "../utils/path";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
   import.meta.url,
 ).toString();
 
-export default function App() {
+export default function Editor() {
+  // ========== ROUTER ==========
+  const navigate = useNavigate();
+
   // ========== STORES ==========
   const { theme, setTheme, apiUrl, builderUrl, builderToken } = useAppStore();
+  const { addProject } = useRecentProjectsStore();
   const {
     entries,
     currentDir,
@@ -210,12 +216,13 @@ export default function App() {
   // ========== PROJECT SELECTION ==========
   const handleSelectProject = useCallback(
     async (path: string) => {
+      addProject(path);
       await selectProject(path);
       clearFiles();
       await loadEntries("");
       await refreshGit();
     },
-    [selectProject, clearFiles, loadEntries, refreshGit],
+    [selectProject, clearFiles, loadEntries, refreshGit, addProject],
   );
 
   // ========== SAVE HANDLER ==========

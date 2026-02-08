@@ -1,6 +1,9 @@
 import { useEffect, useRef } from "react";
 import { isWails } from "../utils/env";
 import { useAppStore } from "../stores/appStore";
+import { createLogger } from "../utils/logger";
+
+const log = createLogger("WebSocket");
 
 export function useWebSocket(onMsg: (d: any) => void) {
   const onMsgRef = useRef(onMsg);
@@ -15,6 +18,7 @@ export function useWebSocket(onMsg: (d: any) => void) {
   useEffect(() => {
     // Wails mode: use Events API
     if (isWails()) {
+      log.info("Setting up Wails Events for build status");
       let unsubscribe: (() => void) | null = null;
       
       // Use eval to prevent build-time analysis of the import
@@ -24,7 +28,9 @@ export function useWebSocket(onMsg: (d: any) => void) {
           const wailsRuntime = (window as any).wails?.runtime;
           
           if (wailsRuntime?.EventsOn) {
+            log.debug("Connected to Wails runtime EventsOn");
             unsubscribe = wailsRuntime.EventsOn("build-status", (data: any) => {
+              log.debug("Received build status event", { state: data?.state });
               onMsgRef.current(data);
             });
             return;
@@ -33,15 +39,17 @@ export function useWebSocket(onMsg: (d: any) => void) {
           // Try to load from global scope
           const globalRuntime = (window as any).runtime;
           if (globalRuntime?.EventsOn) {
+            log.debug("Connected to global runtime EventsOn");
             unsubscribe = globalRuntime.EventsOn("build-status", (data: any) => {
+              log.debug("Received build status event", { state: data?.state });
               onMsgRef.current(data);
             });
             return;
           }
           
-          console.warn("Wails runtime not available, build status updates may not work");
+          log.warn("Wails runtime not available, build status updates may not work");
         } catch (err) {
-          console.error("Failed to setup Wails events:", err);
+          log.error("Failed to setup Wails events", err);
         }
       };
       
@@ -49,6 +57,7 @@ export function useWebSocket(onMsg: (d: any) => void) {
       
       return () => {
         if (unsubscribe) {
+          log.debug("Unsubscribing from Wails events");
           unsubscribe();
         }
       };
@@ -62,30 +71,37 @@ export function useWebSocket(onMsg: (d: any) => void) {
       .replace(/^https?:/, protocol === "wss:" ? "wss:" : "ws:")
       .replace(/\/api\/?$/, "/ws/build");
 
+    log.info(`Connecting to WebSocket at ${wsURL}`);
+
     let ws: WebSocket | null = null;
     let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const connect = () => {
       try {
+        log.debug("Attempting WebSocket connection");
         ws = new WebSocket(wsURL);
 
         ws.onopen = () => {
+          log.info("WebSocket connected");
           reconnectAttemptsRef.current = 0;
         };
 
         ws.onmessage = (e) => {
           try {
-            onMsgRef.current(JSON.parse(e.data));
+            const data = JSON.parse(e.data);
+            log.debug("WebSocket message received", { type: data?.type });
+            onMsgRef.current(data);
           } catch (err) {
-            console.error("Failed to parse WebSocket message:", err);
+            log.error("Failed to parse WebSocket message", err);
           }
         };
 
         ws.onerror = (event) => {
-          console.error("WebSocket error:", event);
+          log.error("WebSocket error", event);
         };
 
         ws.onclose = () => {
+          log.info("WebSocket disconnected");
           reconnectAttemptsRef.current += 1;
 
           if (reconnectAttemptsRef.current <= maxReconnectAttempts) {
@@ -93,15 +109,16 @@ export function useWebSocket(onMsg: (d: any) => void) {
               1000 + reconnectAttemptsRef.current * 500,
               10000
             );
+            log.debug(`Reconnecting in ${backoffDelay}ms (attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts})`);
             reconnectTimeout = setTimeout(connect, backoffDelay);
           } else {
-            console.warn(
+            log.warn(
               "WebSocket reconnection failed after max attempts. Build status updates will be unavailable."
             );
           }
         };
       } catch (err) {
-        console.error("Failed to create WebSocket:", err);
+        log.error("Failed to create WebSocket", err);
         reconnectAttemptsRef.current += 1;
 
         if (reconnectAttemptsRef.current <= maxReconnectAttempts) {
@@ -109,6 +126,7 @@ export function useWebSocket(onMsg: (d: any) => void) {
             1000 + reconnectAttemptsRef.current * 500,
             10000
           );
+          log.debug(`Retrying in ${backoffDelay}ms`);
           reconnectTimeout = setTimeout(connect, backoffDelay);
         }
       }
@@ -117,7 +135,10 @@ export function useWebSocket(onMsg: (d: any) => void) {
     connect();
 
     return () => {
-      if (ws) ws.close();
+      if (ws) {
+        log.debug("Closing WebSocket");
+        ws.close();
+      }
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
     };
   }, [apiUrl]);

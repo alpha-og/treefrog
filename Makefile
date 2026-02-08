@@ -1,9 +1,18 @@
 .PHONY: dev build build-all doctor stop
 
+# Development configuration
+LOG_LEVEL ?= DEBUG
+LOG_FORMAT ?= text
+VITE_LOG_LEVEL ?= debug
+
 # Desktop App Development
 dev:
 	@echo "Running Treefrog in development mode..."
-	cd wails && wails dev
+	@echo "Logging configuration:"
+	@echo "  Backend:  LOG_LEVEL=$(LOG_LEVEL), LOG_FORMAT=$(LOG_FORMAT)"
+	@echo "  Frontend: VITE_LOG_LEVEL=$(VITE_LOG_LEVEL)"
+	@echo "To change logging, use: make dev LOG_LEVEL=INFO VITE_LOG_LEVEL=warn"
+	LOG_LEVEL=$(LOG_LEVEL) LOG_FORMAT=$(LOG_FORMAT) VITE_LOG_LEVEL=$(VITE_LOG_LEVEL) cd wails && wails dev
 
 build:
 	@echo "Building Treefrog for current platform..."
@@ -29,3 +38,18 @@ stop:
 doctor:
 	@echo "Checking Wails setup..."
 	cd wails && wails doctor
+
+# Helper targets for different log levels
+.PHONY: dev-debug dev-info dev-warn dev-error
+
+dev-debug:
+	@$(MAKE) dev LOG_LEVEL=DEBUG VITE_LOG_LEVEL=debug
+
+dev-info:
+	@$(MAKE) dev LOG_LEVEL=INFO VITE_LOG_LEVEL=info
+
+dev-warn:
+	@$(MAKE) dev LOG_LEVEL=WARN VITE_LOG_LEVEL=warn
+
+dev-error:
+	@$(MAKE) dev LOG_LEVEL=ERROR VITE_LOG_LEVEL=error

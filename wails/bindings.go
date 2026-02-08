@@ -40,26 +40,34 @@ func (a *App) GetProject() (*ProjectInfo, error) {
 
 // SetProject sets the project root and opens a directory dialog if root is empty
 func (a *App) SetProject(root string) (*ProjectInfo, error) {
+	Logger.Infof("SetProject called with root: %s", root)
+
 	if root == "" {
 		// Open directory dialog
+		Logger.Debug("Opening directory dialog for project selection")
 		selected, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
 			Title: "Select Project Folder",
 		})
 		if err != nil {
+			Logger.Errorf("Failed to open directory dialog: %v", err)
 			return nil, err
 		}
 		if selected == "" {
+			Logger.Warn("No folder selected in dialog")
 			return nil, fmt.Errorf("no folder selected")
 		}
 		root = selected
+		Logger.Infof("User selected project folder: %s", root)
 	}
 
 	if err := a.setRoot(root); err != nil {
+		Logger.Errorf("Failed to set project root: %v", err)
 		return nil, err
 	}
 
 	a.config.ProjectRoot = root
 	a.saveConfig()
+	Logger.Infof("Project successfully set to: %s", root)
 
 	return a.GetProject()
 }
@@ -73,18 +81,23 @@ func (a *App) OpenProjectDialog() (*ProjectInfo, error) {
 
 // ListFiles lists files in a directory
 func (a *App) ListFiles(path string) ([]FileEntry, error) {
+	Logger.Debugf("ListFiles called with path: %s", path)
+
 	root := a.getRoot()
 	if root == "" {
+		Logger.Warn("Project root not set")
 		return nil, fmt.Errorf("project root not set")
 	}
 
 	abs, err := a.safePath(path)
 	if err != nil {
+		Logger.Errorf("SafePath failed for %s: %v", path, err)
 		return nil, err
 	}
 
 	entries, err := os.ReadDir(abs)
 	if err != nil {
+		Logger.Errorf("Failed to read directory %s: %v", abs, err)
 		return nil, err
 	}
 
@@ -126,15 +139,21 @@ type FileContent struct {
 
 // ReadFile reads a file's contents
 func (a *App) ReadFile(path string) (*FileContent, error) {
+	Logger.Debugf("ReadFile called for: %s", path)
+
 	abs, err := a.safePath(path)
 	if err != nil {
+		Logger.Errorf("SafePath failed for %s: %v", path, err)
 		return nil, err
 	}
 
 	data, err := os.ReadFile(abs)
 	if err != nil {
+		Logger.Errorf("Failed to read file %s: %v", abs, err)
 		return nil, err
 	}
+
+	Logger.Debugf("Successfully read file %s (%d bytes)", path, len(data))
 
 	// Check if binary (contains null bytes or invalid UTF-8)
 	isBinary := false
@@ -151,6 +170,10 @@ func (a *App) ReadFile(path string) (*FileContent, error) {
 		}
 	}
 
+	if isBinary {
+		Logger.Debugf("File %s detected as binary", path)
+	}
+
 	return &FileContent{
 		Content:  string(data),
 		IsBinary: isBinary,
@@ -159,17 +182,28 @@ func (a *App) ReadFile(path string) (*FileContent, error) {
 
 // WriteFile writes content to a file
 func (a *App) WriteFile(path string, content string) error {
+	Logger.Debugf("WriteFile called for: %s (%d bytes)", path, len(content))
+
 	abs, err := a.safePath(path)
 	if err != nil {
+		Logger.Errorf("SafePath failed for %s: %v", path, err)
 		return err
 	}
 
 	// Ensure parent directory exists
 	if err := os.MkdirAll(filepath.Dir(abs), 0755); err != nil {
+		Logger.Errorf("Failed to create directory for %s: %v", abs, err)
 		return err
 	}
 
-	return os.WriteFile(abs, []byte(content), 0644)
+	err = os.WriteFile(abs, []byte(content), 0644)
+	if err != nil {
+		Logger.Errorf("Failed to write file %s: %v", abs, err)
+		return err
+	}
+
+	Logger.Debugf("Successfully wrote to file: %s", path)
+	return nil
 }
 
 // CreateFile creates a new file or directory
@@ -304,8 +338,11 @@ func (a *App) GetBuildStatus() BuildStatus {
 
 // TriggerBuild starts a new build
 func (a *App) TriggerBuild(mainFile, engine string, shellEscape bool) error {
+	Logger.Infof("TriggerBuild called - mainFile: %s, engine: %s, shellEscape: %v", mainFile, engine, shellEscape)
+
 	root := a.getRoot()
 	if root == "" {
+		Logger.Error("Cannot trigger build: project root not set")
 		return fmt.Errorf("project root not set")
 	}
 
@@ -316,8 +353,10 @@ func (a *App) TriggerBuild(mainFile, engine string, shellEscape bool) error {
 		Message:   "Starting build...",
 		StartedAt: time.Now().Format(time.RFC3339),
 	}
+	buildID := a.status.ID
 	a.statusMu.Unlock()
 
+	Logger.Infof("Build %s started", buildID)
 	a.emitBuildStatus(a.status)
 
 	// Run build in background
@@ -375,11 +414,17 @@ func (a *App) runBuild(mainFile, engine string, shellEscape bool) {
 
 // uploadBuild uploads the project zip to the builder
 func (a *App) uploadBuild(zipPath, mainFile, engine string, shellEscape bool, builderURL, builderToken string) (string, error) {
+	Logger.Infof("Uploading build to %s - mainFile: %s, engine: %s", builderURL, mainFile, engine)
+
 	file, err := os.Open(zipPath)
 	if err != nil {
+		Logger.Errorf("Failed to open zip file %s: %v", zipPath, err)
 		return "", err
 	}
 	defer file.Close()
+
+	fileInfo, _ := file.Stat()
+	Logger.Debugf("Uploading zip file (size: %d bytes)", fileInfo.Size())
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -392,20 +437,24 @@ func (a *App) uploadBuild(zipPath, mainFile, engine string, shellEscape bool, bu
 	}
 	optsJSON, _ := json.Marshal(opts)
 	_ = writer.WriteField("options", string(optsJSON))
+	Logger.Debugf("Added build options: %s", string(optsJSON))
 
 	// Add file field with the zip
 	part, err := writer.CreateFormFile("file", "source.zip")
 	if err != nil {
+		Logger.Errorf("Failed to create form file: %v", err)
 		return "", err
 	}
 
 	if _, err := io.Copy(part, file); err != nil {
+		Logger.Errorf("Failed to copy file to form: %v", err)
 		return "", err
 	}
 	writer.Close()
 
 	req, err := http.NewRequest("POST", builderURL+"/build", body)
 	if err != nil {
+		Logger.Errorf("Failed to create HTTP request: %v", err)
 		return "", err
 	}
 
@@ -414,9 +463,11 @@ func (a *App) uploadBuild(zipPath, mainFile, engine string, shellEscape bool, bu
 		req.Header.Set("X-Builder-Token", builderToken)
 	}
 
+	Logger.Debugf("Sending HTTP POST request to %s/build", builderURL)
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
+		Logger.Errorf("HTTP request failed: %v", err)
 		return "", err
 	}
 	defer resp.Body.Close()
@@ -775,13 +826,18 @@ func runGit(root string, args ...string) (string, error) {
 
 // GitCommit commits changes
 func (a *App) GitCommit(message string, files []string, all bool) error {
+	Logger.Infof("GitCommit called - message: %s, all: %v, files: %d", message, all, len(files))
+
 	root := a.getRoot()
 	if root == "" {
+		Logger.Error("Cannot commit: project root not set")
 		return fmt.Errorf("project root not set")
 	}
 
 	if all {
+		Logger.Debug("Adding all files with 'git add -A'")
 		if _, err := runGit(root, "add", "-A"); err != nil {
+			Logger.Errorf("Failed to stage files: %v", err)
 			return err
 		}
 	}
