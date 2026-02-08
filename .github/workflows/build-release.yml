@@ -6,43 +6,42 @@ on:
       - 'v*'
   workflow_dispatch:
 
+env:
+  # Allocate more memory for Node.js to prevent OOM errors during frontend build
+  NODE_OPTIONS: "--max-old-space-size=4096"
+
 jobs:
   build:
     strategy:
+      # Failure in one platform build won't impact the others
+      fail-fast: false
       matrix:
         include:
-          # macOS builds
+          # macOS universal build (Intel x86_64 + Apple Silicon ARM64)
           - os: macos-latest
-            platform: darwin/amd64
-            arch: x86_64
-            output_name: treefrog-macos-x86_64
-            artifact_path: wails/build/bin/Treefrog.app
-
-          - os: macos-latest
-            platform: darwin/arm64
-            arch: arm64
-            output_name: treefrog-macos-arm64
-            artifact_path: wails/build/bin/Treefrog.app
+            platform: darwin/universal
+            output_name: treefrog-macos-universal
+            artifact_pattern: "treefrog-macos-universal.*"
 
           # Linux builds
           - os: ubuntu-latest
             platform: linux/amd64
-            arch: x86_64
             output_name: treefrog-linux-x86_64
-            artifact_path: wails/build/bin/treefrog
+            artifact_pattern: "treefrog-linux-x86_64.*"
 
           # Windows builds
           - os: windows-latest
             platform: windows/amd64
-            arch: x64
             output_name: treefrog-windows-x64
-            artifact_path: wails/build/bin/treefrog.exe
+            artifact_pattern: "treefrog-windows-x64.*"
 
     runs-on: ${{ matrix.os }}
     
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       # Setup Go
       - name: Set up Go
@@ -66,13 +65,21 @@ jobs:
         if: runner.os == 'macos'
         run: |
           brew install pkg-config
-          echo "Building for ${{ matrix.arch }}"
+          echo "Building for darwin/universal"
 
       - name: Setup Linux dependencies
         if: runner.os == 'linux'
+        id: linux_setup
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev
+          DISTRO=$(lsb_release -rs)
+          if [[ "$DISTRO" == "24.04" ]]; then
+            sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+          else
+            sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+          fi
+          echo "DISTRO=$DISTRO" >> "$GITHUB_ENV"
+        shell: bash
 
       # Install Wails CLI
       - name: Install Wails CLI
@@ -102,27 +109,22 @@ jobs:
       - name: Build Treefrog for ${{ matrix.platform }}
         run: |
           cd wails
-          wails build -platform ${{ matrix.platform }}
+          BUILD_FLAGS=""
+          if [[ "$DISTRO" == "24.04" && "${{ runner.os }}" == "Linux" ]]; then
+            BUILD_FLAGS="-tags webkit2_41"
+          fi
+          wails build -platform ${{ matrix.platform }} $BUILD_FLAGS
+        shell: bash
 
       # Create installer/archive
-      - name: Create macOS DMG (Intel)
-        if: matrix.platform == 'darwin/amd64'
+      - name: Create macOS DMG (Universal)
+        if: matrix.platform == 'darwin/universal'
         run: |
           cd wails/build/bin
           mkdir -p Treefrog.dmg-source
           cp -r Treefrog.app Treefrog.dmg-source/
-          hdiutil create -srcfolder Treefrog.dmg-source -volname Treefrog -ov -format UDZO -o treefrog-macos-x86_64.dmg
-          mv treefrog-macos-x86_64.dmg ../../../treefrog-macos-x86_64.dmg
-          rm -rf Treefrog.dmg-source
-
-      - name: Create macOS DMG (ARM64)
-        if: matrix.platform == 'darwin/arm64'
-        run: |
-          cd wails/build/bin
-          mkdir -p Treefrog.dmg-source
-          cp -r Treefrog.app Treefrog.dmg-source/
-          hdiutil create -srcfolder Treefrog.dmg-source -volname Treefrog -ov -format UDZO -o treefrog-macos-arm64.dmg
-          mv treefrog-macos-arm64.dmg ../../../treefrog-macos-arm64.dmg
+          hdiutil create -srcfolder Treefrog.dmg-source -volname Treefrog -ov -format UDZO -o treefrog-macos-universal.dmg
+          mv treefrog-macos-universal.dmg ../../../treefrog-macos-universal.dmg
           rm -rf Treefrog.dmg-source
 
       - name: Create Linux tarball
