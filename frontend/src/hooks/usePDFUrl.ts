@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { isWails } from '../utils/env';
 import * as App from 'wailsjs/go/main/App';
+import { createLogger } from '../utils/logger';
+
+const log = createLogger('usePDFUrl');
 
 /**
  * Hook to get a PDF URL that works in both web and Wails desktop modes.
@@ -29,16 +32,22 @@ export function usePDFUrl(apiUrl: string, pdfKey: number): {
       setError(null);
 
       try {
-        if (isWails()) {
+        const wailsMode = isWails();
+        log.debug(`Loading PDF - Wails mode: ${wailsMode}, pdfKey: ${pdfKey}`);
+
+        if (wailsMode) {
           // Wails mode: Get PDF content via Go bindings and create blob URL
           try {
+            log.debug('Calling App.GetPDFContent()');
             const base64Content = await App.GetPDFContent();
+            log.debug(`Got PDF content, length: ${base64Content?.length || 0}`);
             
             if (!base64Content) {
-              throw new Error('No PDF content returned');
+              throw new Error('No PDF content returned from backend');
             }
             
             // Decode base64 to binary
+            log.debug('Decoding base64 content');
             const binaryString = atob(base64Content);
             const bytes = new Uint8Array(binaryString.length);
             for (let i = 0; i < binaryString.length; i++) {
@@ -46,20 +55,26 @@ export function usePDFUrl(apiUrl: string, pdfKey: number): {
             }
             
             // Create blob from decoded bytes
+            log.debug(`Creating blob with ${bytes.length} bytes`);
             const blob = new Blob([bytes], { type: 'application/pdf' });
             objectUrl = URL.createObjectURL(blob);
+            log.info(`PDF loaded successfully via Wails: ${objectUrl}`);
             setPdfUrl(objectUrl);
           } catch (wailerr) {
-            throw new Error(`Wails error: ${wailerr instanceof Error ? wailerr.message : 'Unknown error'}`);
+            const errMsg = wailerr instanceof Error ? wailerr.message : 'Unknown error';
+            log.error(`Wails error: ${errMsg}`, wailerr);
+            throw new Error(`Wails error: ${errMsg}`);
           }
         } else {
           // Web mode: Use HTTP URL directly
-          setPdfUrl(`${apiUrl}/export/pdf?ts=${pdfKey}`);
+          const url = `${apiUrl}/export/pdf?ts=${pdfKey}`;
+          log.info(`Using HTTP URL for PDF: ${url}`);
+          setPdfUrl(url);
         }
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : 'Failed to load PDF';
+        log.error(`PDF loading failed: ${errorMsg}`, err);
         setError(errorMsg);
-        console.error('PDF loading error:', err);
       } finally {
         setLoading(false);
       }
@@ -70,6 +85,7 @@ export function usePDFUrl(apiUrl: string, pdfKey: number): {
     // Cleanup: Revoke blob URL when component unmounts or key changes
     return () => {
       if (objectUrl) {
+        log.debug(`Revoking blob URL: ${objectUrl}`);
         URL.revokeObjectURL(objectUrl);
       }
     };

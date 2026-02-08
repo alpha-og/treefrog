@@ -353,54 +353,65 @@ export default function PreviewPane({
         </div>
       </div>
 
-      {/* PDF Viewer */}
-      <div className="flex-1 overflow-auto min-h-0 bg-gradient-to-br from-base-100 via-base-200/30 to-base-100 relative z-0">
-        {projectRoot ? (
-          buildStatus?.state === "building" ? (
-            <div className="flex flex-col items-center justify-center h-full text-base-content/50 gap-4 animate-in fade-in duration-500">
-              <div className="relative">
-                <div className="absolute inset-0 bg-warning/20 rounded-full blur-2xl animate-pulse"></div>
-                <Loader2 size={56} className="animate-spin text-warning relative" />
-              </div>
-              <div className="text-center">
-                <p className="font-semibold text-base-content/80">Compiling LaTeX...</p>
-                <p className="text-xs text-base-content/50 mt-2">This may take a moment</p>
-              </div>
-            </div>
+       {/* PDF Viewer */}
+       <div className="flex-1 overflow-auto min-h-0 bg-gradient-to-br from-base-100 via-base-200/30 to-base-100 relative z-0">
+         {projectRoot ? (
+           buildStatus?.state === "building" ? (
+             <div className="flex flex-col items-center justify-center h-full text-base-content/50 gap-4 animate-in fade-in duration-500">
+               <div className="relative">
+                 <div className="absolute inset-0 bg-warning/20 rounded-full blur-2xl animate-pulse"></div>
+                 <Loader2 size={56} className="animate-spin text-warning relative" />
+               </div>
+               <div className="text-center">
+                 <p className="font-semibold text-base-content/80">Compiling LaTeX...</p>
+                 <p className="text-xs text-base-content/50 mt-2">This may take a moment</p>
+               </div>
+             </div>
+           ) : pdfLoading ? (
+             <div className="flex flex-col items-center justify-center h-full text-base-content/50 gap-4 animate-in fade-in duration-500">
+               <div className="relative">
+                 <div className="absolute inset-0 bg-info/20 rounded-full blur-2xl animate-pulse"></div>
+                 <Loader2 size={56} className="animate-spin text-info relative" />
+               </div>
+               <div className="text-center">
+                 <p className="font-semibold text-base-content/80">Loading PDF...</p>
+                 <p className="text-xs text-base-content/50 mt-2">Please wait</p>
+               </div>
+             </div>
           ) : pdfUrl && !pdfError ? (
-            <PDFPreview
-              url={pdfUrl}
-              onNumPagesChange={onNumPagesChange}
-              currentPage={currentPage}
-              zoom={zoom}
-              pageProxyRef={pageProxyRef}
-              registerPageRef={registerPageRef}
-            />
-          ) : pdfError ? (
-            <div className="flex flex-col items-center justify-center h-full text-error gap-4 animate-in fade-in duration-500">
-              <div className="p-4 rounded-full bg-error/20">
-                <XCircle size={48} />
-              </div>
-              <div className="text-center max-w-sm">
-                <p className="font-semibold text-base text-error/90">Unable to load PDF</p>
-                <p className="text-sm text-error/70 mt-2">
-                  {pdfError instanceof Error ? pdfError.message : "An error occurred while loading the preview"}
-                </p>
-              </div>
-            </div>
-          ) : null
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full text-base-content/50 gap-4">
-            <div className="p-4 rounded-full bg-base-content/10">
-              <FileText size={48} />
-            </div>
-            <div className="text-center">
-              <p className="font-medium">No project selected</p>
-              <p className="text-sm text-base-content/60 mt-2">Choose a folder to get started</p>
-            </div>
-          </div>
-        )}
-      </div>
+              <PDFPreview
+                url={pdfUrl}
+                numPages={numPages}
+                onNumPagesChange={onNumPagesChange}
+                zoom={zoom}
+                pageProxyRef={pageProxyRef}
+                registerPageRef={registerPageRef}
+              />
+           ) : pdfError ? (
+             <div className="flex flex-col items-center justify-center h-full text-error gap-4 animate-in fade-in duration-500">
+               <div className="p-4 rounded-full bg-error/20">
+                 <XCircle size={48} />
+               </div>
+               <div className="text-center max-w-sm">
+                 <p className="font-semibold text-base text-error/90">Unable to load PDF</p>
+                 <p className="text-sm text-error/70 mt-2">
+                   {pdfError instanceof Error ? pdfError.message : "An error occurred while loading the preview"}
+                 </p>
+               </div>
+             </div>
+           ) : null
+         ) : (
+           <div className="flex flex-col items-center justify-center h-full text-base-content/50 gap-4">
+             <div className="p-4 rounded-full bg-base-content/10">
+               <FileText size={48} />
+             </div>
+             <div className="text-center">
+               <p className="font-medium">No project selected</p>
+               <p className="text-sm text-base-content/60 mt-2">Choose a folder to get started</p>
+             </div>
+           </div>
+         )}
+       </div>
     </section>
   );
 }

@@ -20,8 +20,21 @@ export default function PDFPreview({
   pageProxyRef,
 }: PDFPreviewProps) {
   const [error, setError] = useState("");
+  // Track internal page count to handle the initial load correctly
+  const [internalNumPages, setInternalNumPages] = useState<number>(0);
 
-  useEffect(() => setError(""), [url]);
+  useEffect(() => {
+    setError("");
+    setInternalNumPages(0); // Reset when URL changes
+  }, [url]);
+
+  const handleLoadSuccess = (d: any) => {
+    setInternalNumPages(d.numPages);
+    onNumPagesChange(d.numPages);
+  };
+
+  // Use internal page count if available, otherwise fall back to prop
+  const pagesToRender = internalNumPages > 0 ? internalNumPages : numPages;
 
   if (error) {
     return (
@@ -35,7 +48,7 @@ export default function PDFPreview({
     <div className="flex flex-col items-center gap-4 p-4">
       <Document
         file={url}
-        onLoadSuccess={(d: any) => onNumPagesChange(d.numPages)}
+        onLoadSuccess={handleLoadSuccess}
         onLoadError={() => setError("Failed to load PDF")}
         loading={
           <div className="flex items-center justify-center py-8">
@@ -43,15 +56,17 @@ export default function PDFPreview({
           </div>
         }
       >
-        {Array.from({ length: numPages }, (_, i) => i + 1).map((pageNum) => (
-          <PDFPage
-            key={pageNum}
-            pageNum={pageNum}
-            zoom={zoom}
-            pageProxyRef={pageProxyRef}
-            registerPageRef={registerPageRef}
-          />
-        ))}
+        {pagesToRender > 0 ? (
+          Array.from({ length: pagesToRender }, (_, i) => i + 1).map((pageNum) => (
+            <PDFPage
+              key={pageNum}
+              pageNum={pageNum}
+              zoom={zoom}
+              pageProxyRef={pageProxyRef}
+              registerPageRef={registerPageRef}
+            />
+          ))
+        ) : null}
       </Document>
     </div>
   );
