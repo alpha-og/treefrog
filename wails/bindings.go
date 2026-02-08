@@ -551,10 +551,13 @@ func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape boo
 
 // checkRemoteBuild checks the status of a remote build
 func (a *App) checkRemoteBuild(remoteID, builderURL, builderToken string) (string, error) {
+	Logger.Debugf("Checking remote build status for: %s", remoteID)
+
 	url := builderURL + "/build/" + remoteID + "/status"
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
+		Logger.Errorf("Failed to create HTTP request: %v", err)
 		return "", err
 	}
 
@@ -565,28 +568,40 @@ func (a *App) checkRemoteBuild(remoteID, builderURL, builderToken string) (strin
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
+		Logger.Errorf("Build status check failed: %v", err)
 		return "", err
 	}
 	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		Logger.Errorf("Failed to read response body: %v", err)
+		return "", err
+	}
 
 	var result struct {
 		Status  string `json:"status"`
 		Message string `json:"message"`
 		Error   string `json:"error"`
 	}
-	if err := json.Unmarshal(io.ReadAll(resp.Body)); err != nil {
+	if err := json.Unmarshal(body, &result); err != nil {
+		Logger.Errorf("Failed to unmarshal build status response: %v", err)
 		return "", err
 	}
 
+	Logger.Debugf("Build status for %s: %s", remoteID, result.Status)
 	return result.Status, nil
 }
 
 // downloadPDF downloads the built PDF
 func (a *App) downloadPDF(remoteID, builderURL, builderToken string) error {
+	Logger.Infof("Downloading PDF for build: %s", remoteID)
+
 	url := builderURL + "/build/" + remoteID + "/artifacts/pdf"
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
+		Logger.Errorf("Failed to create PDF download request: %v", err)
 		return err
 	}
 
@@ -597,12 +612,14 @@ func (a *App) downloadPDF(remoteID, builderURL, builderToken string) error {
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
+		Logger.Errorf("PDF download request failed: %v", err)
 		return fmt.Errorf("PDF download failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
+		Logger.Errorf("PDF download returned status %d: %s", resp.StatusCode, string(body))
 		return fmt.Errorf("PDF download failed with status %s: %s", resp.Status, string(body))
 	}
 
@@ -610,35 +627,44 @@ func (a *App) downloadPDF(remoteID, builderURL, builderToken string) error {
 
 	file, err := os.Create(pdfPath)
 	if err != nil {
+		Logger.Errorf("Failed to create PDF file: %v", err)
 		return err
 	}
 	defer file.Close()
 
 	n, err := io.Copy(file, resp.Body)
 	if err != nil {
+		Logger.Errorf("Failed to save PDF: %v", err)
 		return fmt.Errorf("failed to save PDF: %w", err)
 	}
 
 	if n == 0 {
+		Logger.Error("Downloaded PDF file is empty")
 		return fmt.Errorf("PDF file is empty")
 	}
+
+	Logger.Debugf("PDF downloaded successfully (%d bytes)", n)
 
 	// Check if it's a valid PDF (starts with %PDF)
 	f, err := os.Open(pdfPath)
 	if err != nil {
+		Logger.Errorf("Failed to open PDF for validation: %v", err)
 		return err
 	}
 	defer f.Close()
 
 	header := make([]byte, 4)
 	if _, err := f.Read(header); err != nil {
+		Logger.Errorf("Failed to read PDF header: %v", err)
 		return err
 	}
 
 	if string(header) != "%PDF" {
+		Logger.Errorf("Invalid PDF file: header is %s, expected %%PDF", string(header))
 		return fmt.Errorf("invalid PDF file: header is %s, expected %%PDF", string(header))
 	}
 
+	Logger.Infof("PDF validated successfully: %s", pdfPath)
 	return nil
 }
 
