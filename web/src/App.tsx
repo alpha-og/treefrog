@@ -288,22 +288,27 @@ export default function App() {
    }
 
    async function setProjectRootFromUI() {
+     console.log("setProjectRootFromUI called with projectInput:", projectInput);
      if (!projectInput.trim()) {
        alert("Please enter a project path");
        return;
      }
      try {
+       console.log("Fetching to set project at:", `${apiUrl}/project/set`);
        const res = await fetch(`${apiUrl}/project/set`, {
          method: "POST",
          headers: { "Content-Type": "application/json" },
          body: JSON.stringify({ root: projectInput.trim() }),
        });
+       console.log("Response status:", res.status, res.ok);
        if (!res.ok) {
          const msg = await res.text();
+         console.error("Error response:", msg);
          alert(`Error: ${msg}`);
          return;
        }
        const data = await res.json();
+       console.log("Project set successfully:", data);
        setProjectRoot(data.root || "");
        setProjectInput("");
        setShowProjectPicker(false);
@@ -314,11 +319,12 @@ export default function App() {
        await loadEntries("");
        await refreshGit();
      } catch (err) {
+       console.error("Exception in setProjectRootFromUI:", err);
        alert(`Failed to set project: ${err instanceof Error ? err.message : String(err)}`);
-     }
-   }
+      }
+    }
 
-   async function loadEntries(dir: string) {
+    async function loadEntries(dir: string) {
      const path = dir === "" ? "." : dir;
      const res = await fetch(`${apiUrl}/files?path=${encodeURIComponent(path)}`);
      if (!res.ok) return;
@@ -1020,14 +1026,13 @@ export default function App() {
                }}
              />
              <div className="modal-actions">
-               <button onClick={setProjectRootFromUI}>Set project</button>
                <button onClick={() => {
-                 if (!projectRoot) {
-                   // If no project is set, warn user before closing
-                   setShowProjectPicker(true);
-                 } else {
-                   setShowProjectPicker(false);
-                 }
+                 console.log("Set project clicked, projectInput:", projectInput);
+                 setProjectRootFromUI();
+               }}>Set project</button>
+               <button onClick={() => {
+                 console.log("Skip/Cancel clicked, projectRoot:", projectRoot);
+                 setShowProjectPicker(false);
                }}>
                  {projectRoot ? "Cancel" : "Skip"}
                </button>
@@ -1099,61 +1104,61 @@ function SettingsModal({
     }, 500);
   };
 
-  return (
-    <div className="modal">
-      <div className="modal-card">
-        <h3>Settings</h3>
-        <p>Configure the API endpoint and builder token for this application.</p>
-        <div style={{ marginBottom: "16px" }}>
-          <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "8px", color: "var(--ink-secondary)" }}>
-            API URL
-          </label>
-          <input
-            type="text"
-            placeholder={API_DEFAULT}
-            value={apiInput}
-            onChange={(e) => setApiInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSave();
-              if (e.key === "Escape") onClose();
-            }}
-            style={{ width: "100%" }}
-          />
-          <div style={{ fontSize: "11px", color: "var(--ink-secondary)", marginTop: "6px", fontStyle: "italic" }}>
-            Default: {API_DEFAULT}
-          </div>
-        </div>
-        <div style={{ marginBottom: "16px" }}>
-          <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "8px", color: "var(--ink-secondary)" }}>
-            Builder Token (optional)
-          </label>
-          <input
-            type="password"
-            placeholder="Leave empty if not required"
-            value={tokenInput}
-            onChange={(e) => setTokenInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSave();
-              if (e.key === "Escape") onClose();
-            }}
-            style={{ width: "100%" }}
-          />
-          <div style={{ fontSize: "11px", color: "var(--ink-secondary)", marginTop: "6px", fontStyle: "italic" }}>
-            Token for authenticating with the remote builder
-          </div>
-        </div>
-        {saved && (
-          <div style={{ fontSize: "12px", color: "var(--accent)", marginBottom: "16px" }}>
-            ✓ Settings saved
-          </div>
-        )}
-        <div className="modal-actions">
-          <button onClick={handleSave}>Save</button>
-          <button onClick={onClose}>Cancel</button>
+   return (
+     <div className="modal">
+       <div className="modal-card">
+         <h3>Settings</h3>
+         <p>Configure the Treefrog local server and remote builder settings.</p>
+         <div style={{ marginBottom: "16px" }}>
+           <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "8px", color: "var(--ink-secondary)" }}>
+             Local Server URL
+           </label>
+           <input
+             type="text"
+             placeholder={API_DEFAULT}
+             value={apiInput}
+             onChange={(e) => setApiInput(e.target.value)}
+             onKeyDown={(e) => {
+               if (e.key === "Enter") handleSave();
+               if (e.key === "Escape") onClose();
+             }}
+             style={{ width: "100%" }}
+           />
+           <div style={{ fontSize: "11px", color: "var(--ink-secondary)", marginTop: "6px", fontStyle: "italic" }}>
+             Default: {API_DEFAULT} - Should point to your running Treefrog local server instance
+           </div>
+         </div>
+         <div style={{ marginBottom: "16px" }}>
+           <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "8px", color: "var(--ink-secondary)" }}>
+             Builder Token (optional)
+           </label>
+           <input
+             type="password"
+             placeholder="Leave empty if not required"
+             value={tokenInput}
+             onChange={(e) => setTokenInput(e.target.value)}
+             onKeyDown={(e) => {
+               if (e.key === "Enter") handleSave();
+               if (e.key === "Escape") onClose();
+             }}
+             style={{ width: "100%" }}
+           />
+           <div style={{ fontSize: "11px", color: "var(--ink-secondary)", marginTop: "6px", fontStyle: "italic" }}>
+             Optional authentication token for remote LaTeX builder (sent via X-Builder-Token header)
+           </div>
+         </div>
+         {saved && (
+           <div style={{ fontSize: "12px", color: "var(--accent)", marginBottom: "16px" }}>
+             ✓ Settings saved
+           </div>
+         )}
+         <div className="modal-actions">
+           <button onClick={handleSave}>Save</button>
+           <button onClick={onClose}>Cancel</button>
+         </div>
         </div>
       </div>
-    </div>
-  );
+    );
 }
 
 function EmptyPlaceholder() {
