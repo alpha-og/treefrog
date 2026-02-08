@@ -1128,61 +1128,64 @@ function SettingsModal({
     }, 500);
   };
 
-   return (
-     <div className="modal">
-       <div className="modal-card">
-         <h3>Settings</h3>
-         <p>Configure the Treefrog local server and remote builder settings.</p>
-         <div style={{ marginBottom: "16px" }}>
-           <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "8px", color: "var(--ink-secondary)" }}>
-             Local Server URL
-           </label>
-           <input
-             type="text"
-             placeholder={API_DEFAULT}
-             value={apiInput}
-             onChange={(e) => setApiInput(e.target.value)}
-             onKeyDown={(e) => {
-               if (e.key === "Enter") handleSave();
-               if (e.key === "Escape") onClose();
-             }}
-             style={{ width: "100%" }}
-           />
-           <div style={{ fontSize: "11px", color: "var(--ink-secondary)", marginTop: "6px", fontStyle: "italic" }}>
-             Default: {API_DEFAULT} - Should point to your running Treefrog local server instance
-           </div>
+    return (
+      <div className="modal">
+        <div className="modal-card">
+          <h3>Settings</h3>
+          <p style={{ fontSize: "12px", marginBottom: "16px" }}>
+            <strong>Local Server URL:</strong> The Treefrog server running on your machine (e.g., http://localhost:8080)<br />
+            <strong>Builder Token:</strong> Optional authentication for remote LaTeX compilation
+          </p>
+          <div style={{ marginBottom: "16px" }}>
+            <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "8px", color: "var(--ink-secondary)" }}>
+              Local Server URL
+            </label>
+            <input
+              type="text"
+              placeholder={API_DEFAULT}
+              value={apiInput}
+              onChange={(e) => setApiInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSave();
+                if (e.key === "Escape") onClose();
+              }}
+              style={{ width: "100%" }}
+            />
+            <div style={{ fontSize: "11px", color: "var(--ink-secondary)", marginTop: "6px", fontStyle: "italic" }}>
+              Default: {API_DEFAULT} • Examples: http://localhost:8080, http://192.168.1.100:8080
+            </div>
+          </div>
+          <div style={{ marginBottom: "16px" }}>
+            <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "8px", color: "var(--ink-secondary)" }}>
+              Builder Token (optional)
+            </label>
+            <input
+              type="password"
+              placeholder="Leave empty if not required"
+              value={tokenInput}
+              onChange={(e) => setTokenInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSave();
+                if (e.key === "Escape") onClose();
+              }}
+              style={{ width: "100%" }}
+            />
+            <div style={{ fontSize: "11px", color: "var(--ink-secondary)", marginTop: "6px", fontStyle: "italic" }}>
+              Optional authentication token for remote LaTeX builder (sent via X-Builder-Token header)
+            </div>
+          </div>
+          {saved && (
+            <div style={{ fontSize: "12px", color: "var(--accent)", marginBottom: "16px" }}>
+              ✓ Settings saved
+            </div>
+          )}
+          <div className="modal-actions">
+            <button onClick={handleSave}>Save</button>
+            <button onClick={onClose}>Cancel</button>
+          </div>
          </div>
-         <div style={{ marginBottom: "16px" }}>
-           <label style={{ display: "block", fontSize: "12px", fontWeight: 600, marginBottom: "8px", color: "var(--ink-secondary)" }}>
-             Builder Token (optional)
-           </label>
-           <input
-             type="password"
-             placeholder="Leave empty if not required"
-             value={tokenInput}
-             onChange={(e) => setTokenInput(e.target.value)}
-             onKeyDown={(e) => {
-               if (e.key === "Enter") handleSave();
-               if (e.key === "Escape") onClose();
-             }}
-             style={{ width: "100%" }}
-           />
-           <div style={{ fontSize: "11px", color: "var(--ink-secondary)", marginTop: "6px", fontStyle: "italic" }}>
-             Optional authentication token for remote LaTeX builder (sent via X-Builder-Token header)
-           </div>
-         </div>
-         {saved && (
-           <div style={{ fontSize: "12px", color: "var(--accent)", marginBottom: "16px" }}>
-             ✓ Settings saved
-           </div>
-         )}
-         <div className="modal-actions">
-           <button onClick={handleSave}>Save</button>
-           <button onClick={onClose}>Cancel</button>
-         </div>
-        </div>
-      </div>
-    );
+       </div>
+     );
 }
 
 function EmptyPlaceholder() {
