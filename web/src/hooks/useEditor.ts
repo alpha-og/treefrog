@@ -31,12 +31,6 @@ export function useEditor(
       latexSetupDone = true;
     }
 
-    console.log("[useEditor] Creating editor in container:", containerRef.current);
-    console.log("[useEditor] Container dimensions:", {
-      width: containerRef.current.clientWidth,
-      height: containerRef.current.clientHeight,
-    });
-
     editorRef.current = monaco.editor.create(containerRef.current, {
       value: "",
       language: "latex",
@@ -47,8 +41,6 @@ export function useEditor(
       fontFamily: "IBM Plex Mono, monospace",
     });
 
-    console.log("[useEditor] Editor created successfully");
-
     // Handle content changes
     editorRef.current.onDidChangeModelContent(() => {
       if (ignoreChange.current) return;
@@ -57,7 +49,7 @@ export function useEditor(
 
       saveTimer.current = window.setTimeout(() => {
         onSave(editorRef.current?.getValue() || "");
-      }, 600);
+      }, 300);
     });
 
     // Keyboard shortcuts
@@ -94,7 +86,6 @@ export function useEditor(
   // Update content when file changes
   useEffect(() => {
     if (editorRef.current && !isBinary) {
-      console.log("[useEditor] Updating content, length:", fileContent.length, "binary:", isBinary);
       ignoreChange.current = true;
       editorRef.current.setValue(fileContent);
       editorRef.current.layout();
