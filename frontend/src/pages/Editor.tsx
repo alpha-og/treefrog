@@ -368,50 +368,50 @@ export default function Editor() {
   ]);
 
   // ========== RESIZE HANDLERS ==========
-  const handleResizeStart = useCallback(
-    (which: "sidebar-editor" | "editor-preview", e: React.MouseEvent) => {
-      e.preventDefault();
-      resizingRef.current = which;
-      setIsResizing(which);
-      startPosRef.current = e.clientX;
-      startDimsRef.current = { sidebar: sidebarWidth, editor: editorWidth };
+   const handleResizeStart = useCallback(
+     (which: "sidebar-editor" | "editor-preview", e: React.MouseEvent) => {
+       e.preventDefault();
+       resizingRef.current = which;
+       setIsResizing(which);
+       startPosRef.current = e.clientX;
+       startDimsRef.current = { sidebar: sidebarWidth, editor: editorWidth };
 
-      const handleResizeMove = (moveEvent: MouseEvent) => {
-        if (!resizingRef.current || !mainRef.current) return;
-        const delta = moveEvent.clientX - startPosRef.current;
-        const mainRect = mainRef.current.getBoundingClientRect();
-        const mainWidth = mainRect.width;
+       const handleResizeMove = (moveEvent: MouseEvent) => {
+         if (!resizingRef.current || !mainRef.current) return;
+         const delta = moveEvent.clientX - startPosRef.current;
+         const mainRect = mainRef.current.getBoundingClientRect();
+         const mainWidth = mainRect.width;
 
-        if (resizingRef.current === "sidebar-editor") {
-          const newSidebar = Math.max(
-            200,
-            Math.min(400, startDimsRef.current.sidebar + delta),
-          );
-          setSidebarWidth(newSidebar);
-        } else if (resizingRef.current === "editor-preview") {
-          const newEditor = Math.max(
-            200,
-            Math.min(
-              mainWidth - startDimsRef.current.sidebar - 200,
-              startDimsRef.current.editor + delta,
-            ),
-          );
-          setEditorWidth(newEditor);
-        }
-      };
+         if (resizingRef.current === "sidebar-editor") {
+           // Sidebar resize: min 200px, max 60% of main width
+           const newSidebar = Math.max(
+             200,
+             Math.min(mainWidth * 0.6, startDimsRef.current.sidebar + delta),
+           );
+           setSidebarWidth(newSidebar);
+         } else if (resizingRef.current === "editor-preview") {
+           // Editor resize: min 300px, max leaves 200px for preview
+           const maxEditor = mainWidth - startDimsRef.current.sidebar - 200;
+           const newEditor = Math.max(
+             300,
+             Math.min(maxEditor, startDimsRef.current.editor + delta),
+           );
+           setEditorWidth(newEditor);
+         }
+       };
 
-      const handleResizeEnd = () => {
-        resizingRef.current = null;
-        setIsResizing(null);
-        document.removeEventListener("mousemove", handleResizeMove);
-        document.removeEventListener("mouseup", handleResizeEnd);
-      };
+       const handleResizeEnd = () => {
+         resizingRef.current = null;
+         setIsResizing(null);
+         document.removeEventListener("mousemove", handleResizeMove);
+         document.removeEventListener("mouseup", handleResizeEnd);
+       };
 
-      document.addEventListener("mousemove", handleResizeMove);
-      document.addEventListener("mouseup", handleResizeEnd);
-    },
-    [sidebarWidth, editorWidth, setSidebarWidth, setEditorWidth],
-  );
+       document.addEventListener("mousemove", handleResizeMove);
+       document.addEventListener("mouseup", handleResizeEnd);
+     },
+     [sidebarWidth, editorWidth, setSidebarWidth, setEditorWidth],
+   );
 
   // ========== PDF HELPERS ==========
   const registerPageRef = useCallback(
@@ -446,7 +446,7 @@ export default function Editor() {
       subtitle={projectRoot ? <span className="font-mono text-xs">{projectRoot}</span> : undefined}
     >
       <div className="flex-1 flex flex-col bg-base-100 overflow-hidden">
-        {/* Toolbar */}
+        {/* Toolbar - Modern and elegant */}
         <Toolbar
         projectRoot={projectRoot}
         onOpenProject={() => setShowPicker(true)}
@@ -462,8 +462,8 @@ export default function Editor() {
         configSynced={configSynced}
       />
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-row overflow-hidden" ref={mainRef}>
+       {/* Main Content */}
+       <div className="flex-1 flex flex-row overflow-hidden" ref={mainRef} style={_isResizing ? { userSelect: "none" } as React.CSSProperties : {}}
         {allPanesHidden ? (
           <EmptyPlaceholder />
         ) : (
@@ -497,7 +497,7 @@ export default function Editor() {
                 </div>
                 {(editor || preview) && (
                   <div
-                    className="w-1 bg-base-300 hover:bg-primary cursor-col-resize transition-colors"
+                    className="w-0.5 bg-base-content/10 hover:bg-primary/50 cursor-col-resize transition-all duration-200 hover:w-1 hover:shadow-lg hover:shadow-primary/20"
                     onMouseDown={(e) => handleResizeStart("sidebar-editor", e)}
                   />
                 )}
@@ -524,7 +524,7 @@ export default function Editor() {
                 </div>
                 {preview && (
                   <div
-                    className="w-1 bg-base-300 hover:bg-primary cursor-col-resize transition-colors"
+                    className="w-0.5 bg-base-content/10 hover:bg-primary/50 cursor-col-resize transition-all duration-200 hover:w-1 hover:shadow-lg hover:shadow-primary/20"
                     onMouseDown={(e) => handleResizeStart("editor-preview", e)}
                   />
                 )}
