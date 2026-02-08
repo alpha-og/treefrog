@@ -1121,10 +1121,26 @@ function SettingsModal({
   const [tokenInput, setTokenInput] = useState<string>(builderToken);
   const [saved, setSaved] = useState<boolean>(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const trimmedUrl = apiInput.trim() || API_DEFAULT;
     const trimmedBuilderUrl = builderUrlInput.trim() || "https://treefrog-renderer.onrender.com";
     const trimmedToken = tokenInput.trim();
+    
+    // Send config to local server
+    try {
+      await fetch(`${trimmedUrl}/config`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          builderUrl: trimmedBuilderUrl,
+          builderToken: trimmedToken,
+        }),
+      });
+    } catch (err) {
+      console.warn("Could not send config to server:", err);
+      // Continue anyway - config will be saved locally
+    }
+    
     onSave(trimmedUrl, trimmedBuilderUrl, trimmedToken);
     setSaved(true);
     window.setTimeout(() => {

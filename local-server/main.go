@@ -49,16 +49,19 @@ type BuildOptions struct {
 }
 
 type Server struct {
-	cfg         Config
-	rootMu      sync.Mutex
-	projectRoot string
-	cacheDir    string
-	statusMu    sync.Mutex
-	status      BuildStatus
-	clientsMu   sync.Mutex
-	clients     map[*websocket.Conn]struct{}
-	remoteMu    sync.Mutex
-	remoteID    string
+	cfg          Config
+	rootMu       sync.Mutex
+	projectRoot  string
+	cacheDir     string
+	statusMu     sync.Mutex
+	status       BuildStatus
+	clientsMu    sync.Mutex
+	clients      map[*websocket.Conn]struct{}
+	remoteMu     sync.Mutex
+	remoteID     string
+	configMu     sync.Mutex
+	builderURL   string
+	builderToken string
 }
 
 func main() {
@@ -74,7 +77,13 @@ func main() {
 	if cfg.Port == "" {
 		cfg.Port = "8080"
 	}
-	s := &Server{cfg: cfg, status: BuildStatus{State: "idle"}, clients: map[*websocket.Conn]struct{}{}}
+	s := &Server{
+		cfg:          cfg,
+		status:       BuildStatus{State: "idle"},
+		clients:      map[*websocket.Conn]struct{}{},
+		builderURL:   cfg.BuilderURL,
+		builderToken: cfg.BuilderToken,
+	}
 	if cfg.ProjectRoot != "" {
 		_ = s.setRoot(cfg.ProjectRoot)
 	}
@@ -90,6 +99,7 @@ func main() {
 
 	r.Get("/api/project", s.handleProject)
 	r.Post("/api/project/set", s.handleSetProject)
+	r.Post("/api/config", s.handleConfig)
 	r.Get("/api/files", s.handleListFiles)
 	r.Get("/api/file", s.handleGetFile)
 	r.Put("/api/file", s.handlePutFile)
@@ -133,7 +143,7 @@ func (s *Server) handleProject(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]any{
 		"name":       name,
 		"root":       root,
-		"builderUrl": s.cfg.BuilderURL,
+		"builderUrl": s.getBuilderURL(),
 	}
 	writeJSON(w, resp)
 }
@@ -155,6 +165,28 @@ func (s *Server) handleSetProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, map[string]any{"ok": true, "root": s.getRoot()})
+}
+
+func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		BuilderURL   string `json:"builderUrl"`
+		BuilderToken string `json:"builderToken"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+
+	s.configMu.Lock()
+	if body.BuilderURL != "" {
+		s.builderURL = body.BuilderURL
+	}
+	if body.BuilderToken != "" {
+		s.builderToken = body.BuilderToken
+	}
+	s.configMu.Unlock()
+
+	writeJSON(w, map[string]any{"ok": true})
 }
 
 func (s *Server) handleListFiles(w http.ResponseWriter, r *http.Request) {
@@ -297,7 +329,7 @@ func (s *Server) runBuild(buildID string, opts BuildOptions) {
 		return
 	}
 
-	buildURL := strings.TrimRight(s.cfg.BuilderURL, "/") + "/build"
+	buildURL := strings.TrimRight(s.getBuilderURL(), "/") + "/build"
 	buf := &bytes.Buffer{}
 	mw := multipart.NewWriter(buf)
 	_ = mw.WriteField("options", mustJSON(opts))
@@ -317,8 +349,8 @@ func (s *Server) runBuild(buildID string, opts BuildOptions) {
 
 	req, _ := http.NewRequestWithContext(ctx, "POST", buildURL, buf)
 	req.Header.Set("Content-Type", mw.FormDataContentType())
-	if s.cfg.BuilderToken != "" {
-		req.Header.Set("X-Builder-Token", s.cfg.BuilderToken)
+	if s.getBuilderToken() != "" {
+		req.Header.Set("X-Builder-Token", s.getBuilderToken())
 	}
 
 	resp, err := http.DefaultClient.Do(req)
@@ -342,10 +374,10 @@ func (s *Server) runBuild(buildID string, opts BuildOptions) {
 	}
 	s.setRemoteID(buildResp.ID)
 
-	pdfURL := strings.TrimRight(s.cfg.BuilderURL, "/") + "/build/" + buildResp.ID + "/artifacts/pdf"
-	synURL := strings.TrimRight(s.cfg.BuilderURL, "/") + "/build/" + buildResp.ID + "/artifacts/synctex"
-	logURL := strings.TrimRight(s.cfg.BuilderURL, "/") + "/build/" + buildResp.ID + "/log"
-	statusURL := strings.TrimRight(s.cfg.BuilderURL, "/") + "/build/" + buildResp.ID + "/status"
+	pdfURL := strings.TrimRight(s.getBuilderURL(), "/") + "/build/" + buildResp.ID + "/artifacts/pdf"
+	synURL := strings.TrimRight(s.getBuilderURL(), "/") + "/build/" + buildResp.ID + "/artifacts/synctex"
+	logURL := strings.TrimRight(s.getBuilderURL(), "/") + "/build/" + buildResp.ID + "/log"
+	statusURL := strings.TrimRight(s.getBuilderURL(), "/") + "/build/" + buildResp.ID + "/status"
 
 	if err := s.waitForRemote(statusURL, 10*time.Minute); err != nil {
 		s.updateStatus(BuildStatus{ID: buildID, State: "error", Message: err.Error(), EndedAt: time.Now()})
@@ -397,8 +429,8 @@ func (s *Server) waitForRemote(statusURL string, timeout time.Duration) error {
 
 func (s *Server) fetchToFile(url, dest string) error {
 	req, _ := http.NewRequest("GET", url, nil)
-	if s.cfg.BuilderToken != "" {
-		req.Header.Set("X-Builder-Token", s.cfg.BuilderToken)
+	if s.getBuilderToken() != "" {
+		req.Header.Set("X-Builder-Token", s.getBuilderToken())
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -419,10 +451,10 @@ func (s *Server) fetchToFile(url, dest string) error {
 }
 
 func (s *Server) cleanupRemote(id string) error {
-	url := strings.TrimRight(s.cfg.BuilderURL, "/") + "/build/" + id
+	url := strings.TrimRight(s.getBuilderURL(), "/") + "/build/" + id
 	req, _ := http.NewRequest("DELETE", url, nil)
-	if s.cfg.BuilderToken != "" {
-		req.Header.Set("X-Builder-Token", s.cfg.BuilderToken)
+	if s.getBuilderToken() != "" {
+		req.Header.Set("X-Builder-Token", s.getBuilderToken())
 	}
 	_, err := http.DefaultClient.Do(req)
 	return err
@@ -837,7 +869,7 @@ func (s *Server) handleSyncView(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "file and line required", http.StatusBadRequest)
 		return
 	}
-	url := strings.TrimRight(s.cfg.BuilderURL, "/") + "/build/" + remoteID + "/synctex/view?file=" + urlQuery(file) + "&line=" + urlQuery(line)
+	url := strings.TrimRight(s.getBuilderURL(), "/") + "/build/" + remoteID + "/synctex/view?file=" + urlQuery(file) + "&line=" + urlQuery(line)
 	if col != "" {
 		url += "&col=" + urlQuery(col)
 	}
@@ -862,7 +894,7 @@ func (s *Server) handleSyncEdit(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "page, x, y required", http.StatusBadRequest)
 		return
 	}
-	url := strings.TrimRight(s.cfg.BuilderURL, "/") + "/build/" + remoteID + "/synctex/edit?page=" + urlQuery(page) + "&x=" + urlQuery(x) + "&y=" + urlQuery(y)
+	url := strings.TrimRight(s.getBuilderURL(), "/") + "/build/" + remoteID + "/synctex/edit?page=" + urlQuery(page) + "&x=" + urlQuery(x) + "&y=" + urlQuery(y)
 	resp, err := s.fetchJSON(url)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -940,6 +972,18 @@ func (s *Server) getRemoteID() string {
 	s.remoteMu.Lock()
 	defer s.remoteMu.Unlock()
 	return s.remoteID
+}
+
+func (s *Server) getBuilderURL() string {
+	s.configMu.Lock()
+	defer s.configMu.Unlock()
+	return s.builderURL
+}
+
+func (s *Server) getBuilderToken() string {
+	s.configMu.Lock()
+	defer s.configMu.Unlock()
+	return s.builderToken
 }
 
 func (s *Server) broadcast(msg []byte) {
@@ -1024,8 +1068,8 @@ func copyDir(src, dst string) error {
 
 func (s *Server) fetchJSON(url string) (map[string]any, error) {
 	req, _ := http.NewRequest("GET", url, nil)
-	if s.cfg.BuilderToken != "" {
-		req.Header.Set("X-Builder-Token", s.cfg.BuilderToken)
+	if s.getBuilderToken() != "" {
+		req.Header.Set("X-Builder-Token", s.getBuilderToken())
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
