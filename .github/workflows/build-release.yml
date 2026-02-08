@@ -74,15 +74,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
 
-      - name: Setup Windows dependencies
-        if: runner.os == 'windows'
-        run: choco install msedge-stable
-
       # Install Wails CLI
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
-      # Build step
+      # Generate Wails bindings BEFORE building frontend
+      # This creates the wailsjs/wailsjs directory that Vite needs
+      - name: Generate Wails bindings
+        run: |
+          cd wails
+          wails build -s
+
+      # Build frontend
       - name: Build frontend
         run: |
           cd frontend
@@ -95,6 +98,7 @@ jobs:
           cp -r frontend/dist/* wails/frontend/dist/
         shell: bash
 
+      # Build Treefrog for platform
       - name: Build Treefrog for ${{ matrix.platform }}
         run: |
           cd wails
@@ -127,15 +131,6 @@ jobs:
           cd wails/build/bin
           tar -czf treefrog-linux-x86_64.tar.gz treefrog
           mv treefrog-linux-x86_64.tar.gz ../../../treefrog-linux-x86_64.tar.gz
-
-      - name: Create Windows installer (NSIS)
-        if: runner.os == 'windows'
-        run: |
-          choco install nsis
-          cd wails
-          # Build NSIS installer if wails.json is configured for it
-          # For now, we'll create a simple zip
-        shell: powershell
 
       - name: Create Windows ZIP
         if: runner.os == 'windows'
