@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -116,19 +117,43 @@ func (a *App) ListFiles(path string) ([]FileEntry, error) {
 	return files, nil
 }
 
+// FileContent represents the content of a file
+type FileContent struct {
+	Content  string `json:"content"`
+	IsBinary bool   `json:"isBinary"`
+}
+
 // ReadFile reads a file's contents
-func (a *App) ReadFile(path string) (string, error) {
+func (a *App) ReadFile(path string) (*FileContent, error) {
 	abs, err := a.safePath(path)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	data, err := os.ReadFile(abs)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return string(data), nil
+	// Check if binary (contains null bytes or invalid UTF-8)
+	isBinary := false
+	for _, b := range data {
+		if b == 0 {
+			isBinary = true
+			break
+		}
+	}
+	if !isBinary {
+		// Try to decode as UTF-8
+		if !utf8.Valid(data) {
+			isBinary = true
+		}
+	}
+
+	return &FileContent{
+		Content:  string(data),
+		IsBinary: isBinary,
+	}, nil
 }
 
 // WriteFile writes content to a file

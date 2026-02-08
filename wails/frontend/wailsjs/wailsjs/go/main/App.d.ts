@@ -36,7 +36,7 @@ export function MoveFile(arg1:string,arg2:string):Promise<void>;
 
 export function OpenProjectDialog():Promise<main.ProjectInfo>;
 
-export function ReadFile(arg1:string):Promise<string>;
+export function ReadFile(arg1:string):Promise<main.FileContent>;
 
 export function RenameFile(arg1:string,arg2:string):Promise<void>;
 

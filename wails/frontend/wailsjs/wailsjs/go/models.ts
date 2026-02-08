@@ -36,6 +36,20 @@ export namespace main {
 	        this.builderToken = source["builderToken"];
 	    }
 	}
+	export class FileContent {
+	    content: string;
+	    isBinary: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new FileContent(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.content = source["content"];
+	        this.isBinary = source["isBinary"];
+	    }
+	}
 	export class FileEntry {
 	    name: string;
 	    path: string;
