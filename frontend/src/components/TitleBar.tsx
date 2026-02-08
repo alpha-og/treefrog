@@ -30,7 +30,7 @@ export default function TitleBar({ title = "Treefrog", onClose }: TitleBarProps)
 
   return (
     <div
-      className="h-12 bg-gradient-to-r from-base-100 to-base-100/95 border-b border-base-content/10 flex items-center justify-between px-4 select-none drag"
+      className="h-12 bg-gradient-to-r from-base-100 to-base-100/95 border-b border-base-content/10 flex items-center justify-between px-4 select-none drag rounded-t-2xl"
       style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
     >
       <div className="flex items-center gap-3 flex-1">

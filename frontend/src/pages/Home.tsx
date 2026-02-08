@@ -71,7 +71,7 @@ export default function Home({ onSelectProject, loading }: HomeProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-base-200 via-base-100 to-base-200 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-base-200 via-base-100 to-base-200 flex flex-col rounded-2xl overflow-hidden">
       {/* Frameless Title Bar */}
       <TitleBar title="Treefrog" />
 

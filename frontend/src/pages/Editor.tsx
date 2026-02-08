@@ -441,7 +441,7 @@ export default function Editor() {
   );
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-base-100">
+    <div className="h-screen w-screen flex flex-col bg-base-100 rounded-2xl overflow-hidden">
       {/* Frameless Title Bar */}
       <TitleBar title={projectRoot ? `${projectRoot.split("/").pop()} - Treefrog` : "Treefrog"} />
 

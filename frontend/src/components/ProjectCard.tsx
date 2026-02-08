@@ -39,33 +39,31 @@ export default function ProjectCard({
       disabled={isLoading}
       className="group w-full text-left relative"
     >
-      <div className="bg-base-100 border border-base-content/10 hover:border-primary/50 hover:bg-primary/5 rounded-xl p-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-        <div className="flex items-start gap-4">
-          {/* Icon */}
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center flex-shrink-0 group-hover:from-primary/40 group-hover:to-secondary/40 transition-colors">
-            <FolderOpen size={18} className="text-primary" />
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-base-content truncate group-hover:text-primary transition-colors">
-              {project.name}
-            </h3>
-            <p className="text-xs text-base-content/60 truncate mt-1 font-mono">
-              {project.path}
-            </p>
-            <div className="flex items-center gap-1 text-xs text-base-content/50 mt-2">
-              <Calendar size={12} />
-              {formatDate(project.timestamp)}
-            </div>
-          </div>
-
-          {/* Arrow */}
-          <ArrowRight
-            size={18}
-            className="text-base-content/30 flex-shrink-0 group-hover:text-primary group-hover:translate-x-1 transition-all"
-          />
+      <div className="bg-base-100 border border-base-content/10 hover:border-primary/50 hover:bg-primary/5 rounded-xl p-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 flex items-stretch gap-4">
+        {/* Icon Container */}
+        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center flex-shrink-0 group-hover:from-primary/40 group-hover:to-secondary/40 transition-colors">
+          <FolderOpen size={18} className="text-primary" />
         </div>
+
+        {/* Content - Flexible */}
+        <div className="flex-1 min-w-0 flex flex-col justify-center">
+          <h3 className="font-semibold text-base-content truncate group-hover:text-primary transition-colors">
+            {project.name}
+          </h3>
+          <p className="text-xs text-base-content/60 truncate mt-1 font-mono">
+            {project.path}
+          </p>
+          <div className="flex items-center gap-1 text-xs text-base-content/50 mt-2">
+            <Calendar size={12} />
+            {formatDate(project.timestamp)}
+          </div>
+        </div>
+
+        {/* Arrow - Always visible on right */}
+        <ArrowRight
+          size={18}
+          className="text-base-content/30 flex-shrink-0 self-center group-hover:text-primary group-hover:translate-x-1 transition-all"
+        />
 
         {/* Delete button on hover */}
         <button
