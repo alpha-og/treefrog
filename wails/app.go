@@ -10,15 +10,17 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // Config holds application configuration
 type Config struct {
-	ProjectRoot  string `json:"projectRoot"`
-	BuilderURL   string `json:"builderUrl"`
-	BuilderToken string `json:"builderToken"`
+	ProjectRoot  string          `json:"projectRoot"`
+	BuilderURL   string          `json:"builderUrl"`
+	BuilderToken string          `json:"builderToken"`
+	Renderer     *RendererConfig `json:"renderer,omitempty"`
 }
 
 // BuildStatus represents the current state of a build
@@ -81,6 +83,7 @@ type App struct {
 	remoteID     string
 	builderURL   string
 	builderToken string
+	dockerMgr    *DockerManager
 }
 
 // NewApp creates a new App application struct
@@ -100,6 +103,45 @@ func (a *App) startup(ctx context.Context) {
 	}
 	a.builderURL = a.config.BuilderURL
 	a.builderToken = a.config.BuilderToken
+
+	// Initialize Docker manager for renderer
+	if a.config.Renderer == nil {
+		a.config.Renderer = &RendererConfig{
+			Port:      8080,
+			Enabled:   false,
+			AutoStart: false,
+		}
+	}
+
+	dockerfilePath, err := GetEmbeddedDockerfilePath()
+	if err != nil {
+		Logger.Warnf("Could not find Dockerfile: %v", err)
+		dockerfilePath = "" // Will be set later if needed
+	}
+
+	a.dockerMgr = NewDockerManager(ctx, a.config.Renderer, Logger, dockerfilePath)
+
+	// Auto-start renderer if configured
+	if a.config.Renderer.AutoStart {
+		go func() {
+			// Wait a bit for app to fully initialize
+			<-time.After(2 * time.Second)
+			if err := a.dockerMgr.Start(); err != nil {
+				Logger.Errorf("Failed to auto-start renderer: %v", err)
+			}
+		}()
+	}
+}
+
+// shutdown is called when the app closes
+func (a *App) shutdown(ctx context.Context) {
+	// Auto-shutdown renderer if it's enabled
+	if a.dockerMgr != nil && a.config.Renderer != nil && a.config.Renderer.Enabled {
+		Logger.Info("Shutting down renderer on app close")
+		if err := a.dockerMgr.Stop(); err != nil {
+			Logger.Errorf("Failed to stop renderer on shutdown: %v", err)
+		}
+	}
 }
 
 // getConfigPath returns the path to the config file

@@ -2,6 +2,7 @@ import { RootRoute, Router, Route } from "@tanstack/react-router";
 import RootLayout from "./pages/RootLayout";
 import HomePageWrapper from "./pages/HomePageWrapper";
 import EditorPage from "./pages/Editor";
+import SettingsPage from "./pages/Settings";
 
 const rootRoute = new RootRoute({
   component: RootLayout,
@@ -19,7 +20,13 @@ const editorRoute = new Route({
   component: EditorPage,
 });
 
-const routeTree = rootRoute.addChildren([homeRoute, editorRoute]);
+const settingsRoute = new Route({
+  getParentRoute: () => rootRoute,
+  path: "/settings",
+  component: SettingsPage,
+});
+
+const routeTree = rootRoute.addChildren([homeRoute, editorRoute, settingsRoute]);
 
 export const router = new Router({ routeTree });
 

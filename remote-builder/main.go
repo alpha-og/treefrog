@@ -67,6 +67,9 @@ func main() {
 		MaxAge:         300,
 	}))
 
+	// Health check endpoint
+	r.Get("/health", s.handleHealth)
+
 	r.Post("/build", s.handleBuild)
 	r.Get("/build/{id}/status", s.handleStatus)
 	r.Get("/build/{id}/log", s.handleLog)
@@ -81,6 +84,14 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+}
+
+func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
+	// No authentication needed for health checks
+	writeJSON(w, map[string]any{
+		"status": "ok",
+		"time":   time.Now(),
+	})
 }
 
 func (s *Server) handleBuild(w http.ResponseWriter, r *http.Request) {

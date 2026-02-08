@@ -4,7 +4,6 @@ import { useNavigate } from "@tanstack/react-router";
 import { useRecentProjectsStore } from "../stores/recentProjectsStore";
 import { useAppStore } from "../stores/appStore";
 import { openProjectDialog } from "../services/projectService";
-import SettingsModal from "../components/SettingsModal";
 import ProjectCard from "../components/ProjectCard";
 import FramelessWindow from "../components/FramelessWindow";
 
@@ -16,11 +15,10 @@ interface HomeProps {
 export default function Home({ onSelectProject, loading }: HomeProps) {
   const navigate = useNavigate();
   const { projects, removeProject } = useRecentProjectsStore();
-  const { builderUrl, builderToken, setBuilderUrl, setBuilderToken } = useAppStore();
+  const { setBuilderUrl, setBuilderToken } = useAppStore();
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [storeHydrated, setStoreHydrated] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
 
   // Wait for Zustand stores to hydrate from localStorage
   useEffect(() => {
@@ -65,11 +63,6 @@ export default function Home({ onSelectProject, loading }: HomeProps) {
     removeProject(path);
   };
 
-  const handleSaveSettings = (url: string, token: string) => {
-    setBuilderUrl(url);
-    setBuilderToken(token);
-  };
-
   return (
     <FramelessWindow title="Treefrog" subtitle="Home">
       <div className="flex-1 bg-gradient-to-br from-base-200 via-base-100 to-base-200 flex flex-col overflow-hidden" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
@@ -77,9 +70,9 @@ export default function Home({ onSelectProject, loading }: HomeProps) {
         <div className="flex items-center justify-between px-6 py-4 flex-shrink-0">
           <div></div>
           <button
-            onClick={() => setShowSettings(true)}
+            onClick={() => navigate({ to: "/settings" })}
             className="btn btn-ghost btn-sm hover:bg-primary/10 transition-all"
-            title="Builder settings"
+            title="Settings"
           >
             <Settings size={18} className="text-primary" />
           </button>
@@ -212,17 +205,6 @@ export default function Home({ onSelectProject, loading }: HomeProps) {
             </div>
           </div>
         </main>
-
-         {/* Settings Modal */}
-         {showSettings && (
-           <SettingsModal
-             isOpen={showSettings}
-             onClose={() => setShowSettings(false)}
-             builderUrl={builderUrl}
-             builderToken={builderToken}
-             onSave={handleSaveSettings}
-           />
-         )}
       </div>
     </FramelessWindow>
   );

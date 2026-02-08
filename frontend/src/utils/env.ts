@@ -1,15 +1,15 @@
 // Environment detection for shared frontend code
-// In Wails mode, the generated modules from wailsjs/go/* should be available
+// In Wails mode, window.runtime is injected by the Wails framework
 export const isWails = (): boolean => {
   return typeof window !== 'undefined' && 
-         (window as any).go !== undefined;
+         (window as any).runtime !== undefined;
 };
 
 export const getEnvironment = (): 'wails' | 'web' => {
   return isWails() ? 'wails' : 'web';
 };
 
-// Wait for Wails runtime to be ready (window.go to be injected)
+// Wait for Wails runtime to be ready (window.runtime to be injected)
 // Returns true if Wails is available, false if timeout
 export const waitForWails = async (maxWaitMs: number = 3000): Promise<boolean> => {
   if (isWails()) return true;

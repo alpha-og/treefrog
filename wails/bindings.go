@@ -995,3 +995,103 @@ func (a *App) SyncTeXEdit(page int, x, y float64) (*SyncTeXResult, error) {
 
 	return &result, nil
 }
+
+// Renderer lifecycle management endpoints
+
+// BuildRenderer builds the Docker image from the bundled Dockerfile
+func (a *App) BuildRenderer() error {
+	if a.dockerMgr == nil {
+		return fmt.Errorf("renderer not initialized")
+	}
+	return a.dockerMgr.BuildImage()
+}
+
+// PullRenderer pulls the Docker image from a remote registry
+func (a *App) PullRenderer(imageRef string) error {
+	if a.dockerMgr == nil {
+		return fmt.Errorf("renderer not initialized")
+	}
+	return a.dockerMgr.PullImage(imageRef)
+}
+
+// StartRenderer starts the Docker container
+func (a *App) StartRenderer() error {
+	if a.dockerMgr == nil {
+		return fmt.Errorf("renderer not initialized")
+	}
+	return a.dockerMgr.Start()
+}
+
+// StopRenderer stops the Docker container
+func (a *App) StopRenderer() error {
+	if a.dockerMgr == nil {
+		return fmt.Errorf("renderer not initialized")
+	}
+	return a.dockerMgr.Stop()
+}
+
+// RestartRenderer restarts the Docker container
+func (a *App) RestartRenderer() error {
+	if a.dockerMgr == nil {
+		return fmt.Errorf("renderer not initialized")
+	}
+	return a.dockerMgr.Restart()
+}
+
+// GetRendererStatus returns the current status of the renderer
+func (a *App) GetRendererStatus() RendererStatus {
+	if a.dockerMgr == nil {
+		return RendererStatus{
+			State:   "not-installed",
+			Message: "Renderer not initialized",
+		}
+	}
+	return a.dockerMgr.GetStatus()
+}
+
+// SetRendererPort updates the port for the renderer
+func (a *App) SetRendererPort(port int) error {
+	if a.dockerMgr == nil {
+		return fmt.Errorf("renderer not initialized")
+	}
+	if err := a.dockerMgr.SetPort(port); err != nil {
+		return err
+	}
+	a.config.Renderer.Port = port
+	return a.saveConfig()
+}
+
+// SetRendererAutoStart updates the auto-start setting
+func (a *App) SetRendererAutoStart(enabled bool) error {
+	a.configMu.Lock()
+	defer a.configMu.Unlock()
+	
+	if a.config.Renderer == nil {
+		a.config.Renderer = &RendererConfig{}
+	}
+	
+	a.config.Renderer.AutoStart = enabled
+	return a.saveConfig()
+}
+
+// GetRendererLogs returns the current renderer logs
+func (a *App) GetRendererLogs() string {
+	if a.dockerMgr == nil {
+		return ""
+	}
+	return a.dockerMgr.GetLogs()
+}
+
+// GetRendererConfig returns the current renderer configuration
+func (a *App) GetRendererConfig() *RendererConfig {
+	a.configMu.Lock()
+	defer a.configMu.Unlock()
+	if a.config.Renderer == nil {
+		return &RendererConfig{
+			Port:      8080,
+			Enabled:   false,
+			AutoStart: false,
+		}
+	}
+	return a.config.Renderer
+}

@@ -9,7 +9,7 @@ VITE_LOG_LEVEL ?= debug
 dev:
 	@echo "Running Treefrog in development mode..."
 	@echo "Generating Wails bindings..."
-	@cd wails && wails build -s > /dev/null 2>&1 || true
+	@cd wails && wails build -s
 	@echo "Logging configuration:"
 	@echo "  Backend:  LOG_LEVEL=$(LOG_LEVEL), LOG_FORMAT=$(LOG_FORMAT)"
 	@echo "  Frontend: VITE_LOG_LEVEL=$(VITE_LOG_LEVEL)"
@@ -19,7 +19,7 @@ dev:
 build:
 	@echo "Building Treefrog for current platform..."
 	@echo "Generating Wails bindings..."
-	@cd wails && wails build -s > /dev/null 2>&1 || true
+	@cd wails && wails build -s
 	@echo "Building frontend..."
 	@cd frontend && pnpm install && pnpm build
 	@echo "Copying frontend dist to wails..."
@@ -30,7 +30,7 @@ build:
 build-all:
 	@echo "Building Treefrog for all platforms..."
 	@echo "Generating Wails bindings..."
-	@cd wails && wails build -s > /dev/null 2>&1 || true
+	@cd wails && wails build -s
 	@echo "Building frontend..."
 	@cd frontend && pnpm install && pnpm build
 	@echo "Copying frontend dist to wails..."

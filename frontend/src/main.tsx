@@ -5,7 +5,11 @@ import { router } from "./router";
 import "./globals.css";
 
 // Import Wails runtime to ensure window.go is available in dev mode
-import "wailsjs/runtime";
+// Use dynamic import to handle missing bindings on fresh clones
+import("wailsjs/runtime").catch(() => {
+  // Bindings will be generated during build
+  console.debug("Wails runtime bindings not yet generated");
+});
 
 import EditorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";

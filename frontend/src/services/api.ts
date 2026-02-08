@@ -111,6 +111,32 @@ interface WailsApp {
   // Config
   GetConfig(): Promise<{ projectRoot: string; builderUrl: string; builderToken: string }>;
   SetBuilderConfig(url: string, token: string): Promise<void>;
+  
+  // Renderer
+  BuildRenderer(): Promise<void>;
+  PullRenderer(imageRef: string): Promise<void>;
+  StartRenderer(): Promise<void>;
+  StopRenderer(): Promise<void>;
+  RestartRenderer(): Promise<void>;
+  GetRendererStatus(): Promise<RendererStatus>;
+  SetRendererPort(port: number): Promise<void>;
+  SetRendererAutoStart(enabled: boolean): Promise<void>;
+  GetRendererLogs(): Promise<string>;
+  GetRendererConfig(): Promise<RendererConfig>;
+}
+
+interface RendererStatus {
+  state: "running" | "stopped" | "error" | "not-installed" | "building";
+  message: string;
+  port: number;
+  logs: string;
+  isRunning: boolean;
+}
+
+interface RendererConfig {
+  port: number;
+  enabled: boolean;
+  autoStart: boolean;
 }
 
 interface FileEntry {
