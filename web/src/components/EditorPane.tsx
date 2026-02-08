@@ -1,24 +1,38 @@
 import { useRef } from "react";
+import { FileText } from "lucide-react";
 import { useEditor } from "../hooks/useEditor";
 
 interface EditorPaneProps {
   theme: "light" | "dark";
   fileContent: string;
   isBinary: boolean;
+  currentFile: string;
   onSave: (content: string) => Promise<void>;
 }
 
-export function EditorPane({ theme, fileContent, isBinary, onSave }: EditorPaneProps) {
+export function EditorPane({ theme, fileContent, isBinary, currentFile, onSave }: EditorPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const hasFile = currentFile && currentFile.length > 0;
+  
+  // Always initialize editor, but hide it when no file or binary
   useEditor(containerRef, theme, fileContent, isBinary, onSave);
+
+  const showEditor = hasFile && !isBinary;
 
   return (
     <section className="editor flex-1 h-full flex flex-col bg-base-100 border-l border-base-300 overflow-hidden">
       <div className="border-b border-base-300 px-4 py-3 font-semibold text-sm flex-shrink-0">
-        Editor
+        {hasFile ? currentFile.split("/").pop() : "Editor"}
       </div>
 
-      {isBinary && (
+      {!hasFile && (
+        <div className="flex flex-col items-center justify-center flex-1 text-base-content/50 gap-3">
+          <FileText size={48} className="opacity-30" />
+          <p className="text-sm">Select a file to view</p>
+        </div>
+      )}
+
+      {hasFile && isBinary && (
         <div className="flex items-center justify-center flex-1 text-base-content/50">
           Binary file selected
         </div>
@@ -28,10 +42,10 @@ export function EditorPane({ theme, fileContent, isBinary, onSave }: EditorPaneP
         ref={containerRef}
         className="monaco flex-1 w-full"
         style={{
-          height: isBinary ? 0 : "auto",
+          height: showEditor ? "auto" : 0,
           overflow: "hidden",
-          visibility: isBinary ? "hidden" : "visible",
-          display: isBinary ? "none" : "block",
+          visibility: showEditor ? "visible" : "hidden",
+          display: showEditor ? "block" : "none",
         }}
       />
     </section>
