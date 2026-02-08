@@ -79,31 +79,31 @@
   --color-base-300: oklch(24% 0.008 250);   /* #2a2d2f - borders */
   --color-base-content: oklch(93% 0.008 75); /* #eceae7 - main text */
 
-  /* Primary: lighter terracotta for dark mode */
-  --color-primary: oklch(62% 0.15 30);           /* #e07a5f */
-  --color-primary-content: oklch(15% 0.01 30);
+  /* Primary: warm orange/amber for dark mode (shifted away from red) */
+  --color-primary: oklch(68% 0.14 55);            /* warm orange, not red */
+  --color-primary-content: oklch(15% 0.01 55);
 
-  /* Secondary: lighter teal for dark mode */
-  --color-secondary: oklch(75% 0.1 180);         /* #7bd1c9 */
-  --color-secondary-content: oklch(15% 0.01 180);
+  /* Secondary: warm gold accent for dark mode */
+  --color-secondary: oklch(72% 0.12 85);          /* warm gold */
+  --color-secondary-content: oklch(15% 0.01 85);
 
-  /* Accent: same as secondary */
-  --color-accent: oklch(75% 0.1 180);
-  --color-accent-content: oklch(15% 0.01 180);
+  /* Accent: muted amber */
+  --color-accent: oklch(68% 0.10 70);
+  --color-accent-content: oklch(15% 0.01 70);
 
   /* Neutral: muted warm gray */
   --color-neutral: oklch(68% 0.015 70);          /* #a4a09a - muted */
   --color-neutral-content: oklch(18% 0.006 250);
 
-  /* Semantic colors - slightly brighter for dark mode */
-  --color-info: oklch(65% 0.15 240);
+  /* Semantic colors - softer for dark mode */
+  --color-info: oklch(65% 0.12 240);
   --color-info-content: oklch(15% 0.01 240);
-  --color-success: oklch(60% 0.15 145);
+  --color-success: oklch(60% 0.12 145);
   --color-success-content: oklch(15% 0.01 145);
-  --color-warning: oklch(78% 0.15 75);
+  --color-warning: oklch(75% 0.12 75);
   --color-warning-content: oklch(20% 0.05 75);
-  --color-error: oklch(60% 0.2 25);
-  --color-error-content: oklch(15% 0.01 25);
+  --color-error: oklch(62% 0.18 5);
+  --color-error-content: oklch(95% 0.01 5);
 
   /* Border radius - same as light for consistency */
   --radius-box: 0.875rem;
