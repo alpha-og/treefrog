@@ -13,19 +13,39 @@ COPY pkg/ ./pkg/
 # Build the binary with security flags
 RUN CGO_ENABLED=0 go build -o /latex-server -ldflags="-s -w" ./cmd/server
 
-# Production image
-FROM debian:bookworm-slim
+# Production image with full TeX Live for Overleaf feature parity
+FROM debian:bookworm
 
-# Install only essential LaTeX packages to reduce attack surface
+# Install full TeX Live and supporting tools for complete LaTeX rendering
+# This provides feature parity with Overleaf
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    texlive-latex-base \
-    texlive-latex-extra \
-    texlive-fonts-recommended \
+    # Full TeX Live distribution for comprehensive LaTeX support
+    texlive-full \
+    # LaTeX tools and utilities
     latexmk \
     perl \
+    # Graphics and image processing
+    ghostscript \
+    imagemagick \
+    # Diagram and visualization tools
+    graphviz \
+    asymptote \
+    gnuplot \
+    # Python for Pygments syntax highlighting and other tools
+    python3 \
+    python3-pip \
+    # Additional utilities
+    wget \
+    curl \
+    git \
+    # Build essentials for potential packages
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
+# Install Pygments for syntax highlighting
+RUN pip3 install --no-cache-dir pygments
+
+# Create non-root user with proper permissions
 RUN useradd -m -s /bin/bash appuser && chown -R appuser:appuser /tmp
 
 # Copy binary from builder
