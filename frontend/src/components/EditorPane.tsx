@@ -13,7 +13,7 @@ interface EditorPaneProps {
 export function EditorPane({ theme, fileContent, isBinary, currentFile, onSave }: EditorPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const hasFile = currentFile && currentFile.length > 0;
-  
+
   // Always initialize editor, but hide it when no file or binary
   useEditor(containerRef, theme, fileContent, isBinary, onSave);
 
@@ -21,7 +21,7 @@ export function EditorPane({ theme, fileContent, isBinary, currentFile, onSave }
 
   return (
     <section className="editor flex-1 h-full flex flex-col bg-base-100 border-l border-base-300 overflow-hidden">
-      <div className="border-b border-base-300 px-4 py-3 font-semibold text-sm flex-shrink-0">
+      <div className="border-b border-base-300 px-4 py-3 font-semibold text-sm shrink-0">
         {hasFile ? currentFile.split("/").pop() : "Editor"}
       </div>
 

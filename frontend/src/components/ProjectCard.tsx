@@ -1,4 +1,4 @@
-import { Trash2, FolderOpen, Calendar, FileText } from "lucide-react";
+import { Trash2, FolderOpen, Calendar } from "lucide-react";
 import { RecentProject } from "../stores/recentProjectsStore";
 
 interface ProjectCardProps {
@@ -46,9 +46,9 @@ export default function ProjectCard({
 
   return (
     <div className="group w-full text-left">
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-base-100 to-base-100/50 border border-base-content/5 hover:border-primary/30 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5 cursor-pointer" onClick={() => onSelect(project.path)}>
+      <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-base-100 to-base-100/50 border border-base-content/5 hover:border-primary/30 transition-all duration-300 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-0.5 cursor-pointer" onClick={() => onSelect(project.path)}>
         {/* Top accent bar */}
-         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-secondary to-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+         <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-primary via-secondary to-primary opacity-0 group-hover:opacity-100 transition-opacity" />
 
          {/* Main content */}
          <div className="p-5">
@@ -56,7 +56,7 @@ export default function ProjectCard({
            <div className="flex items-start justify-between gap-3 mb-4">
              {/* Icon with gradient background */}
              <div className="flex items-center gap-3">
-               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/25 via-primary/15 to-secondary/20 flex items-center justify-center flex-shrink-0 group-hover:from-primary/35 group-hover:via-primary/25 group-hover:to-secondary/30 transition-all duration-300 shadow-md">
+                <div className="w-12 h-12 rounded-xl bg-linear-to-br from-primary/25 via-primary/15 to-secondary/20 flex items-center justify-center shrink-0 group-hover:from-primary/35 group-hover:via-primary/25 group-hover:to-secondary/30 transition-all duration-300 shadow-md">
                  {initials ? (
                    <span className="text-sm font-bold text-primary">{initials}</span>
                  ) : (
@@ -78,7 +78,7 @@ export default function ProjectCard({
                  e.stopPropagation();
                  onRemove(project.path);
                }}
-               className="flex-shrink-0 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-error/15 hover:text-error text-base-content/40"
+                className="shrink-0 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-error/15 hover:text-error text-base-content/40"
                title="Remove from recent"
              >
                <Trash2 size={16} />
@@ -94,8 +94,8 @@ export default function ProjectCard({
 
            {/* Footer with metadata */}
            <div className="flex items-center justify-between pt-3 border-t border-base-content/5">
-             <div className="flex items-center gap-2 text-xs text-base-content/50">
-               <Calendar size={14} className="flex-shrink-0" />
+              <div className="flex items-center gap-2 text-xs text-base-content/50">
+                <Calendar size={14} className="shrink-0" />
                <span>{formatDate(project.timestamp)}</span>
              </div>
 

@@ -105,22 +105,21 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
     }
   };
 
-  const loadStatus = async () => {
-    try {
-      const status = await rendererService.getStatus();
-      setRendererStatus(status.state);
-      setRendererDetectedMode(status.mode);
-      if (status.logs) {
-        setRendererLogs(status.logs);
-      }
-      setError(null);
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      log.error("Failed to load renderer status", err);
-      setError(`Failed to load renderer status: ${errorMsg}`);
-      setRendererStatus("error");
-    }
-  };
+   const loadStatus = async () => {
+     try {
+       const status = await rendererService.getStatus();
+       setRendererStatus(status.state);
+       if (status.logs) {
+         setRendererLogs(status.logs);
+       }
+       setError(null);
+     } catch (err) {
+       const errorMsg = err instanceof Error ? err.message : String(err);
+       log.error("Failed to load renderer status", err);
+       setError(`Failed to load renderer status: ${errorMsg}`);
+       setRendererStatus("error");
+     }
+   };
 
   const handleModeChange = async (newMode: RendererMode) => {
     setIsLoading(true);
@@ -380,13 +379,13 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
       {/* Error/Success Messages */}
       {error && (
         <div className="bg-error/10 border border-error/20 rounded-lg p-3 flex items-start gap-2 animate-in fade-in text-sm">
-          <AlertCircle className="w-4 h-4 text-error flex-shrink-0 mt-0.5" />
+          <AlertCircle className="w-4 h-4 text-error shrink-0 mt-0.5" />
           <span className="text-error font-medium">{error}</span>
         </div>
       )}
       {successMessage && (
         <div className="bg-success/10 border border-success/20 rounded-lg p-3 flex items-start gap-2 animate-in fade-in text-sm">
-          <CheckCircle className="w-4 h-4 text-success flex-shrink-0 mt-0.5" />
+           <CheckCircle className="w-4 h-4 text-success shrink-0 mt-0.5" />
           <span className="text-success font-medium">{successMessage}</span>
         </div>
       )}
@@ -668,7 +667,7 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
       <div className="bg-base-100/30 border border-base-content/10 rounded-xl overflow-hidden flex flex-col h-40">
         <button
           onClick={() => setShowLogs(!showLogs)}
-          className="w-full flex items-center justify-between p-3 hover:bg-base-200/50 transition-colors flex-shrink-0"
+           className="w-full flex items-center justify-between p-3 hover:bg-base-200/50 transition-colors shrink-0"
         >
           <div className="flex items-center gap-2">
             <LogIn className="w-3 h-3 text-base-content/60" />
@@ -683,7 +682,7 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
 
         {showLogs && (
           <div className="flex-1 overflow-y-auto border-t border-base-content/10 p-3">
-            <pre className="text-xs font-mono text-base-content/70 whitespace-pre-wrap break-words">
+             <pre className="text-xs font-mono text-base-content/70 whitespace-pre-wrap break-word">
               {rendererLogs || "No logs available yet"}
             </pre>
           </div>

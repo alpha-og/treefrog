@@ -11,7 +11,6 @@ import {
   Loader2,
   CheckCircle2,
   XCircle,
-  AlertCircle,
   Zap,
   MoreVertical,
 } from "lucide-react";
@@ -97,7 +96,7 @@ export default function PreviewPane({
      const container = pdfViewerRef.current;
      if (!container) return;
 
-     let timeout: NodeJS.Timeout;
+      let timeout: ReturnType<typeof setTimeout>;
      
      const handleScroll = () => {
        if (!pdfViewerRef.current) return;
@@ -211,7 +210,7 @@ export default function PreviewPane({
       </div>
 
       {/* Header with Controls - All in one line */}
-      <div className="border-b border-base-content/5 px-4 py-2 flex items-center justify-between gap-2 bg-gradient-to-r from-base-100/80 to-transparent backdrop-blur-sm relative z-10">
+       <div className="border-b border-base-content/5 px-4 py-2 flex items-center justify-between gap-2 bg-linear-to-r from-base-100/80 to-transparent backdrop-blur-sm relative z-10">
         {/* Left: Title */}
         <div className="flex items-center gap-2 shrink-0">
           <div className="p-1.5 rounded-lg bg-primary/10">
@@ -238,7 +237,7 @@ export default function PreviewPane({
             <select
               value={zoom}
               onChange={(e) => onZoomChange(Number(e.target.value))}
-              className="bg-transparent border-0 font-mono text-xs px-1.5 py-0.5 min-w-[44px] text-base-content/80 focus:outline-none hover:bg-base-300/20 transition-colors appearance-none cursor-pointer"
+               className="bg-transparent border-0 font-mono text-xs px-1.5 py-0.5 min-w-11 text-base-content/80 focus:outline-none hover:bg-base-300/20 transition-colors appearance-none cursor-pointer"
             >
               {ZOOM_LEVELS.map((z) => (
                 <option key={z} value={z}>
@@ -343,7 +342,7 @@ export default function PreviewPane({
           
           {/* Dropdown Menu */}
           {showExportMenu && (
-            <div className="absolute right-0 mt-1 bg-base-100 border border-base-content/10 rounded-lg shadow-lg z-50 overflow-hidden min-w-[150px]">
+             <div className="absolute right-0 mt-1 bg-base-100 border border-base-content/10 rounded-lg shadow-lg z-50 overflow-hidden min-w-37.5">
               {isWails() ? (
                 <>
                   <button
@@ -407,7 +406,7 @@ export default function PreviewPane({
             <XCircle size={20} className="shrink-0 text-error mt-0.5" />
             <div className="flex-1 min-w-0">
               <h3 className="font-bold text-sm text-error mb-1">Build Failed</h3>
-              <p className="text-xs text-error/80 break-words leading-relaxed">
+               <p className="text-xs text-error/80 wrap-break-word leading-relaxed">
                 {buildStatus.message || "Unknown error occurred"}
               </p>
               {isWails() ? (
@@ -473,7 +472,7 @@ export default function PreviewPane({
 
 
         {/* PDF Viewer */}
-        <div ref={pdfViewerRef} className="flex-1 overflow-auto min-h-0 bg-gradient-to-br from-base-100 via-base-200/30 to-base-100 relative z-0">
+         <div ref={pdfViewerRef} className="flex-1 overflow-auto min-h-0 bg-linear-to-br from-base-100 via-base-200/30 to-base-100 relative z-0">
          {projectRoot ? (
            buildStatus?.state === "building" ? (
              <div className="flex flex-col items-center justify-center h-full text-base-content/50 gap-4 animate-in fade-in duration-500">
@@ -513,9 +512,9 @@ export default function PreviewPane({
                </div>
                <div className="text-center max-w-sm">
                  <p className="font-semibold text-base text-error/90">Unable to load PDF</p>
-                 <p className="text-sm text-error/70 mt-2">
-                   {pdfError instanceof Error ? pdfError.message : "An error occurred while loading the preview"}
-                 </p>
+                  <p className="text-sm text-error/70 mt-2">
+                    {pdfError || "An error occurred while loading the preview"}
+                  </p>
                </div>
              </div>
            ) : null

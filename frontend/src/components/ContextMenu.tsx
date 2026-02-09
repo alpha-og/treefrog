@@ -50,7 +50,7 @@ export default function ContextMenu({
     "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-150 hover:bg-primary/15 active:bg-primary/20 text-sm font-medium";
 
   const separator = (
-    <div className="my-2 h-px bg-gradient-to-r from-base-content/10 via-base-content/5 to-transparent" />
+    <div className="my-2 h-px bg-linear-to-r from-base-content/10 via-base-content/5 to-transparent" />
   );
 
   return (
@@ -59,9 +59,9 @@ export default function ContextMenu({
       className="fixed"
       style={{ top: `${y}px`, left: `${x}px`, zIndex: 50 }}
     >
-      <div className="min-w-[240px] bg-base-100 rounded-xl shadow-2xl border border-base-content/10 backdrop-blur-sm overflow-hidden animate-fade-in">
+      <div className="min-w-60 bg-base-100 rounded-xl shadow-2xl border border-base-content/10 backdrop-blur-sm overflow-hidden animate-fade-in">
         {/* Header - File Path */}
-        <div className="px-4 py-3 border-b border-base-content/5 bg-gradient-to-r from-base-100/50 to-transparent">
+        <div className="px-4 py-3 border-b border-base-content/5 bg-linear-to-r from-base-100/50 to-transparent">
           <p className="text-xs text-base-content/60 truncate font-mono" title={path}>
             {path.split("/").pop() || path}
           </p>
