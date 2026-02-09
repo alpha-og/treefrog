@@ -3,6 +3,9 @@ import {
   registerLaTeXLanguage,
   LATEX_COMMANDS as MONACO_LATEX_COMMANDS,
 } from "monaco-latex";
+import { createLogger } from "./logger";
+
+const log = createLogger("LaTeX");
 
 // Additional LaTeX commands to augment monaco-latex
 const ADDITIONAL_COMMANDS = [
@@ -81,6 +84,6 @@ export function setupLatexLanguage() {
       triggerCharacters: ["\\"],
     });
   } catch (error) {
-    console.error("[LaTeX Setup] Error setting up LaTeX language:", error);
+    log.error("Error setting up LaTeX language", { error });
   }
 }
