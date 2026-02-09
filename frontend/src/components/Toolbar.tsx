@@ -19,8 +19,8 @@ interface ToolbarProps {
 }
 
 export default function Toolbar({
-  _projectRoot,
-  _onOpenProject,
+  projectRoot,
+  onOpenProject,
   onBuild,
   engine,
   onEngineChange,
@@ -42,8 +42,8 @@ export default function Toolbar({
         className="bg-base-100 border-b border-base-content/10 px-6 py-3 flex items-center justify-between gap-6 h-16"
         style={{ "--wails-draggable": "drag" } as React.CSSProperties}
       >
-         {/* Left: Logo and Home */}
-         <div className="flex items-center gap-3 flex-shrink-0" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
+          {/* Left: Logo and Home */}
+          <div className="flex items-center gap-3 shrink-0" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
            <button
              className="p-2 rounded-lg hover:bg-base-200 transition-colors"
              onClick={() => navigate({ to: "/" })}
@@ -57,8 +57,8 @@ export default function Toolbar({
         {/* Center: Spacer */}
         <div className="flex-1" />
 
-         {/* Right: Controls and Settings */}
-         <div className="flex items-center gap-3 flex-shrink-0" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
+          {/* Right: Controls and Settings */}
+          <div className="flex items-center gap-3 shrink-0" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
           {/* View Settings */}
           <div className="relative">
             <button

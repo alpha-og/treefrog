@@ -1,5 +1,3 @@
-import { useEffect } from "react";
-
 // Declare Wails runtime types
 interface WailsRuntime {
   WindowMinimise?: () => void;
