@@ -6,14 +6,61 @@ import (
 	"net"
 )
 
-// RendererConfig holds Docker renderer settings
+// Image references
+const (
+	LocalImageName = "treefrog-renderer:latest"
+	GHCRImageRef   = "ghcr.io/alpha-og/treefrog/renderer:latest"
+)
+
+// RendererMode represents the rendering mode
+type RendererMode string
+
+const (
+	ModeAuto   RendererMode = "auto"
+	ModeLocal  RendererMode = "local"
+	ModeRemote RendererMode = "remote"
+)
+
+// ImageSource represents the source of the Docker image
+type ImageSource string
+
+const (
+	SourceGHCR     ImageSource = "ghcr"
+	SourceEmbedded ImageSource = "embedded"
+	SourceCustom   ImageSource = "custom"
+)
+
+// RendererConfig holds all renderer settings
 type RendererConfig struct {
-	Port      int  `json:"port"`      // Port to expose renderer on (1024-65535)
-	Enabled   bool `json:"enabled"`   // Whether renderer is currently active
-	AutoStart bool `json:"autoStart"` // Auto-start renderer on app launch
+	Mode      RendererMode `json:"mode"`
+	Port      int          `json:"port"`
+	AutoStart bool         `json:"autoStart"`
+
+	// Image configuration
+	ImageSource ImageSource `json:"imageSource"`
+	ImageRef    string      `json:"imageRef"`
+
+	// Remote builder settings
+	RemoteURL   string `json:"remoteUrl"` // JSON tag uses lowercase 'url'
+	RemoteToken string `json:"remoteToken"`
+
+	// Custom image settings
+	CustomRegistry string `json:"customRegistry,omitempty"`
+	CustomTarPath  string `json:"customTarPath,omitempty"`
 }
 
-// ValidatePort checks if a port number is valid
+// DefaultRendererConfig returns sensible defaults
+func DefaultRendererConfig() *RendererConfig {
+	return &RendererConfig{
+		Mode:        ModeAuto,
+		Port:        8080,
+		AutoStart:   false,
+		ImageSource: SourceGHCR,
+		ImageRef:    GHCRImageRef,
+	}
+}
+
+// ValidatePort checks if port is valid
 func ValidatePort(port int) error {
 	if port < 1024 || port > 65535 {
 		return errors.New("port must be between 1024 and 65535")
@@ -21,7 +68,7 @@ func ValidatePort(port int) error {
 	return nil
 }
 
-// IsPortAvailable checks if a port is available for binding
+// IsPortAvailable checks if a port is available
 func IsPortAvailable(port int) bool {
 	listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
@@ -31,56 +78,18 @@ func IsPortAvailable(port int) bool {
 	return true
 }
 
-// BuildDockerRunCommand constructs a docker run command for the renderer
-func BuildDockerRunCommand(port int, imageName string) []string {
-	return []string{
-		"run",
-		"-d",                                         // Detached mode
-		"--rm",                                       // Auto-remove on stop
-		"-p", fmt.Sprintf("127.0.0.1:%d:8080", port), // Map port
-		"--name", "treefrog-renderer", // Container name
-		imageName,
+// FindAvailablePort finds an available port, preferring the given one
+func FindAvailablePort(preferred int) (int, error) {
+	if preferred > 0 && IsPortAvailable(preferred) {
+		return preferred, nil
 	}
-}
 
-// BuildDockerStopCommand constructs a docker stop command
-func BuildDockerStopCommand() []string {
-	return []string{"stop", "treefrog-renderer"}
-}
-
-// BuildDockerCheckCommand constructs a docker ps command to check container
-func BuildDockerCheckCommand() []string {
-	return []string{
-		"ps",
-		"-a",
-		"-q",
-		"-f", "name=^treefrog-renderer$", // Exact match
+	// Search ephemeral port range
+	for port := 49152; port <= 65535; port++ {
+		if IsPortAvailable(port) {
+			return port, nil
+		}
 	}
-}
 
-// BuildDockerBuildCommand constructs a docker build command
-func BuildDockerBuildCommand(dockerfilePath string) []string {
-	return []string{
-		"build",
-		"-t", "treefrog-renderer:latest",
-		"-f", dockerfilePath,
-		".",
-	}
-}
-
-// BuildDockerImageCheckCommand checks if image exists
-func BuildDockerImageCheckCommand() []string {
-	return []string{
-		"image",
-		"inspect",
-		"treefrog-renderer:latest",
-	}
-}
-
-// BuildDockerPullCommand constructs a docker pull command for downloading from GitHub releases
-func BuildDockerPullCommand(imageRef string) []string {
-	return []string{
-		"pull",
-		imageRef,
-	}
+	return 0, errors.New("no available ports found")
 }
