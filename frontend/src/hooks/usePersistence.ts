@@ -1,4 +1,7 @@
 import { useState, useEffect } from "react";
+import { createLogger } from "../utils/logger";
+
+const log = createLogger("Persistence");
 
 export function usePersistentState<T>(key: string, initial: T) {
   const [value, setValue] = useState<T>(() => {
@@ -9,7 +12,7 @@ export function usePersistentState<T>(key: string, initial: T) {
     try {
       return JSON.parse(stored);
     } catch {
-      console.warn(`[Persistence] Invalid JSON for "${key}", resetting`);
+      log.warn(`Invalid JSON for "${key}", resetting`);
       localStorage.removeItem(key);
       return initial;
     }
@@ -19,7 +22,7 @@ export function usePersistentState<T>(key: string, initial: T) {
     try {
       localStorage.setItem(key, JSON.stringify(value));
     } catch (err) {
-      console.error(`[Persistence] Failed to store "${key}"`, err);
+      log.error(`Failed to store "${key}"`, { error: err });
     }
   }, [key, value]);
 

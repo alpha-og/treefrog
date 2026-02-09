@@ -5,6 +5,9 @@ import {
   gitPush,
   gitPull,
 } from "../services/gitService";
+import { createLogger } from "../utils/logger";
+
+const log = createLogger("Git");
 
 export function useGit() {
   const [status, setStatus] = useState("");
@@ -16,7 +19,7 @@ export function useGit() {
       setStatus(data.raw || "");
       setIsError(false);
     } catch (err) {
-      console.error("Failed to get git status:", err);
+      log.error("Failed to get git status", { error: err });
       setStatus("git error");
       setIsError(true);
     }
@@ -34,7 +37,7 @@ export function useGit() {
         await gitCommit(msg);
         await refresh();
       } catch (err) {
-        console.error("Failed to commit:", err);
+        log.error("Failed to commit", { message: msg, error: err });
       }
     },
     [refresh]
@@ -45,7 +48,7 @@ export function useGit() {
       await gitPush();
       await refresh();
     } catch (err) {
-      console.error("Failed to push:", err);
+      log.error("Failed to push", { error: err });
     }
   }, [refresh]);
 
@@ -54,7 +57,7 @@ export function useGit() {
       await gitPull();
       await refresh();
     } catch (err) {
-      console.error("Failed to pull:", err);
+      log.error("Failed to pull", { error: err });
     }
   }, [refresh]);
 

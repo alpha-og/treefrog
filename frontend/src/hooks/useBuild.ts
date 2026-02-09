@@ -1,6 +1,9 @@
 import { useRef, useState, useCallback } from "react";
 import { BuildStatus } from "../types";
 import { triggerBuild } from "../services/buildService";
+import { createLogger } from "../utils/logger";
+
+const log = createLogger("Build");
 
 export function useBuild() {
   const buildInFlightRef = useRef<boolean>(false);
@@ -10,9 +13,8 @@ export function useBuild() {
     async (file: string, engine: string, shell: boolean) => {
       if (!file) return;
 
-      // Prevent duplicate build requests in-flight
       if (buildInFlightRef.current) {
-        console.debug("Build already in-flight, ignoring request");
+        log.debug("Build already in-flight, ignoring request");
         return;
       }
 
@@ -21,7 +23,7 @@ export function useBuild() {
         setStatus({ id: "", state: "running", message: "Building..." });
         await triggerBuild(file, engine, shell);
       } catch (err) {
-        console.error("Failed to trigger build:", err);
+        log.error("Failed to trigger build", { file, engine, error: err });
         setStatus({
           id: "",
           state: "error",

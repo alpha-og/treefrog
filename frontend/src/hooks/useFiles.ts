@@ -10,6 +10,9 @@ import {
   fsDuplicate,
   fsDelete,
 } from "../services/fsService";
+import { createLogger } from "../utils/logger";
+
+const log = createLogger("Files");
 
 export function useFiles() {
   const {
@@ -33,7 +36,7 @@ export function useFiles() {
         setEntries(data);
         setCurrentDir(dir);
       } catch (err) {
-        console.error("Failed to load files:", err);
+        log.error("Failed to load files", { dir, error: err });
       }
     },
     [setEntries, setCurrentDir]
@@ -47,7 +50,7 @@ export function useFiles() {
         setIsBinary(data.isBinary);
         setFileContent(data.content || "");
       } catch (err) {
-        console.error("Failed to open file:", err);
+        log.error("Failed to open file", { path, error: err });
       }
     },
     [setCurrentFile, setIsBinary, setFileContent]
@@ -58,7 +61,7 @@ export function useFiles() {
       try {
         await writeFile(path, content);
       } catch (err) {
-        console.error("Failed to save file:", err);
+        log.error("Failed to save file", { path, error: err });
         throw err;
       }
     },
@@ -71,7 +74,7 @@ export function useFiles() {
         await fsCreate(path, type);
         await loadEntries(currentDir);
       } catch (err) {
-        console.error("Failed to create file/dir:", err);
+        log.error("Failed to create file/dir", { path, type, error: err });
         throw err;
       }
     },
@@ -88,7 +91,7 @@ export function useFiles() {
           await openFile(to);
         }
       } catch (err) {
-        console.error("Failed to rename file:", err);
+        log.error("Failed to rename file", { from, to, error: err });
         throw err;
       }
     },
@@ -107,7 +110,7 @@ export function useFiles() {
           await openFile(newPath);
         }
       } catch (err) {
-        console.error("Failed to move file:", err);
+        log.error("Failed to move file", { from, toDir, error: err });
         throw err;
       }
     },
@@ -120,7 +123,7 @@ export function useFiles() {
         await fsDuplicate(from, to);
         await loadEntries(currentDir);
       } catch (err) {
-        console.error("Failed to duplicate file:", err);
+        log.error("Failed to duplicate file", { from, to, error: err });
         throw err;
       }
     },
@@ -137,7 +140,7 @@ export function useFiles() {
           setFileContent("");
         }
       } catch (err) {
-        console.error("Failed to delete file:", err);
+        log.error("Failed to delete file", { path, recursive, error: err });
         throw err;
       }
     },
