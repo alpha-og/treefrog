@@ -1,29 +1,17 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"os/exec"
-	"path/filepath"
-	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/registry"
-	"github.com/docker/docker/client"
 	"github.com/sirupsen/logrus"
 )
 
@@ -115,7 +103,7 @@ func (dm *DockerManager) Start(ctx context.Context) error {
 	}
 
 	// Health check
-	if err := dm.healthCheck(ctx, port); err != nil {
+	if err := dm.healthCheckWithRetry(ctx, port); err != nil {
 		dm.stopContainer(ctx)
 		return fmt.Errorf("health check failed: %w", err)
 	}
@@ -170,6 +158,48 @@ func (dm *DockerManager) healthCheck(ctx context.Context, port int) error {
 	}
 
 	return errors.New("health check timeout")
+}
+
+// healthCheckWithRetry performs health check with exponential backoff retry
+func (dm *DockerManager) healthCheckWithRetry(ctx context.Context, port int) error {
+	url := fmt.Sprintf("http://127.0.0.1:%d/health", port)
+	client := &http.Client{Timeout: 1 * time.Second}
+
+	maxRetries := HealthCheckMaxRetries
+	delay := HealthCheckDelay
+
+	dm.logger.WithFields(logrus.Fields{
+		"port":        port,
+		"max_retries": maxRetries,
+	}).Debug("Starting health check with retry")
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		resp, err := client.Get(url)
+		if err == nil && resp.StatusCode == 200 {
+			if resp != nil {
+				resp.Body.Close()
+			}
+			dm.logger.WithFields(logrus.Fields{
+				"port":     port,
+				"attempts": attempt + 1,
+			}).Debug("Health check passed")
+			return nil
+		}
+		if resp != nil {
+			resp.Body.Close()
+		}
+
+		if attempt < maxRetries-1 {
+			dm.logger.WithFields(logrus.Fields{
+				"port":        port,
+				"attempt":     attempt + 1,
+				"max_retries": maxRetries,
+			}).Debug("Health check attempt failed, retrying...")
+			time.Sleep(delay)
+		}
+	}
+
+	return fmt.Errorf("health check timeout after %d attempts", maxRetries)
 }
 
 // GetStatus returns current status

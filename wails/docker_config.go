@@ -4,12 +4,23 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"time"
 )
 
 // Image references
 const (
 	LocalImageName = "treefrog-renderer:latest"
 	GHCRImageRef   = "ghcr.io/alpha-og/treefrog/renderer:latest"
+)
+
+// Retry configuration
+const (
+	DefaultMaxRetries     = 3
+	DefaultRetryDelay     = 1 * time.Second
+	DefaultRetryBackoff   = 2.0 // Exponential multiplier
+	DefaultRetryTimeout   = 5 * time.Minute
+	HealthCheckMaxRetries = 30
+	HealthCheckDelay      = 200 * time.Millisecond
 )
 
 // RendererMode represents the rendering mode
@@ -47,16 +58,26 @@ type RendererConfig struct {
 	// Custom image settings
 	CustomRegistry string `json:"customRegistry,omitempty"`
 	CustomTarPath  string `json:"customTarPath,omitempty"`
+
+	// Retry configuration
+	MaxRetries   int           `json:"maxRetries"`
+	RetryDelay   time.Duration `json:"retryDelay"`
+	RetryBackoff float64       `json:"retryBackoff"`
+	RetryTimeout time.Duration `json:"retryTimeout"`
 }
 
 // DefaultRendererConfig returns sensible defaults
 func DefaultRendererConfig() *RendererConfig {
 	return &RendererConfig{
-		Mode:        ModeAuto,
-		Port:        8080,
-		AutoStart:   false,
-		ImageSource: SourceGHCR,
-		ImageRef:    GHCRImageRef,
+		Mode:         ModeAuto,
+		Port:         8080,
+		AutoStart:    false,
+		ImageSource:  SourceGHCR,
+		ImageRef:     GHCRImageRef,
+		MaxRetries:   DefaultMaxRetries,
+		RetryDelay:   DefaultRetryDelay,
+		RetryBackoff: DefaultRetryBackoff,
+		RetryTimeout: DefaultRetryTimeout,
 	}
 }
 
