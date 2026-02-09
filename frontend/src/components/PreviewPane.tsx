@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import PDFPreview from "./PDF/PDFPreview";
 import { BuildStatus } from "../types";
+import { createLogger } from "../utils/logger";
 import {
   ZoomIn,
   ZoomOut,
@@ -18,6 +19,8 @@ import { ZOOM_LEVELS } from "../constants";
 import { usePDFUrl } from "../hooks/usePDFUrl";
 import { isWails } from "../utils/env";
 import { getBuildLog, exportPDFFile, exportSourceFile } from "../services/buildService";
+
+const log = createLogger("PreviewPane");
 
 interface PreviewPaneProps {
   apiUrl: string;
@@ -169,9 +172,9 @@ export default function PreviewPane({
         const log = await getBuildLog();
         setLogContent(log || "No log available");
         setShowLog(true);
-      } catch (err) {
-        console.error("Failed to load log:", err);
-        setLogContent("Failed to load build log");
+       } catch (err) {
+         log.error("Failed to load build log", err);
+         setLogContent("Failed to load build log");
         setShowLog(true);
       } finally {
         setLogLoading(false);
@@ -183,9 +186,9 @@ export default function PreviewPane({
     if (isWails()) {
       try {
         await exportPDFFile();
-      } catch (err) {
-        console.error("Failed to export PDF:", err);
-      }
+       } catch (err) {
+         log.error("Failed to export PDF", err);
+       }
     }
   };
 
@@ -193,8 +196,8 @@ export default function PreviewPane({
     if (isWails()) {
       try {
         await exportSourceFile();
-      } catch (err) {
-        console.error("Failed to export source:", err);
+       } catch (err) {
+         log.error("Failed to export source", err);
       }
     }
   };
