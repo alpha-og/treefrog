@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -84,6 +85,7 @@ type App struct {
 	builderURL   string
 	builderToken string
 	dockerMgr    *DockerManager
+	buildWg      sync.WaitGroup
 }
 
 // NewApp creates a new App application struct
@@ -106,28 +108,38 @@ func (a *App) startup(ctx context.Context) {
 
 	// Initialize Docker manager for renderer
 	if a.config.Renderer == nil {
-		a.config.Renderer = &RendererConfig{
-			Port:      8080,
-			Enabled:   false,
-			AutoStart: false,
-		}
+		a.config.Renderer = DefaultRendererConfig()
+		a.saveConfig()
 	}
 
-	dockerfilePath, err := GetEmbeddedDockerfilePath()
-	if err != nil {
-		Logger.Warnf("Could not find Dockerfile: %v", err)
-		dockerfilePath = "" // Will be set later if needed
-	}
+	a.dockerMgr = NewDockerManager(a.config.Renderer, Logger)
 
-	a.dockerMgr = NewDockerManager(ctx, a.config.Renderer, Logger, dockerfilePath)
+	// Auto-detect mode if set to Auto
+	if a.config.Renderer.Mode == ModeAuto {
+		detectedMode := a.dockerMgr.DetectBestMode(ctx)
+		Logger.WithFields(logrus.Fields{
+			"action":        "auto_detect_mode",
+			"detected_mode": detectedMode,
+		}).Info("Auto-detected rendering mode")
+	}
 
 	// Auto-start renderer if configured
-	if a.config.Renderer.AutoStart {
+	if a.config.Renderer.AutoStart && a.config.Renderer.Mode == ModeLocal {
+		a.buildWg.Add(1)
 		go func() {
-			// Wait a bit for app to fully initialize
-			<-time.After(2 * time.Second)
-			if err := a.dockerMgr.Start(); err != nil {
-				Logger.Errorf("Failed to auto-start renderer: %v", err)
+			defer a.buildWg.Done()
+			// Create a separate context with timeout for auto-start to prevent blocking app shutdown
+			autoStartCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+
+			// Wait for app to fully initialize
+			select {
+			case <-time.After(2 * time.Second):
+				if err := a.dockerMgr.Start(autoStartCtx); err != nil {
+					Logger.WithError(err).Error("Failed to auto-start renderer")
+				}
+			case <-ctx.Done():
+				Logger.Info("App shutdown initiated, cancelling auto-start")
 			}
 		}()
 	}
@@ -135,11 +147,25 @@ func (a *App) startup(ctx context.Context) {
 
 // shutdown is called when the app closes
 func (a *App) shutdown(ctx context.Context) {
-	// Auto-shutdown renderer if it's enabled
-	if a.dockerMgr != nil && a.config.Renderer != nil && a.config.Renderer.Enabled {
+	// Wait for builds to complete gracefully
+	done := make(chan struct{})
+	go func() {
+		a.buildWg.Wait()
+		close(done)
+	}()
+
+	// Allow up to 30 seconds for builds to complete
+	select {
+	case <-done:
+		Logger.Info("All builds completed gracefully")
+	case <-time.After(30 * time.Second):
+		Logger.Warn("Build shutdown timeout - forcing exit")
+	}
+
+	if a.dockerMgr != nil {
 		Logger.Info("Shutting down renderer on app close")
-		if err := a.dockerMgr.Stop(); err != nil {
-			Logger.Errorf("Failed to stop renderer on shutdown: %v", err)
+		if err := a.dockerMgr.Stop(ctx); err != nil {
+			Logger.WithError(err).Error("Failed to stop renderer on shutdown")
 		}
 	}
 }
@@ -186,17 +212,22 @@ func (a *App) GetConfig() Config {
 
 // SetBuilderConfig updates the builder configuration
 func (a *App) SetBuilderConfig(url, token string) {
-	fmt.Printf("Setting builder config - URL: %s, Token: %s\n", url, map[bool]string{true: "(set)", false: "(empty)"}[token != ""])
+	Logger.WithFields(logrus.Fields{
+		"url":      url,
+		"hasToken": token != "",
+	}).Info("Setting builder configuration")
+
 	a.configMu.Lock()
 	defer a.configMu.Unlock()
 	a.builderURL = url
 	a.builderToken = token
 	a.config.BuilderURL = url
 	a.config.BuilderToken = token
+
 	if err := a.saveConfig(); err != nil {
-		fmt.Printf("Error saving config: %v\n", err)
+		Logger.WithError(err).Error("Failed to save builder configuration")
 	} else {
-		fmt.Println("Config saved successfully")
+		Logger.Info("Builder configuration saved successfully")
 	}
 }
 
@@ -255,8 +286,14 @@ func (a *App) safePath(rel string) (string, error) {
 		return "", fmt.Errorf("project root not set")
 	}
 	abs := filepath.Join(root, rel)
-	abs, _ = filepath.Abs(abs)
-	rootAbs, _ := filepath.Abs(root)
+	abs, err := filepath.Abs(abs)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve absolute path: %w", err)
+	}
+	rootAbs, err := filepath.Abs(root)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve root path: %w", err)
+	}
 	if !strings.HasPrefix(abs, rootAbs) {
 		return "", fmt.Errorf("path outside project root")
 	}
