@@ -1301,6 +1301,32 @@ func (a *App) SetImageSource(source string, ref string) error {
 	return a.saveConfig()
 }
 
+// SetRendererRemoteURL sets the remote compiler URL
+func (a *App) SetRendererRemoteURL(url string) error {
+	a.configMu.Lock()
+	defer a.configMu.Unlock()
+
+	if a.config.Renderer == nil {
+		a.config.Renderer = DefaultRendererConfig()
+	}
+
+	a.config.Renderer.RemoteURL = url
+	return a.saveConfig()
+}
+
+// SetRendererRemoteToken sets the remote compiler API token
+func (a *App) SetRendererRemoteToken(token string) error {
+	a.configMu.Lock()
+	defer a.configMu.Unlock()
+
+	if a.config.Renderer == nil {
+		a.config.Renderer = DefaultRendererConfig()
+	}
+
+	a.config.Renderer.RemoteToken = token
+	return a.saveConfig()
+}
+
 // VerifyCustomImage verifies a custom image works
 func (a *App) VerifyCustomImage(path string) bool {
 	a.configMu.Lock()
