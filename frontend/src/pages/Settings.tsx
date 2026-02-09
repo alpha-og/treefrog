@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useAppStore } from "../stores/appStore";
 import { syncConfig } from "../services/configService";
-import RendererSettings from "../components/RendererSettings";
+import LatexCompilerSettings from "../components/LatexCompilerSettings";
 import FramelessWindow from "../components/FramelessWindow";
 
 export default function Settings() {
@@ -40,7 +40,6 @@ export default function Settings() {
     setTempTheme(theme);
   }, [builderUrl, builderToken, theme]);
 
-  // Track if there are unsaved changes
   useEffect(() => {
     const changed =
       tempUrl !== builderUrl ||
@@ -53,7 +52,7 @@ export default function Settings() {
     const newErrors: { url?: string; token?: string } = {};
 
     if (!tempUrl.trim()) {
-      newErrors.url = "Builder URL is required";
+      newErrors.url = "Remote Builder URL is required";
     } else if (!isValidUrl(tempUrl)) {
       newErrors.url = "Please enter a valid URL";
     }
@@ -76,12 +75,9 @@ export default function Settings() {
 
     setIsSaving(true);
     try {
-      // Save builder config
       await syncConfig(tempUrl, tempToken);
       setBuilderUrl(tempUrl);
       setBuilderToken(tempToken);
-
-      // Save theme
       setTheme(tempTheme);
 
       setSaveSuccess(true);
@@ -104,7 +100,7 @@ export default function Settings() {
         {/* Sticky Header */}
         <div className="sticky top-0 z-20 border-b border-base-content/10 bg-base-100/95 backdrop-blur-sm">
           <div className="px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate({ to: "/" })}
                 className="btn btn-ghost btn-sm btn-circle hover:bg-primary/10 transition-all"
@@ -119,7 +115,6 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* Save Button and Status */}
             <div className="flex items-center gap-3">
               {saveSuccess && (
                 <div className="flex items-center gap-2 text-success text-sm font-medium animate-in fade-in">
@@ -140,17 +135,16 @@ export default function Settings() {
                 ) : (
                   <>
                     <Save size={16} />
-                    Save Changes
+                    Save
                   </>
                 )}
               </button>
             </div>
           </div>
 
-          {/* Error Banner */}
           {errors.url && (
             <div className="px-6 pb-4">
-              <div className="bg-error/10 border border-error/30 rounded-xl p-3 flex items-start gap-3">
+              <div className="bg-error/10 border border-error/30 rounded-lg p-3 flex items-start gap-3">
                 <AlertCircle className="w-4 h-4 text-error flex-shrink-0 mt-0.5" />
                 <span className="text-error text-sm font-medium">
                   {errors.url}
@@ -162,197 +156,110 @@ export default function Settings() {
 
         {/* Main Content - Scrollable */}
         <main className="flex-1 overflow-y-auto">
-          <div className="max-w-6xl w-full mx-auto px-6 py-8 md:py-12">
-            <div className="space-y-12">
-              {/* Section 1: Builder Configuration */}
+          <div className="max-w-4xl w-full mx-auto px-6 py-8">
+            <div className="space-y-6">
+              {/* Remote Builder Settings */}
               <section>
-                <div className="space-y-6">
-                  {/* Section Header */}
-                  <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
-                        <Globe size={20} className="text-primary" />
-                      </div>
-                      <h2 className="text-2xl md:text-3xl font-bold">
-                        Builder Settings
-                      </h2>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 pb-2 border-b border-base-content/10">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
+                      <Globe size={18} className="text-primary" />
                     </div>
-                    <p className="text-base-content/70 text-sm md:text-base ml-13">
-                      Configure your LaTeX compilation server and authentication
-                    </p>
+                    <h2 className="text-lg font-bold">Remote Builder</h2>
+                    <span className="text-xs text-base-content/50 ml-auto">Remote Compilation Server</span>
                   </div>
 
-                  {/* Builder URL Field */}
-                  <div className="bg-gradient-to-br from-base-100 to-base-100/50 border border-base-content/10 rounded-2xl p-6 md:p-8 hover:border-base-content/20 transition-all duration-300">
-                    <label className="label pb-3">
-                      <span className="label-text font-bold text-base flex items-center gap-2">
-                        <Globe size={16} className="text-primary" />
-                        Builder URL
-                      </span>
-                    </label>
-                    <input
-                      type="url"
-                      value={tempUrl}
-                      onChange={(e) => {
-                        setTempUrl(e.target.value);
-                        if (errors.url) setErrors({ ...errors, url: undefined });
-                      }}
-                      placeholder="https://treefrog-renderer.onrender.com"
-                      className={`input input-bordered w-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30 ${
-                        errors.url ? "input-error" : ""
-                      }`}
-                    />
-                    {errors.url && (
-                      <div className="flex items-center gap-2 mt-3 text-error text-sm">
-                        <AlertCircle size={14} />
-                        {errors.url}
-                      </div>
-                    )}
-                    <p className="text-xs text-base-content/60 mt-3 leading-relaxed">
-                      The URL of your LaTeX compilation server. Make sure it's
-                      accessible and running. You can use the local renderer or a
-                      remote service.
-                    </p>
-                  </div>
-
-                  {/* Builder Token Field */}
-                  <div className="bg-gradient-to-br from-base-100 to-base-100/50 border border-base-content/10 rounded-2xl p-6 md:p-8 hover:border-base-content/20 transition-all duration-300">
-                    <label className="label pb-3">
-                      <span className="label-text font-bold text-base flex items-center gap-2">
-                        <Lock size={16} className="text-primary" />
-                        Builder Token
-                      </span>
-                      <span className="label-text-alt text-xs text-base-content/50 font-medium">
-                        Optional
-                      </span>
-                    </label>
-                    <input
-                      type="password"
-                      value={tempToken}
-                      onChange={(e) => {
-                        setTempToken(e.target.value);
-                        if (errors.token)
-                          setErrors({ ...errors, token: undefined });
-                      }}
-                      placeholder="Enter authentication token (if required)"
-                      className="input input-bordered w-full focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors"
-                    />
-                    <p className="text-xs text-base-content/60 mt-3 leading-relaxed">
-                      Authentication token for the builder server. Leave blank if
-                      authentication is not required. Your token is stored securely
-                      on your device.
-                    </p>
-                  </div>
-
-                  {/* Info Box */}
-                  <div className="bg-info/10 border border-info/30 rounded-2xl p-6 flex items-start gap-4">
-                    <AlertCircle
-                      size={20}
-                      className="text-info flex-shrink-0 mt-0.5"
-                    />
+                  <div className="space-y-3">
                     <div>
-                      <h3 className="font-bold text-info mb-2 text-sm">
-                        Privacy & Security
-                      </h3>
-                      <p className="text-sm text-info/90 leading-relaxed">
-                        All settings are stored locally on your device and are never
-                        shared with anyone. Your authentication tokens are encrypted
-                        and secure.
+                      <label className="label pb-2">
+                        <span className="label-text font-semibold text-sm">Builder URL</span>
+                      </label>
+                      <input
+                        type="url"
+                        value={tempUrl}
+                        onChange={(e) => {
+                          setTempUrl(e.target.value);
+                          if (errors.url) setErrors({ ...errors, url: undefined });
+                        }}
+                        placeholder="https://treefrog-renderer.onrender.com"
+                        className={`input input-bordered input-sm w-full transition-colors ${
+                          errors.url ? "input-error" : ""
+                        }`}
+                      />
+                      <p className="text-xs text-base-content/60 mt-2">
+                        URL of your remote LaTeX compilation server
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="label pb-2">
+                        <span className="label-text font-semibold text-sm">Authentication Token</span>
+                        <span className="label-text-alt text-xs">Optional</span>
+                      </label>
+                      <input
+                        type="password"
+                        value={tempToken}
+                        onChange={(e) => {
+                          setTempToken(e.target.value);
+                          if (errors.token)
+                            setErrors({ ...errors, token: undefined });
+                        }}
+                        placeholder="Enter token if required"
+                        className="input input-bordered input-sm w-full transition-colors"
+                      />
+                      <p className="text-xs text-base-content/60 mt-2">
+                        Leave blank if authentication is not required
                       </p>
                     </div>
                   </div>
                 </div>
               </section>
 
-              {/* Divider */}
-              <div className="flex items-center gap-4">
-                <div className="flex-1 h-px bg-gradient-to-r from-base-content/10 to-transparent" />
-                <span className="text-xs text-base-content/60 font-medium uppercase tracking-wider">
-                  Appearance
-                </span>
-                <div className="flex-1 h-px bg-gradient-to-l from-base-content/10 to-transparent" />
-              </div>
-
-              {/* Section 2: Appearance */}
+              {/* LaTeX Compiler Settings */}
               <section>
-                <div className="space-y-6">
-                  {/* Section Header */}
-                  <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-accent/20 to-warning/20 flex items-center justify-center">
-                        <Palette size={20} className="text-accent" />
-                      </div>
-                      <h2 className="text-2xl md:text-3xl font-bold">
-                        Appearance
-                      </h2>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 pb-2 border-b border-base-content/10">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-success/20 to-info/20 flex items-center justify-center">
+                      <Zap size={18} className="text-success" />
                     </div>
-                    <p className="text-base-content/70 text-sm md:text-base ml-13">
-                      Customize the look and feel of your editor
-                    </p>
+                    <h2 className="text-lg font-bold">LaTeX Compiler</h2>
+                    <span className="text-xs text-base-content/50 ml-auto">Local Docker Environment</span>
                   </div>
 
-                  {/* Theme Toggle */}
-                  <div className="bg-gradient-to-br from-base-100 to-base-100/50 border border-base-content/10 rounded-2xl p-6 md:p-8 hover:border-base-content/20 transition-all duration-300">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <label className="font-bold text-base flex items-center gap-2 mb-2">
-                          <Palette size={18} className="text-accent" />
-                          Dark Mode
-                        </label>
-                        <p className="text-xs text-base-content/60 leading-relaxed">
-                          Enable dark mode for a more comfortable viewing experience
-                          in low-light environments
-                        </p>
-                      </div>
-                      <input
-                        type="checkbox"
-                        className="toggle toggle-primary toggle-lg ml-4"
-                        checked={tempTheme === "dark"}
-                        onChange={(e) =>
-                          setTempTheme(e.target.checked ? "dark" : "light")
-                        }
-                      />
+                  <LatexCompilerSettings />
+                </div>
+              </section>
+
+              {/* Appearance Settings */}
+              <section>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 pb-2 border-b border-base-content/10">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent/20 to-warning/20 flex items-center justify-center">
+                      <Palette size={18} className="text-accent" />
                     </div>
+                    <h2 className="text-lg font-bold">Appearance</h2>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-base-100 border border-base-content/10 rounded-lg">
+                    <div>
+                      <label className="font-semibold text-sm">Dark Mode</label>
+                      <p className="text-xs text-base-content/60 mt-1">
+                        Enable dark theme for comfortable viewing
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      className="toggle toggle-primary toggle-sm"
+                      checked={tempTheme === "dark"}
+                      onChange={(e) =>
+                        setTempTheme(e.target.checked ? "dark" : "light")
+                      }
+                    />
                   </div>
                 </div>
               </section>
 
-              {/* Divider */}
-              <div className="flex items-center gap-4">
-                <div className="flex-1 h-px bg-gradient-to-r from-base-content/10 to-transparent" />
-                <span className="text-xs text-base-content/60 font-medium uppercase tracking-wider">
-                  Renderer
-                </span>
-                <div className="flex-1 h-px bg-gradient-to-l from-base-content/10 to-transparent" />
-              </div>
-
-              {/* Section 3: Renderer Settings */}
-              <section>
-                <div className="space-y-6">
-                  {/* Section Header */}
-                  <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-success/20 to-info/20 flex items-center justify-center">
-                        <Zap size={20} className="text-success" />
-                      </div>
-                      <h2 className="text-2xl md:text-3xl font-bold">
-                        Renderer Settings
-                      </h2>
-                    </div>
-                    <p className="text-base-content/70 text-sm md:text-base ml-13">
-                      Manage your local Docker LaTeX compilation environment
-                    </p>
-                  </div>
-
-                  {/* Renderer Settings Component */}
-                  <div className="space-y-6">
-                    <RendererSettings />
-                  </div>
-                </div>
-              </section>
-
-              {/* Footer Spacing */}
-              <div className="h-12" />
+              <div className="h-4" />
             </div>
           </div>
         </main>
