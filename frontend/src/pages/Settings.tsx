@@ -23,40 +23,44 @@ export default function Settings() {
         className="flex-1 bg-gradient-to-br from-base-200 via-base-100 to-base-200 flex flex-col overflow-hidden"
         style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 flex-shrink-0 border-b border-base-content/5">
-          <button
-            onClick={() => navigate({ to: "/" })}
-            className="btn btn-ghost btn-sm btn-circle hover:bg-primary/10 transition-all"
-            title="Go back"
-          >
-            <ArrowLeft size={18} className="text-primary" />
-          </button>
-          <h1 className="text-lg font-bold">Settings</h1>
-          <div className="w-10" />
-        </div>
-
-        {/* Tab Navigation */}
-        <div className="border-b border-base-content/5 px-6">
-          <div className="flex gap-4">
-            {tabs.map((tab) => (
+        {/* Header with Title and Tabs */}
+        <div className="border-b border-base-content/5 flex-shrink-0">
+          <div className="flex items-center justify-between px-6 py-4 min-h-[60px]">
+            <div className="flex items-center gap-3 w-1/4">
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-2 py-3 text-sm font-medium transition-all duration-300 border-b-2 -mb-[1px] ${
-                  activeTab === tab.id
-                    ? "border-primary text-primary"
-                    : "border-transparent text-base-content/70 hover:text-base-content"
-                }`}
+                onClick={() => navigate({ to: "/" })}
+                className="btn btn-ghost btn-sm btn-circle hover:bg-primary/10 transition-all"
+                title="Go back"
               >
-                {tab.icon}
-                {tab.label}
+                <ArrowLeft size={18} className="text-primary" />
               </button>
-            ))}
+              <h1 className="text-lg font-bold">Settings</h1>
+            </div>
+
+            <div className="flex justify-center w-1/2">
+              <div className="flex gap-4">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 px-2 py-2 text-sm font-medium transition-all duration-300 border-b-2 ${
+                      activeTab === tab.id
+                        ? "border-primary text-primary"
+                        : "border-transparent text-base-content/70 hover:text-base-content"
+                    }`}
+                  >
+                    {tab.icon}
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="w-1/4" />
           </div>
         </div>
 
-        {/* Main Content - Scrollable */}
+        {/* Main Content */}
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-4xl w-full mx-auto px-6 py-8 md:py-12">
             {/* LaTeX Compiler Tab */}
