@@ -1,7 +1,11 @@
 import { getWailsApp } from "./api";
 
+export type RendererMode = "auto" | "local" | "remote";
+export type ImageSource = "ghcr" | "embedded" | "custom";
+
 export interface RendererStatus {
   state: "running" | "stopped" | "error" | "not-installed" | "building";
+  mode: RendererMode;
   message: string;
   port: number;
   logs: string;
@@ -9,9 +13,15 @@ export interface RendererStatus {
 }
 
 export interface RendererConfig {
+  mode: RendererMode;
   port: number;
-  enabled: boolean;
   autoStart: boolean;
+  imageSource: ImageSource;
+  imageRef: string;
+  remoteUrl: string;
+  remoteToken: string;
+  customRegistry?: string;
+  customTarPath?: string;
 }
 
 const getApp = () => {
@@ -23,14 +33,6 @@ const getApp = () => {
 };
 
 export const rendererService = {
-  async buildRenderer(): Promise<void> {
-    return await getApp().BuildRenderer();
-  },
-
-  async pullRenderer(imageRef: string): Promise<void> {
-    return await getApp().PullRenderer(imageRef);
-  },
-
   async startRenderer(): Promise<void> {
     return await getApp().StartRenderer();
   },
@@ -61,5 +63,21 @@ export const rendererService = {
 
   async getConfig(): Promise<RendererConfig> {
     return await getApp().GetRendererConfig();
+  },
+
+  async setMode(mode: RendererMode): Promise<void> {
+    return await getApp().SetRendererMode(mode);
+  },
+
+  async setImageSource(source: ImageSource, ref: string): Promise<void> {
+    return await getApp().SetImageSource(source, ref);
+  },
+
+  async verifyCustomImage(path: string): Promise<boolean> {
+    return await getApp().VerifyCustomImage(path);
+  },
+
+  async detectBestMode(): Promise<RendererMode> {
+    return await getApp().DetectBestMode();
   },
 };
