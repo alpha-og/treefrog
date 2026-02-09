@@ -92,41 +92,7 @@ export default function Settings() {
 
                 {/* Theme Selection Card */}
                 <div className="bg-gradient-to-br from-primary/10 via-secondary/5 to-base-100 border border-primary/20 rounded-2xl p-6 md:p-8 hover:border-primary/40 transition-all duration-300 shadow-xl hover:shadow-2xl hover:-translate-y-1">
-                  <div className="space-y-6">
-                    {/* Dark Mode Toggle */}
-                    <div className="flex items-center justify-between p-4 bg-base-100/30 border border-base-content/10 rounded-xl hover:border-primary/20 transition-all duration-200">
-                      <div>
-                        <label className="font-semibold text-sm cursor-pointer">Dark Mode</label>
-                        <p className="text-xs text-base-content/70 mt-1">
-                          Switch between light and dark themes
-                        </p>
-                      </div>
-                      <input
-                        type="checkbox"
-                        className="toggle toggle-primary toggle-sm"
-                        checked={theme === "dark"}
-                        onChange={(e) =>
-                          setTheme(e.target.checked ? "dark" : "light")
-                        }
-                      />
-                    </div>
-
-                    {/* Theme Preview */}
-                    <div className="space-y-3">
-                      <h3 className="text-sm font-semibold">Theme Colors</h3>
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="rounded-xl p-4 bg-primary text-primary-content text-xs font-medium text-center border-2 border-primary/20 hover:border-primary/40 transition-all">
-                          Primary
-                        </div>
-                        <div className="rounded-xl p-4 bg-secondary text-secondary-content text-xs font-medium text-center border-2 border-secondary/20 hover:border-secondary/40 transition-all">
-                          Secondary
-                        </div>
-                        <div className="rounded-xl p-4 bg-accent text-accent-content text-xs font-medium text-center border-2 border-accent/20 hover:border-accent/40 transition-all">
-                          Accent
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <p className="text-base-content/70">More appearance options coming soon...</p>
                 </div>
               </div>
             )}

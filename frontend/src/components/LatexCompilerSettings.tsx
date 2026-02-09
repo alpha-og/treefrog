@@ -310,33 +310,51 @@ export default function LatexCompilerSettings() {
     switch (rendererStatus) {
       case "running":
         return {
-          icon: <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>,
+          icon: <div className="w-2.5 h-2.5 bg-success rounded-full animate-pulse shadow-lg shadow-success/50"></div>,
           text: "Running",
           color: "text-success",
+          bgColor: "bg-success/10",
+          borderColor: "border-success/20",
         };
       case "stopped":
         return {
-          icon: <div className="w-2 h-2 bg-base-content/40 rounded-full"></div>,
+          icon: <div className="w-2.5 h-2.5 bg-base-content/40 rounded-full"></div>,
           text: "Stopped",
           color: "text-base-content/60",
+          bgColor: "bg-base-content/5",
+          borderColor: "border-base-content/10",
         };
       case "building":
         return {
-          icon: <RefreshCw className="w-2 h-2 text-warning animate-spin" />,
+          icon: <RefreshCw className="w-3 h-3 text-warning animate-spin" />,
           text: "Starting...",
           color: "text-warning",
+          bgColor: "bg-warning/10",
+          borderColor: "border-warning/20",
         };
       case "error":
         return {
-          icon: <AlertCircle className="w-2 h-2 text-error" />,
+          icon: <AlertCircle className="w-3 h-3 text-error" />,
           text: "Error",
           color: "text-error",
+          bgColor: "bg-error/10",
+          borderColor: "border-error/20",
+        };
+      case "not-installed":
+        return {
+          icon: <AlertCircle className="w-3 h-3 text-warning" />,
+          text: "Not Installed",
+          color: "text-warning",
+          bgColor: "bg-warning/10",
+          borderColor: "border-warning/20",
         };
       default:
         return {
-          icon: <AlertCircle className="w-2 h-2 text-warning" />,
-          text: "Unknown",
+          icon: <AlertCircle className="w-3 h-3 text-warning" />,
+          text: "Loading...",
           color: "text-warning",
+          bgColor: "bg-warning/10",
+          borderColor: "border-warning/20",
         };
     }
   };
@@ -363,7 +381,7 @@ export default function LatexCompilerSettings() {
       )}
 
       {/* Status & Controls Card - Horizontal Layout */}
-      <div className="bg-gradient-to-r from-primary/10 via-secondary/5 to-base-100 border border-primary/20 rounded-xl p-4 flex items-center justify-between hover:border-primary/40 transition-all">
+      <div className={`${status.bgColor} border ${status.borderColor} rounded-xl p-4 flex items-center justify-between hover:border-primary/40 transition-all`}>
         {/* Left: Status Badge */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
@@ -636,10 +654,10 @@ export default function LatexCompilerSettings() {
       </div>
 
       {/* Logs */}
-      <div className="bg-base-100/30 border border-base-content/10 rounded-xl overflow-hidden">
+      <div className="bg-base-100/30 border border-base-content/10 rounded-xl overflow-hidden flex flex-col h-40">
         <button
           onClick={() => setShowLogs(!showLogs)}
-          className="w-full flex items-center justify-between p-3 hover:bg-base-200/50 transition-colors"
+          className="w-full flex items-center justify-between p-3 hover:bg-base-200/50 transition-colors flex-shrink-0"
         >
           <div className="flex items-center gap-2">
             <LogIn className="w-3 h-3 text-base-content/60" />
@@ -653,8 +671,8 @@ export default function LatexCompilerSettings() {
         </button>
 
         {showLogs && (
-          <div className="border-t border-base-content/10 p-3 max-h-40 overflow-hidden">
-            <pre className="text-xs font-mono text-base-content/70 overflow-hidden whitespace-pre-wrap break-words">
+          <div className="flex-1 overflow-y-auto border-t border-base-content/10 p-3">
+            <pre className="text-xs font-mono text-base-content/70 whitespace-pre-wrap break-words">
               {rendererLogs || "No logs available yet"}
             </pre>
           </div>
