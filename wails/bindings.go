@@ -3,6 +3,7 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/sirupsen/logrus"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -40,16 +42,18 @@ func (a *App) GetProject() (*ProjectInfo, error) {
 
 // SetProject sets the project root and opens a directory dialog if root is empty
 func (a *App) SetProject(root string) (*ProjectInfo, error) {
-	Logger.Infof("SetProject called with root: %s", root)
+	Logger.WithFields(logrus.Fields{
+		"action": "set_project",
+		"root":   root,
+	}).Info("SetProject called")
 
 	if root == "" {
-		// Open directory dialog
 		Logger.Debug("Opening directory dialog for project selection")
 		selected, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
 			Title: "Select Project Folder",
 		})
 		if err != nil {
-			Logger.Errorf("Failed to open directory dialog: %v", err)
+			Logger.WithError(err).Error("Failed to open directory dialog")
 			return nil, err
 		}
 		if selected == "" {
@@ -57,17 +61,26 @@ func (a *App) SetProject(root string) (*ProjectInfo, error) {
 			return nil, fmt.Errorf("no folder selected")
 		}
 		root = selected
-		Logger.Infof("User selected project folder: %s", root)
+		Logger.WithFields(logrus.Fields{
+			"action": "set_project",
+			"root":   root,
+		}).Info("User selected project folder")
 	}
 
 	if err := a.setRoot(root); err != nil {
-		Logger.Errorf("Failed to set project root: %v", err)
+		Logger.WithError(err).WithFields(logrus.Fields{
+			"action": "set_project",
+			"root":   root,
+		}).Error("Failed to set project root")
 		return nil, err
 	}
 
 	a.config.ProjectRoot = root
 	a.saveConfig()
-	Logger.Infof("Project successfully set to: %s", root)
+	Logger.WithFields(logrus.Fields{
+		"action": "set_project",
+		"root":   root,
+	}).Info("Project successfully set")
 
 	return a.GetProject()
 }
@@ -81,7 +94,10 @@ func (a *App) OpenProjectDialog() (*ProjectInfo, error) {
 
 // ListFiles lists files in a directory
 func (a *App) ListFiles(path string) ([]FileEntry, error) {
-	Logger.Debugf("ListFiles called with path: %s", path)
+	Logger.WithFields(logrus.Fields{
+		"action": "list_files",
+		"path":   path,
+	}).Debug("ListFiles called")
 
 	root := a.getRoot()
 	if root == "" {
@@ -91,13 +107,19 @@ func (a *App) ListFiles(path string) ([]FileEntry, error) {
 
 	abs, err := a.safePath(path)
 	if err != nil {
-		Logger.Errorf("SafePath failed for %s: %v", path, err)
+		Logger.WithError(err).WithFields(logrus.Fields{
+			"action": "list_files",
+			"path":   path,
+		}).Error("SafePath failed")
 		return nil, err
 	}
 
 	entries, err := os.ReadDir(abs)
 	if err != nil {
-		Logger.Errorf("Failed to read directory %s: %v", abs, err)
+		Logger.WithError(err).WithFields(logrus.Fields{
+			"action": "list_files",
+			"path":   abs,
+		}).Error("Failed to read directory")
 		return nil, err
 	}
 
@@ -139,21 +161,34 @@ type FileContent struct {
 
 // ReadFile reads a file's contents
 func (a *App) ReadFile(path string) (*FileContent, error) {
-	Logger.Debugf("ReadFile called for: %s", path)
+	Logger.WithFields(logrus.Fields{
+		"action": "read_file",
+		"path":   path,
+	}).Debug("ReadFile called")
 
 	abs, err := a.safePath(path)
 	if err != nil {
-		Logger.Errorf("SafePath failed for %s: %v", path, err)
+		Logger.WithError(err).WithFields(logrus.Fields{
+			"action": "read_file",
+			"path":   path,
+		}).Error("SafePath failed")
 		return nil, err
 	}
 
 	data, err := os.ReadFile(abs)
 	if err != nil {
-		Logger.Errorf("Failed to read file %s: %v", abs, err)
+		Logger.WithError(err).WithFields(logrus.Fields{
+			"action": "read_file",
+			"path":   abs,
+		}).Error("Failed to read file")
 		return nil, err
 	}
 
-	Logger.Debugf("Successfully read file %s (%d bytes)", path, len(data))
+	Logger.WithFields(logrus.Fields{
+		"action": "read_file",
+		"path":   path,
+		"bytes":  len(data),
+	}).Debug("Successfully read file")
 
 	// Check if binary (contains null bytes or invalid UTF-8)
 	isBinary := false
@@ -171,7 +206,10 @@ func (a *App) ReadFile(path string) (*FileContent, error) {
 	}
 
 	if isBinary {
-		Logger.Debugf("File %s detected as binary", path)
+		Logger.WithFields(logrus.Fields{
+			"action": "read_file",
+			"path":   path,
+		}).Debug("File detected as binary")
 	}
 
 	return &FileContent{
@@ -182,27 +220,43 @@ func (a *App) ReadFile(path string) (*FileContent, error) {
 
 // WriteFile writes content to a file
 func (a *App) WriteFile(path string, content string) error {
-	Logger.Debugf("WriteFile called for: %s (%d bytes)", path, len(content))
+	Logger.WithFields(logrus.Fields{
+		"action": "write_file",
+		"path":   path,
+		"bytes":  len(content),
+	}).Debug("WriteFile called")
 
 	abs, err := a.safePath(path)
 	if err != nil {
-		Logger.Errorf("SafePath failed for %s: %v", path, err)
+		Logger.WithError(err).WithFields(logrus.Fields{
+			"action": "write_file",
+			"path":   path,
+		}).Error("SafePath failed")
 		return err
 	}
 
 	// Ensure parent directory exists
 	if err := os.MkdirAll(filepath.Dir(abs), 0755); err != nil {
-		Logger.Errorf("Failed to create directory for %s: %v", abs, err)
+		Logger.WithError(err).WithFields(logrus.Fields{
+			"action": "write_file",
+			"path":   abs,
+		}).Error("Failed to create directory")
 		return err
 	}
 
 	err = os.WriteFile(abs, []byte(content), 0644)
 	if err != nil {
-		Logger.Errorf("Failed to write file %s: %v", abs, err)
+		Logger.WithError(err).WithFields(logrus.Fields{
+			"action": "write_file",
+			"path":   abs,
+		}).Error("Failed to write file")
 		return err
 	}
 
-	Logger.Debugf("Successfully wrote to file: %s", path)
+	Logger.WithFields(logrus.Fields{
+		"action": "write_file",
+		"path":   path,
+	}).Debug("Successfully wrote to file")
 	return nil
 }
 
@@ -356,11 +410,21 @@ func (a *App) TriggerBuild(mainFile, engine string, shellEscape bool) error {
 	buildID := a.status.ID
 	a.statusMu.Unlock()
 
-	Logger.Infof("Build %s started", buildID)
+	Logger.WithFields(logrus.Fields{
+		"action":       "trigger_build",
+		"build_id":     buildID,
+		"main_file":    mainFile,
+		"engine":       engine,
+		"shell_escape": shellEscape,
+	}).Info("Build started")
 	a.emitBuildStatus(a.status)
 
 	// Run build in background
-	go a.runBuild(mainFile, engine, shellEscape)
+	a.buildWg.Add(1)
+	go func() {
+		defer a.buildWg.Done()
+		a.runBuild(mainFile, engine, shellEscape)
+	}()
 
 	return nil
 }
@@ -374,6 +438,11 @@ func (a *App) runBuild(mainFile, engine string, shellEscape bool) {
 			a.status.Message = fmt.Sprintf("Build panicked: %v", r)
 			a.status.EndedAt = time.Now().Format(time.RFC3339)
 			a.statusMu.Unlock()
+			Logger.WithFields(logrus.Fields{
+				"action":    "run_build",
+				"main_file": mainFile,
+				"engine":    engine,
+			}).Errorf("Build panicked: %v", r)
 			a.emitBuildStatus(a.status)
 		}
 	}()
@@ -489,62 +558,68 @@ func (a *App) uploadBuild(zipPath, mainFile, engine string, shellEscape bool, bu
 
 // pollBuildStatus polls the builder for build status
 func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape bool, builderURL, builderToken string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
-	timeout := time.AfterFunc(5*time.Minute, func() {
-		a.statusMu.Lock()
-		a.status.State = "error"
-		a.status.Message = "Build timeout"
-		a.status.EndedAt = time.Now().Format(time.RFC3339)
-		a.statusMu.Unlock()
-		a.emitBuildStatus(a.status)
-	})
-	defer timeout.Stop()
-
-	for range ticker.C {
-		status, err := a.checkRemoteBuild(remoteID, builderURL, builderToken)
-		if err != nil {
+	for {
+		select {
+		case <-ctx.Done():
 			a.statusMu.Lock()
 			a.status.State = "error"
-			a.status.Message = err.Error()
+			a.status.Message = "Build timeout"
 			a.status.EndedAt = time.Now().Format(time.RFC3339)
 			a.statusMu.Unlock()
 			a.emitBuildStatus(a.status)
 			return
-		}
-
-		a.statusMu.Lock()
-		a.status.State = status
-		a.status.Message = fmt.Sprintf("Build %s", status)
-		a.statusMu.Unlock()
-		a.emitBuildStatus(a.status)
-
-		if status == "success" {
-			// Download PDF
-			if err := a.downloadPDF(remoteID, builderURL, builderToken); err != nil {
+		case <-ticker.C:
+			status, err := a.checkRemoteBuild(remoteID, builderURL, builderToken)
+			if err != nil {
 				a.statusMu.Lock()
 				a.status.State = "error"
 				a.status.Message = err.Error()
+				a.status.EndedAt = time.Now().Format(time.RFC3339)
+				statusCopy := a.status
+				a.statusMu.Unlock()
+				a.emitBuildStatus(statusCopy)
+				return
+			}
+
+			a.statusMu.Lock()
+			a.status.State = status
+			a.status.Message = fmt.Sprintf("Build %s", status)
+			statusCopy := a.status
+			a.statusMu.Unlock()
+			a.emitBuildStatus(statusCopy)
+
+			if status == "success" {
+				// Download PDF
+				if err := a.downloadPDF(remoteID, builderURL, builderToken); err != nil {
+					a.statusMu.Lock()
+					a.status.State = "error"
+					a.status.Message = err.Error()
+					a.status.EndedAt = time.Now().Format(time.RFC3339)
+					a.statusMu.Unlock()
+					a.emitBuildStatus(a.status)
+					return
+				}
+				a.statusMu.Lock()
+				a.status.State = "success"
 				a.status.EndedAt = time.Now().Format(time.RFC3339)
 				a.statusMu.Unlock()
 				a.emitBuildStatus(a.status)
 				return
 			}
-			a.statusMu.Lock()
-			a.status.State = "success"
-			a.status.EndedAt = time.Now().Format(time.RFC3339)
-			a.statusMu.Unlock()
-			a.emitBuildStatus(a.status)
-			return
-		}
 
-		if status == "error" {
-			a.statusMu.Lock()
-			a.status.EndedAt = time.Now().Format(time.RFC3339)
-			a.statusMu.Unlock()
-			a.emitBuildStatus(a.status)
-			return
+			if status == "error" {
+				a.statusMu.Lock()
+				a.status.EndedAt = time.Now().Format(time.RFC3339)
+				a.statusMu.Unlock()
+				a.emitBuildStatus(a.status)
+				return
+			}
 		}
 	}
 }
@@ -842,6 +917,32 @@ func (a *App) GitStatus() (*GitStatus, error) {
 	return &GitStatus{Raw: out}, nil
 }
 
+// sanitizeGitInput sanitizes user input for git commands to prevent command injection
+func sanitizeGitInput(input string) string {
+	// Remove any shell metacharacters and path traversal attempts
+	sanitized := strings.ReplaceAll(input, ";", "")
+	sanitized = strings.ReplaceAll(sanitized, "|", "")
+	sanitized = strings.ReplaceAll(sanitized, "&", "")
+	sanitized = strings.ReplaceAll(sanitized, "$", "")
+	sanitized = strings.ReplaceAll(sanitized, "`", "")
+	sanitized = strings.ReplaceAll(sanitized, "'", "\"")
+	sanitized = strings.ReplaceAll(sanitized, "\\", "")
+	sanitized = strings.ReplaceAll(sanitized, "\n", "")
+	sanitized = strings.ReplaceAll(sanitized, "\r", "")
+	sanitized = strings.ReplaceAll(sanitized, "..", "")
+	sanitized = strings.TrimSpace(sanitized)
+	return sanitized
+}
+
+// sanitizeGitInputs sanitizes a slice of git inputs
+func sanitizeGitInputs(inputs []string) []string {
+	sanitized := make([]string, len(inputs))
+	for i, input := range inputs {
+		sanitized[i] = sanitizeGitInput(input)
+	}
+	return sanitized
+}
+
 // runGit executes a git command in the project root
 func runGit(root string, args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
@@ -852,7 +953,12 @@ func runGit(root string, args ...string) (string, error) {
 
 // GitCommit commits changes
 func (a *App) GitCommit(message string, files []string, all bool) error {
-	Logger.Infof("GitCommit called - message: %s, all: %v, files: %d", message, all, len(files))
+	Logger.WithFields(logrus.Fields{
+		"action":  "git_commit",
+		"message": message,
+		"all":     all,
+		"files":   len(files),
+	}).Info("GitCommit called")
 
 	root := a.getRoot()
 	if root == "" {
@@ -869,13 +975,14 @@ func (a *App) GitCommit(message string, files []string, all bool) error {
 	}
 
 	if len(files) > 0 {
-		args := append([]string{"add"}, files...)
+		sanitizedFiles := sanitizeGitInputs(files)
+		args := append([]string{"add"}, sanitizedFiles...)
 		if _, err := runGit(root, args...); err != nil {
 			return err
 		}
 	}
 
-	_, err := runGit(root, "commit", "-m", message)
+	_, err := runGit(root, "commit", "-m", sanitizeGitInput(message))
 	return err
 }
 
@@ -883,32 +990,48 @@ func (a *App) GitCommit(message string, files []string, all bool) error {
 func (a *App) GitPush(remote string) error {
 	root := a.getRoot()
 	if root == "" {
+		Logger.Error("Cannot push: project root not set")
 		return fmt.Errorf("project root not set")
 	}
 
 	args := []string{"push"}
 	if remote != "" {
-		args = append(args, remote)
+		args = append(args, sanitizeGitInput(remote))
 	}
 
-	_, err := runGit(root, args...)
-	return err
+	Logger.WithField("remote", remote).Info("Pushing to git remote")
+	out, err := runGit(root, args...)
+	if err != nil {
+		Logger.WithError(err).WithField("output", out).Error("Git push failed")
+		return err
+	}
+
+	Logger.Info("Git push completed successfully")
+	return nil
 }
 
 // GitPull pulls changes
 func (a *App) GitPull(remote string) error {
 	root := a.getRoot()
 	if root == "" {
+		Logger.Error("Cannot pull: project root not set")
 		return fmt.Errorf("project root not set")
 	}
 
 	args := []string{"pull"}
 	if remote != "" {
-		args = append(args, remote)
+		args = append(args, sanitizeGitInput(remote))
 	}
 
-	_, err := runGit(root, args...)
-	return err
+	Logger.WithField("remote", remote).Info("Pulling from git remote")
+	out, err := runGit(root, args...)
+	if err != nil {
+		Logger.WithError(err).WithField("output", out).Error("Git pull failed")
+		return err
+	}
+
+	Logger.Info("Git pull completed successfully")
+	return nil
 }
 
 // SyncTeX Operations
@@ -917,8 +1040,15 @@ func (a *App) GitPull(remote string) error {
 func (a *App) SyncTeXView(file string, line, col int) (*SyncTeXResult, error) {
 	remoteID := a.getRemoteID()
 	if remoteID == "" {
+		Logger.Warn("SyncTeX view: no build available")
 		return nil, fmt.Errorf("no build available")
 	}
+
+	Logger.WithFields(logrus.Fields{
+		"file": file,
+		"line": line,
+		"col":  col,
+	}).Debug("SyncTeX forward search request")
 
 	builderURL := a.getBuilderURL()
 	url := fmt.Sprintf("%s/build/%s/synctex/view?file=%s&line=%d",
@@ -929,6 +1059,7 @@ func (a *App) SyncTeXView(file string, line, col int) (*SyncTeXResult, error) {
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
+		Logger.WithError(err).Error("Failed to create SyncTeX view request")
 		return nil, err
 	}
 
@@ -940,18 +1071,27 @@ func (a *App) SyncTeXView(file string, line, col int) (*SyncTeXResult, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
+		Logger.WithError(err).Error("SyncTeX view request failed")
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		Logger.WithField("status", resp.Status).Error("SyncTeX view failed")
 		return nil, fmt.Errorf("synctex failed: %s", resp.Status)
 	}
 
 	var result SyncTeXResult
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		Logger.WithError(err).Error("Failed to decode SyncTeX view response")
 		return nil, err
 	}
+
+	Logger.WithFields(logrus.Fields{
+		"page": result.Page,
+		"x":    result.X,
+		"y":    result.Y,
+	}).Debug("SyncTeX view completed")
 
 	return &result, nil
 }
@@ -960,8 +1100,15 @@ func (a *App) SyncTeXView(file string, line, col int) (*SyncTeXResult, error) {
 func (a *App) SyncTeXEdit(page int, x, y float64) (*SyncTeXResult, error) {
 	remoteID := a.getRemoteID()
 	if remoteID == "" {
+		Logger.Warn("SyncTeX edit: no build available")
 		return nil, fmt.Errorf("no build available")
 	}
+
+	Logger.WithFields(logrus.Fields{
+		"page": page,
+		"x":    x,
+		"y":    y,
+	}).Debug("SyncTeX reverse search request")
 
 	builderURL := a.getBuilderURL()
 	url := fmt.Sprintf("%s/build/%s/synctex/edit?page=%d&x=%f&y=%f",
@@ -969,6 +1116,7 @@ func (a *App) SyncTeXEdit(page int, x, y float64) (*SyncTeXResult, error) {
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
+		Logger.WithError(err).Error("Failed to create SyncTeX edit request")
 		return nil, err
 	}
 
@@ -980,46 +1128,40 @@ func (a *App) SyncTeXEdit(page int, x, y float64) (*SyncTeXResult, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
+		Logger.WithError(err).Error("SyncTeX edit request failed")
 		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		Logger.WithField("status", resp.Status).Error("SyncTeX edit failed")
 		return nil, fmt.Errorf("synctex failed: %s", resp.Status)
 	}
 
 	var result SyncTeXResult
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		Logger.WithError(err).Error("Failed to decode SyncTeX edit response")
 		return nil, err
 	}
+
+	Logger.WithFields(logrus.Fields{
+		"page": result.Page,
+		"x":    result.X,
+		"y":    result.Y,
+	}).Debug("SyncTeX edit completed")
 
 	return &result, nil
 }
 
 // Renderer lifecycle management endpoints
 
-// BuildRenderer builds the Docker image from the bundled Dockerfile
-func (a *App) BuildRenderer() error {
-	if a.dockerMgr == nil {
-		return fmt.Errorf("renderer not initialized")
-	}
-	return a.dockerMgr.BuildImage()
-}
-
-// PullRenderer pulls the Docker image from a remote registry
-func (a *App) PullRenderer(imageRef string) error {
-	if a.dockerMgr == nil {
-		return fmt.Errorf("renderer not initialized")
-	}
-	return a.dockerMgr.PullImage(imageRef)
-}
-
 // StartRenderer starts the Docker container
 func (a *App) StartRenderer() error {
 	if a.dockerMgr == nil {
 		return fmt.Errorf("renderer not initialized")
 	}
-	return a.dockerMgr.Start()
+	ctx := context.Background()
+	return a.dockerMgr.Start(ctx)
 }
 
 // StopRenderer stops the Docker container
@@ -1027,7 +1169,8 @@ func (a *App) StopRenderer() error {
 	if a.dockerMgr == nil {
 		return fmt.Errorf("renderer not initialized")
 	}
-	return a.dockerMgr.Stop()
+	ctx := context.Background()
+	return a.dockerMgr.Stop(ctx)
 }
 
 // RestartRenderer restarts the Docker container
@@ -1035,7 +1178,18 @@ func (a *App) RestartRenderer() error {
 	if a.dockerMgr == nil {
 		return fmt.Errorf("renderer not initialized")
 	}
-	return a.dockerMgr.Restart()
+	ctx := context.Background()
+
+	// Stop first
+	if err := a.dockerMgr.Stop(ctx); err != nil {
+		Logger.Warnf("Error stopping during restart: %v", err)
+	}
+
+	// Wait briefly
+	time.Sleep(2 * time.Second)
+
+	// Start again
+	return a.dockerMgr.Start(ctx)
 }
 
 // GetRendererStatus returns the current status of the renderer
@@ -1051,12 +1205,16 @@ func (a *App) GetRendererStatus() RendererStatus {
 
 // SetRendererPort updates the port for the renderer
 func (a *App) SetRendererPort(port int) error {
-	if a.dockerMgr == nil {
-		return fmt.Errorf("renderer not initialized")
-	}
-	if err := a.dockerMgr.SetPort(port); err != nil {
+	if err := ValidatePort(port); err != nil {
 		return err
 	}
+	a.configMu.Lock()
+	defer a.configMu.Unlock()
+
+	if a.config.Renderer == nil {
+		a.config.Renderer = DefaultRendererConfig()
+	}
+
 	a.config.Renderer.Port = port
 	return a.saveConfig()
 }
@@ -1065,11 +1223,11 @@ func (a *App) SetRendererPort(port int) error {
 func (a *App) SetRendererAutoStart(enabled bool) error {
 	a.configMu.Lock()
 	defer a.configMu.Unlock()
-	
+
 	if a.config.Renderer == nil {
-		a.config.Renderer = &RendererConfig{}
+		a.config.Renderer = DefaultRendererConfig()
 	}
-	
+
 	a.config.Renderer.AutoStart = enabled
 	return a.saveConfig()
 }
@@ -1079,7 +1237,8 @@ func (a *App) GetRendererLogs() string {
 	if a.dockerMgr == nil {
 		return ""
 	}
-	return a.dockerMgr.GetLogs()
+	status := a.dockerMgr.GetStatus()
+	return status.Logs
 }
 
 // GetRendererConfig returns the current renderer configuration
@@ -1087,11 +1246,61 @@ func (a *App) GetRendererConfig() *RendererConfig {
 	a.configMu.Lock()
 	defer a.configMu.Unlock()
 	if a.config.Renderer == nil {
-		return &RendererConfig{
-			Port:      8080,
-			Enabled:   false,
-			AutoStart: false,
-		}
+		return DefaultRendererConfig()
 	}
 	return a.config.Renderer
+}
+
+// SetRendererMode sets the rendering mode
+func (a *App) SetRendererMode(mode string) error {
+	a.configMu.Lock()
+	defer a.configMu.Unlock()
+
+	if a.config.Renderer == nil {
+		a.config.Renderer = DefaultRendererConfig()
+	}
+
+	a.config.Renderer.Mode = RendererMode(mode)
+	return a.saveConfig()
+}
+
+// SetImageSource sets the image source
+func (a *App) SetImageSource(source string, ref string) error {
+	a.configMu.Lock()
+	defer a.configMu.Unlock()
+
+	if a.config.Renderer == nil {
+		a.config.Renderer = DefaultRendererConfig()
+	}
+
+	a.config.Renderer.ImageSource = ImageSource(source)
+	if ref != "" {
+		a.config.Renderer.ImageRef = ref
+	}
+	return a.saveConfig()
+}
+
+// VerifyCustomImage verifies a custom image works
+func (a *App) VerifyCustomImage(path string) bool {
+	a.configMu.Lock()
+	a.config.Renderer.CustomTarPath = path
+	a.config.Renderer.ImageSource = SourceCustom
+	a.configMu.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	im := NewImageManager(a.config.Renderer, Logger)
+	err := im.EnsureImage(ctx)
+	return err == nil
+}
+
+// DetectBestMode detects the best rendering mode
+func (a *App) DetectBestMode() string {
+	if a.dockerMgr == nil {
+		return string(ModeRemote)
+	}
+	ctx := context.Background()
+	mode := a.dockerMgr.DetectBestMode(ctx)
+	return string(mode)
 }
