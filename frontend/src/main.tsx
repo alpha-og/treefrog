@@ -1,14 +1,18 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { RouterProvider } from "@tanstack/react-router";
+import { Toaster } from "sonner";
 import { router } from "./router";
+import { createLogger } from "./utils/logger";
 import "./globals.css";
+
+const log = createLogger("Main");
 
 // Import Wails runtime to ensure window.go is available in dev mode
 // Use dynamic import to handle missing bindings on fresh clones
 import("wailsjs/runtime").catch(() => {
   // Bindings will be generated during build
-  console.debug("Wails runtime bindings not yet generated");
+  log.debug("Wails runtime bindings not yet generated");
 });
 
 import EditorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
@@ -32,6 +36,7 @@ if (root) {
   createRoot(root).render(
     <React.StrictMode>
       <RouterProvider router={router} />
+      <Toaster position="top-right" richColors closeButton />
     </React.StrictMode>
   );
 }
