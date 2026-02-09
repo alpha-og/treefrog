@@ -81,7 +81,7 @@ export default function SettingsModal({
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg bg-linear-to-br from-primary to-secondary flex items-center justify-center">
                 <Globe size={20} className="text-primary-content" />
               </div>
               <div>
@@ -117,9 +117,8 @@ export default function SettingsModal({
                   if (errors.url) setErrors({ ...errors, url: undefined });
                 }}
                 placeholder="https://treefrog-renderer.onrender.com"
-                className={`input input-bordered w-full transition-colors ${
-                  errors.url ? "input-error" : "focus:border-primary"
-                }`}
+                className={`input input-bordered w-full transition-colors ${errors.url ? "input-error" : "focus:border-primary"
+                  }`}
               />
               {errors.url && (
                 <div className="flex items-center gap-2 mt-2 text-error text-sm">
@@ -162,7 +161,7 @@ export default function SettingsModal({
             {/* Info Box */}
             <div className="bg-info/10 border border-info/30 rounded-lg p-4">
               <p className="text-sm text-info flex items-start gap-2">
-                <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+                <AlertCircle size={16} className="shrink-0 mt-0.5" />
                 <span>
                   These settings are stored locally on your device and are not shared
                   with anyone.

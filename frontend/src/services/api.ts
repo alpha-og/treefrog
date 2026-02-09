@@ -121,22 +121,34 @@ interface WailsApp {
   GetRendererStatus(): Promise<RendererStatus>;
   SetRendererPort(port: number): Promise<void>;
   SetRendererAutoStart(enabled: boolean): Promise<void>;
+  SetRendererMode(mode: string): Promise<void>;
+  SetImageSource(source: string, ref: string): Promise<void>;
+  VerifyCustomImage(path: string): Promise<boolean>;
+  DetectBestMode(): Promise<string>;
+  SetRendererRemoteURL(url: string): Promise<void>;
+  SetRendererRemoteToken(token: string): Promise<void>;
   GetRendererLogs(): Promise<string>;
   GetRendererConfig(): Promise<RendererConfig>;
 }
 
 interface RendererStatus {
   state: "running" | "stopped" | "error" | "not-installed" | "building";
+  mode: string;
   message: string;
   port: number;
   logs: string;
-  isRunning: boolean;
 }
 
 interface RendererConfig {
+  mode: string;
   port: number;
-  enabled: boolean;
   autoStart: boolean;
+  imageSource: string;
+  imageRef: string;
+  remoteUrl: string;
+  remoteToken: string;
+  customRegistry?: string;
+  customTarPath?: string;
 }
 
 interface FileEntry {
