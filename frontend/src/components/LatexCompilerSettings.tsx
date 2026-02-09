@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { useAppStore } from "../stores/appStore";
 import { rendererService, type RendererMode, type ImageSource } from "../services/rendererService";
 import { createLogger } from "../utils/logger";
@@ -21,7 +21,7 @@ import {
 
 const log = createLogger("LatexCompilerSettings");
 
-export default function LatexCompilerSettings() {
+export default forwardRef(function LatexCompilerSettings(_, ref) {
   const successTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
@@ -51,27 +51,43 @@ export default function LatexCompilerSettings() {
     setRendererLogs,
   } = useAppStore();
 
-  const [portInput, setPortInput] = useState(rendererPort.toString());
-  const [isLoading, setIsLoading] = useState(false);
-  const [showLogs, setShowLogs] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [showCustomTabs, setShowCustomTabs] = useState<"registry" | "tar">("registry");
-  const [isVerifyingImage, setIsVerifyingImage] = useState(false);
-  const [imageVerificationStatus, setImageVerificationStatus] = useState<"idle" | "valid" | "invalid">("idle");
+   const [portInput, setPortInput] = useState(rendererPort.toString());
+   const [remoteUrlInput, setRemoteUrlInput] = useState(rendererRemoteUrl);
+   const [remoteTokenInput, setRemoteTokenInput] = useState(rendererRemoteToken);
+   const [isLoading, setIsLoading] = useState(false);
+   const [showLogs, setShowLogs] = useState(false);
+   const [error, setError] = useState<string | null>(null);
+   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+   const [showCustomTabs, setShowCustomTabs] = useState<"registry" | "tar">("registry");
+   const [isVerifyingImage, setIsVerifyingImage] = useState(false);
+   const [imageVerificationStatus, setImageVerificationStatus] = useState<"idle" | "valid" | "invalid">("idle");
+
+   // Track if remote settings have unsaved changes
+   const hasRemoteChanges = remoteUrlInput !== rendererRemoteUrl || remoteTokenInput !== rendererRemoteToken;
 
   useEffect(() => {
     loadConfig();
     loadStatus();
   }, []);
 
-  useEffect(() => {
-    return () => {
-      if (successTimeoutRef.current) {
-        clearTimeout(successTimeoutRef.current);
-      }
-    };
-  }, []);
+   useEffect(() => {
+     return () => {
+       if (successTimeoutRef.current) {
+         clearTimeout(successTimeoutRef.current);
+       }
+     };
+   }, []);
+
+   // Sync remote inputs when config loads
+   useEffect(() => {
+     setRemoteUrlInput(rendererRemoteUrl);
+     setRemoteTokenInput(rendererRemoteToken);
+   }, [rendererRemoteUrl, rendererRemoteToken]);
+
+   // Expose save method to parent
+   useImperativeHandle(ref, () => ({
+     save: handleSaveRemoteSettings,
+   }));
 
   const loadConfig = async () => {
     try {
@@ -282,10 +298,32 @@ export default function LatexCompilerSettings() {
       successTimeoutRef.current = setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       setError(`Failed to update auto-start: ${err}`);
-    }
-  };
+     }
+   };
 
-  const getStatusDisplay = () => {
+   const handleSaveRemoteSettings = async () => {
+     setIsLoading(true);
+     setError(null);
+     try {
+       if (remoteUrlInput !== rendererRemoteUrl) {
+         await rendererService.setRemoteUrl(remoteUrlInput);
+         setRendererRemoteUrl(remoteUrlInput);
+       }
+       if (remoteTokenInput !== rendererRemoteToken) {
+         await rendererService.setRemoteToken(remoteTokenInput);
+         setRendererRemoteToken(remoteTokenInput);
+       }
+       setSuccessMessage("Settings saved successfully");
+       if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+       successTimeoutRef.current = setTimeout(() => setSuccessMessage(null), 3000);
+     } catch (err) {
+       setError(`Failed to save settings: ${err}`);
+     } finally {
+       setIsLoading(false);
+     }
+   };
+
+   const getStatusDisplay = () => {
     switch (rendererStatus) {
       case "running":
         return {
@@ -606,28 +644,28 @@ export default function LatexCompilerSettings() {
                   type="text"
                   className="input input-bordered input-sm w-full"
                   placeholder="https://compiler.com"
-                  value={rendererRemoteUrl}
-                  onChange={(e) => setRendererRemoteUrl(e.target.value)}
+                  value={remoteUrlInput}
+                  onChange={(e) => setRemoteUrlInput(e.target.value)}
                   disabled={isLoading}
                 />
                 <p className="text-xs text-base-content/70 mt-1">API endpoint for remote compiler</p>
               </div>
 
-             {/* API Key */}
-             <div className="pt-3 mt-3 border-t border-base-content/10">
-               <label className="label pb-2">
-                 <span className="label-text font-semibold text-xs">API Key (Optional)</span>
-               </label>
-               <input
-                 type="password"
-                 className="input input-bordered input-sm w-full"
-                 placeholder="Enter API key"
-                 value={rendererRemoteToken}
-                 onChange={(e) => setRendererRemoteToken(e.target.value)}
-                 disabled={isLoading}
-               />
-               <p className="text-xs text-base-content/70 mt-1">Authentication if required</p>
-             </div>
+              {/* API Key */}
+              <div className="pt-3 mt-3 border-t border-base-content/10">
+                <label className="label pb-2">
+                  <span className="label-text font-semibold text-xs">API Key (Optional)</span>
+                </label>
+                <input
+                  type="password"
+                  className="input input-bordered input-sm w-full"
+                  placeholder="Enter API key"
+                  value={remoteTokenInput}
+                  onChange={(e) => setRemoteTokenInput(e.target.value)}
+                  disabled={isLoading}
+                />
+                <p className="text-xs text-base-content/70 mt-1">Authentication if required</p>
+              </div>
            </div>
          </div>
        </div>
@@ -657,6 +695,6 @@ export default function LatexCompilerSettings() {
           </div>
         )}
       </div>
-    </div>
-  );
-}
+     </div>
+   );
+});
