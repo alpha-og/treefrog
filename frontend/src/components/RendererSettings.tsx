@@ -1,6 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAppStore } from "../stores/appStore";
-import { rendererService } from "../services/rendererService";
+import { rendererService, type RendererMode, type ImageSource } from "../services/rendererService";
+import { createLogger } from "../utils/logger";
+import { toast } from "sonner";
 import {
   ChevronDown,
   Play,
@@ -10,17 +12,50 @@ import {
   CheckCircle,
   Sliders,
   LogIn,
+  Server,
+  Download,
+  Cpu,
+  Wrench,
+  FileArchive,
+  Globe,
+  Search,
+  Check,
+  X,
+  Loader2,
+  Shield,
 } from "lucide-react";
 
+const log = createLogger("RendererSettings");
+
 export default function RendererSettings() {
+  // Timeout refs for cleanup
+  const successTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const statusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const {
+    rendererMode,
     rendererPort,
-    rendererStatus,
     rendererAutoStart,
+    rendererImageSource,
+    rendererImageRef,
+    rendererRemoteUrl,
+    rendererRemoteToken,
+    rendererCustomRegistry,
+    rendererCustomTarPath,
+    rendererStatus,
+    rendererDetectedMode,
     rendererLogs,
+    setRendererMode,
     setRendererPort,
-    setRendererStatus,
     setRendererAutoStart,
+    setRendererImageSource,
+    setRendererImageRef,
+    setRendererRemoteUrl,
+    setRendererRemoteToken,
+    setRendererCustomRegistry,
+    setRendererCustomTarPath,
+    setRendererStatus,
+    setRendererDetectedMode,
     setRendererLogs,
   } = useAppStore();
 
@@ -29,22 +64,150 @@ export default function RendererSettings() {
   const [showLogs, setShowLogs] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showCustomTabs, setShowCustomTabs] = useState<"registry" | "tar">("registry");
+  const [isVerifyingImage, setIsVerifyingImage] = useState(false);
+  const [imageVerificationStatus, setImageVerificationStatus] = useState<"idle" | "valid" | "invalid">("idle");
 
-  // Load initial status
+  // Load initial config and status
   useEffect(() => {
+    loadConfig();
     loadStatus();
   }, []);
 
-  const loadStatus = async () => {
-    try {
-      const status = await rendererService.getStatus();
-      setRendererStatus(status.state as any);
-      if (status.logs) {
-        setRendererLogs(status.logs);
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (successTimeoutRef.current) {
+        clearTimeout(successTimeoutRef.current);
       }
+      if (statusTimeoutRef.current) {
+        clearTimeout(statusTimeoutRef.current);
+      }
+    };
+  }, []);
+
+   const loadConfig = async () => {
+     try {
+       const config = await rendererService.getConfig();
+       setRendererMode(config.mode);
+       setRendererPort(config.port);
+       setRendererAutoStart(config.autoStart);
+       setRendererImageSource(config.imageSource);
+       setRendererImageRef(config.imageRef);
+       setRendererRemoteUrl(config.remoteUrl);
+       setRendererRemoteToken(config.remoteToken);
+       if (config.customRegistry) setRendererCustomRegistry(config.customRegistry);
+       if (config.customTarPath) setRendererCustomTarPath(config.customTarPath);
+       setPortInput(config.port.toString());
+       setError(null); // Clear any previous errors
+     } catch (err) {
+       const errorMsg = err instanceof Error ? err.message : String(err);
+       log.error("Failed to load renderer config", err);
+       setError(`Failed to load renderer configuration: ${errorMsg}`);
+     }
+   };
+
+   const loadStatus = async () => {
+     try {
+       const status = await rendererService.getStatus();
+       setRendererStatus(status.state);
+       setRendererDetectedMode(status.mode);
+       if (status.logs) {
+         setRendererLogs(status.logs);
+       }
+       setError(null); // Clear any previous errors
+     } catch (err) {
+       const errorMsg = err instanceof Error ? err.message : String(err);
+       log.error("Failed to load renderer status", err);
+       setError(`Failed to load renderer status: ${errorMsg}`);
+       setRendererStatus("error");
+     }
+   };
+
+  const handleModeChange = async (newMode: RendererMode) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await rendererService.setMode(newMode);
+      setRendererMode(newMode);
+      setSuccessMessage(`Mode changed to ${newMode}`);
+      if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+      successTimeoutRef.current = setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
-      console.error("Failed to get renderer status:", err);
+      setError(`Failed to change mode: ${err}`);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const handleDetectBestMode = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const detectedMode = await rendererService.detectBestMode();
+      setRendererDetectedMode(detectedMode);
+      setRendererMode(detectedMode);
+      await rendererService.setMode(detectedMode);
+      toast.success(`Auto-detected best mode: ${detectedMode}`);
+    } catch (err) {
+      setError(`Failed to detect mode: ${err}`);
+      toast.error(`Failed to detect mode: ${err}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleImageSourceChange = async (newSource: ImageSource) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await rendererService.setImageSource(newSource, rendererImageRef);
+      setRendererImageSource(newSource);
+      
+      // Set default ref based on source
+      if (newSource === "ghcr") {
+        setRendererImageRef("ghcr.io/alpha-og/treefrog/renderer:latest");
+      }
+      
+      setSuccessMessage(`Image source changed to ${newSource}`);
+      if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+      successTimeoutRef.current = setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      setError(`Failed to change image source: ${err}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyCustomImage = async () => {
+    setIsVerifyingImage(true);
+    setImageVerificationStatus("idle");
+    setError(null);
+    
+    const path = rendererCustomTarPath || rendererCustomRegistry;
+    if (!path) {
+      setError("Please enter a registry URL or tar file path");
+      setIsVerifyingImage(false);
+      return;
+    }
+    
+    toast.promise(
+      rendererService.verifyCustomImage(path),
+      {
+        loading: "Verifying custom image... (this may take up to 30 seconds)",
+        success: (isValid) => {
+          setImageVerificationStatus(isValid ? "valid" : "invalid");
+          return isValid ? "Image verified successfully" : "Image verification failed";
+        },
+        error: (err) => {
+          setImageVerificationStatus("invalid");
+          return `Verification failed: ${err}`;
+        },
+        finally: () => {
+          setIsVerifyingImage(false);
+        },
+      }
+    );
   };
 
   const handlePortChange = async () => {
@@ -60,7 +223,8 @@ export default function RendererSettings() {
       await rendererService.setPort(newPort);
       setRendererPort(newPort);
       setSuccessMessage("Port updated successfully");
-      setTimeout(() => setSuccessMessage(null), 3000);
+      if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+      successTimeoutRef.current = setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       setError(`Failed to update port: ${err}`);
     } finally {
@@ -72,15 +236,29 @@ export default function RendererSettings() {
     setIsLoading(true);
     setError(null);
     setRendererStatus("building");
+    
+    toast.info("Starting renderer... This may take a few minutes if pulling image for the first time.");
+    
     try {
       await rendererService.startRenderer();
       setRendererStatus("running");
+      
+      // Check if port changed
+      const status = await rendererService.getStatus();
+      if (status.port !== rendererPort) {
+        toast.warning(`Port ${rendererPort} was busy. Using port ${status.port} instead.`);
+        setRendererPort(status.port);
+        setPortInput(status.port.toString());
+      }
+      
       setSuccessMessage("Renderer started successfully");
-      setTimeout(() => setSuccessMessage(null), 3000);
+      if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+      successTimeoutRef.current = setTimeout(() => setSuccessMessage(null), 3000);
       await loadStatus();
     } catch (err) {
       setRendererStatus("error");
       setError(`Failed to start renderer: ${err}`);
+      toast.error(`Failed to start renderer: ${err}`);
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +271,8 @@ export default function RendererSettings() {
       await rendererService.stopRenderer();
       setRendererStatus("stopped");
       setSuccessMessage("Renderer stopped successfully");
-      setTimeout(() => setSuccessMessage(null), 3000);
+      if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+      successTimeoutRef.current = setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       setError(`Failed to stop renderer: ${err}`);
     } finally {
@@ -105,15 +284,20 @@ export default function RendererSettings() {
     setIsLoading(true);
     setError(null);
     setRendererStatus("building");
+    
+    toast.info("Restarting renderer...");
+    
     try {
       await rendererService.restartRenderer();
       setRendererStatus("running");
       setSuccessMessage("Renderer restarted successfully");
-      setTimeout(() => setSuccessMessage(null), 3000);
+      if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+      successTimeoutRef.current = setTimeout(() => setSuccessMessage(null), 3000);
       await loadStatus();
     } catch (err) {
       setRendererStatus("error");
       setError(`Failed to restart renderer: ${err}`);
+      toast.error(`Failed to restart renderer: ${err}`);
     } finally {
       setIsLoading(false);
     }
@@ -126,7 +310,8 @@ export default function RendererSettings() {
       setSuccessMessage(
         `Auto-start ${!rendererAutoStart ? "enabled" : "disabled"}`
       );
-      setTimeout(() => setSuccessMessage(null), 3000);
+      if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+      successTimeoutRef.current = setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       setError(`Failed to update auto-start: ${err}`);
     }
@@ -169,6 +354,8 @@ export default function RendererSettings() {
 
   const status = getStatusDisplay();
   const isRunning = rendererStatus === "running";
+  const isRemoteMode = rendererMode === "remote";
+  const showImageSource = rendererMode === "local" || rendererMode === "auto";
 
   return (
     <div className="space-y-6">
@@ -190,12 +377,12 @@ export default function RendererSettings() {
 
       {/* Status Card */}
       <div className="bg-gradient-to-br from-base-100 to-base-100/50 border border-base-content/10 rounded-2xl p-6 md:p-8 hover:border-base-content/20 transition-all duration-300">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h3 className="text-sm font-bold text-base-content/60 uppercase tracking-wider mb-3">
               Current Status
             </h3>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {status.icon}
               <span className={`font-semibold ${status.color}`}>
                 {status.text}
@@ -205,10 +392,266 @@ export default function RendererSettings() {
                   on port {rendererPort}
                 </span>
               )}
+              {rendererMode === "auto" && rendererDetectedMode && (
+                <span className="badge badge-primary badge-sm">
+                  Auto (using {rendererDetectedMode})
+                </span>
+              )}
             </div>
+          </div>
+          <div className="text-right">
+            <span className="text-xs text-base-content/50 uppercase tracking-wider">
+              Mode
+            </span>
+            <p className="font-semibold capitalize">{rendererMode}</p>
           </div>
         </div>
       </div>
+
+      {/* Mode Selection Card */}
+      <div className="bg-gradient-to-br from-base-100 to-base-100/50 border border-base-content/10 rounded-2xl p-6 md:p-8 hover:border-base-content/20 transition-all duration-300">
+        <label className="font-bold text-base flex items-center gap-2 mb-4">
+          <Server size={18} className="text-primary" />
+          Rendering Mode
+        </label>
+
+        <div className="space-y-4">
+          <div className="flex gap-3">
+            <select
+              className="select select-bordered flex-1"
+              value={rendererMode}
+              onChange={(e) => handleModeChange(e.target.value as RendererMode)}
+              disabled={isLoading || isRunning}
+            >
+              <option value="auto">Auto (Recommended)</option>
+              <option value="local">Local (Docker)</option>
+              <option value="remote">Remote (External)</option>
+            </select>
+            <button
+              className="btn btn-outline gap-2"
+              onClick={handleDetectBestMode}
+              disabled={isLoading || isRunning}
+            >
+              <Search className="w-4 h-4" />
+              Detect
+            </button>
+          </div>
+          
+          <div className="bg-base-200/50 rounded-xl p-4">
+            <p className="text-xs text-base-content/70 leading-relaxed">
+              <strong>Auto:</strong> Tries remote builder first, falls back to local Docker.
+              <br />
+              <strong>Local:</strong> Uses Docker container on your machine. Requires Docker.
+              <br />
+              <strong>Remote:</strong> Connects to an external builder. Requires URL configuration.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Image Source Card (shown for local and auto modes) */}
+      {showImageSource && (
+        <div className="bg-gradient-to-br from-base-100 to-base-100/50 border border-base-content/10 rounded-2xl p-6 md:p-8 hover:border-base-content/20 transition-all duration-300">
+          <label className="font-bold text-base flex items-center gap-2 mb-4">
+            <Download size={18} className="text-primary" />
+            Image Source
+          </label>
+
+          <div className="space-y-4">
+            <select
+              className="select select-bordered w-full"
+              value={rendererImageSource}
+              onChange={(e) => handleImageSourceChange(e.target.value as ImageSource)}
+              disabled={isLoading || isRunning}
+            >
+              <option value="ghcr">GitHub Container Registry (Default)</option>
+              <option value="embedded">Build from Source</option>
+              <option value="custom">Custom Image</option>
+            </select>
+
+            {/* GHCR Info */}
+            {rendererImageSource === "ghcr" && (
+              <div className="bg-success/10 border border-success/30 rounded-xl p-4">
+                <div className="flex items-center gap-2 text-success">
+                  <Globe className="w-4 h-4" />
+                  <span className="text-sm font-medium">
+                    Will pull from: {rendererImageRef}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Embedded Info */}
+            {rendererImageSource === "embedded" && (
+              <div className="bg-info/10 border border-info/30 rounded-xl p-4">
+                <div className="flex items-start gap-2 text-info">
+                  <Wrench className="w-4 h-4 mt-0.5" />
+                  <span className="text-sm">
+                    Will build from bundled Dockerfile. This may take 10-20 minutes on first run.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Custom Image Configuration */}
+            {rendererImageSource === "custom" && (
+              <div className="space-y-4">
+                <div className="tabs tabs-boxed">
+                  <button
+                    className={`tab ${showCustomTabs === "registry" ? "tab-active" : ""}`}
+                    onClick={() => setShowCustomTabs("registry")}
+                  >
+                    Registry URL
+                  </button>
+                  <button
+                    className={`tab ${showCustomTabs === "tar" ? "tab-active" : ""}`}
+                    onClick={() => setShowCustomTabs("tar")}
+                  >
+                    Tar File
+                  </button>
+                </div>
+
+                {showCustomTabs === "registry" ? (
+                  <div className="space-y-3">
+                    <label className="label">
+                      <span className="label-text text-sm font-semibold">
+                        Custom Registry URL
+                      </span>
+                    </label>
+                    <div className="flex gap-3">
+                      <input
+                        type="text"
+                        className="input input-bordered flex-1"
+                        placeholder="e.g., myregistry.com/image:tag"
+                        value={rendererCustomRegistry}
+                        onChange={(e) => setRendererCustomRegistry(e.target.value)}
+                        disabled={isLoading || isRunning}
+                      />
+                      <button
+                        className="btn btn-outline gap-2"
+                        onClick={handleVerifyCustomImage}
+                        disabled={isVerifyingImage || isLoading || isRunning || !rendererCustomRegistry}
+                      >
+                        {isVerifyingImage ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : imageVerificationStatus === "valid" ? (
+                          <Check className="w-4 h-4 text-success" />
+                        ) : imageVerificationStatus === "invalid" ? (
+                          <X className="w-4 h-4 text-error" />
+                        ) : (
+                          <Shield className="w-4 h-4" />
+                        )}
+                        Verify
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <label className="label">
+                      <span className="label-text text-sm font-semibold">
+                        Tar File Path
+                      </span>
+                    </label>
+                    <div className="flex gap-3">
+                      <input
+                        type="text"
+                        className="input input-bordered flex-1"
+                        placeholder="/path/to/image.tar"
+                        value={rendererCustomTarPath}
+                        onChange={(e) => setRendererCustomTarPath(e.target.value)}
+                        disabled={isLoading || isRunning}
+                      />
+                      <button
+                        className="btn btn-outline gap-2"
+                        onClick={handleVerifyCustomImage}
+                        disabled={isVerifyingImage || isLoading || isRunning || !rendererCustomTarPath}
+                      >
+                        {isVerifyingImage ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : imageVerificationStatus === "valid" ? (
+                          <Check className="w-4 h-4 text-success" />
+                        ) : imageVerificationStatus === "invalid" ? (
+                          <X className="w-4 h-4 text-error" />
+                        ) : (
+                          <Shield className="w-4 h-4" />
+                        )}
+                        Verify
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {imageVerificationStatus === "valid" && (
+                  <div className="bg-success/10 border border-success/30 rounded-xl p-3 flex items-center gap-2">
+                    <Check className="w-4 h-4 text-success" />
+                    <span className="text-sm text-success">Image verified successfully</span>
+                  </div>
+                )}
+                {imageVerificationStatus === "invalid" && (
+                  <div className="bg-error/10 border border-error/30 rounded-xl p-3 flex items-center gap-2">
+                    <X className="w-4 h-4 text-error" />
+                    <span className="text-sm text-error">Image verification failed. Check the path and try again.</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Remote Configuration Card (shown for remote mode) */}
+      {isRemoteMode && (
+        <div className="bg-gradient-to-br from-base-100 to-base-100/50 border border-base-content/10 rounded-2xl p-6 md:p-8 hover:border-base-content/20 transition-all duration-300">
+          <label className="font-bold text-base flex items-center gap-2 mb-4">
+            <Globe size={18} className="text-primary" />
+            Remote Builder Configuration
+          </label>
+
+          <div className="space-y-4">
+            <div>
+              <label className="label pb-2">
+                <span className="label-text text-sm font-semibold">URL</span>
+              </label>
+              <input
+                type="text"
+                className="input input-bordered w-full"
+                placeholder="https://your-builder.com"
+                value={rendererRemoteUrl}
+                onChange={(e) => setRendererRemoteUrl(e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
+
+            <div>
+              <label className="label pb-2">
+                <span className="label-text text-sm font-semibold">
+                  Authentication Token
+                </span>
+                <span className="label-text-alt text-xs text-base-content/50">
+                  Optional
+                </span>
+              </label>
+              <input
+                type="password"
+                className="input input-bordered w-full"
+                placeholder="Enter token"
+                value={rendererRemoteToken}
+                onChange={(e) => setRendererRemoteToken(e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
+
+            <button
+              className="btn btn-outline w-full gap-2"
+              onClick={handleDetectBestMode}
+              disabled={isLoading}
+            >
+              <Search className="w-4 h-4" />
+              Test Connection
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Port Configuration Card */}
       <div className="bg-gradient-to-br from-base-100 to-base-100/50 border border-base-content/10 rounded-2xl p-6 md:p-8 hover:border-base-content/20 transition-all duration-300">
@@ -250,8 +693,7 @@ export default function RendererSettings() {
               </button>
             </div>
             <p className="text-xs text-base-content/60 mt-2 leading-relaxed">
-              Enter a port number where the renderer will be accessible. The
-              renderer will bind to localhost for security.
+              Enter a port number where the renderer will be accessible. If the port is busy, an available port will be selected automatically.
             </p>
           </div>
         </div>
@@ -263,34 +705,43 @@ export default function RendererSettings() {
           Container Controls
         </label>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <button
-            className="btn btn-success gap-2 shadow-md hover:shadow-lg transition-all"
-            onClick={handleStart}
-            disabled={isLoading || isRunning}
-          >
-            <Play className="w-4 h-4" />
-            <span className="hidden md:inline">Start</span>
-          </button>
+        {isRemoteMode ? (
+          <div className="alert alert-info">
+            <Cpu className="w-5 h-5" />
+            <span>
+              Remote renderer is controlled externally. Use the &quot;Test Connection&quot; button above to verify connectivity.
+            </span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <button
+              className="btn btn-success gap-2 shadow-md hover:shadow-lg transition-all"
+              onClick={handleStart}
+              disabled={isLoading || isRunning}
+            >
+              <Play className="w-4 h-4" />
+              <span className="hidden md:inline">Start</span>
+            </button>
 
-          <button
-            className="btn btn-warning gap-2 shadow-md hover:shadow-lg transition-all"
-            onClick={handleStop}
-            disabled={isLoading || !isRunning}
-          >
-            <Square className="w-4 h-4" />
-            <span className="hidden md:inline">Stop</span>
-          </button>
+            <button
+              className="btn btn-warning gap-2 shadow-md hover:shadow-lg transition-all"
+              onClick={handleStop}
+              disabled={isLoading || !isRunning}
+            >
+              <Square className="w-4 h-4" />
+              <span className="hidden md:inline">Stop</span>
+            </button>
 
-          <button
-            className="btn btn-info gap-2 shadow-md hover:shadow-lg transition-all"
-            onClick={handleRestart}
-            disabled={isLoading || !isRunning}
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span className="hidden md:inline">Restart</span>
-          </button>
-        </div>
+            <button
+              className="btn btn-info gap-2 shadow-md hover:shadow-lg transition-all"
+              onClick={handleRestart}
+              disabled={isLoading || !isRunning}
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span className="hidden md:inline">Restart</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Auto-Start Setting Card */}
@@ -310,9 +761,14 @@ export default function RendererSettings() {
             className="toggle toggle-primary toggle-lg ml-4"
             checked={rendererAutoStart}
             onChange={handleAutoStartToggle}
-            disabled={isLoading}
+            disabled={isLoading || isRemoteMode}
           />
         </div>
+        {isRemoteMode && (
+          <p className="text-xs text-base-content/50 mt-2">
+            Auto-start is not available in remote mode.
+          </p>
+        )}
       </div>
 
       {/* Logs Section */}
@@ -368,14 +824,14 @@ export default function RendererSettings() {
               <span className="text-info font-bold mt-0.5">•</span>
               <span>
                 The Treefrog LaTeX Docker image must be available locally or
-                will be built from the bundled Dockerfile
+                will be pulled from the selected source
               </span>
             </li>
             <li className="flex items-start gap-2 text-sm text-info/90">
               <span className="text-info font-bold mt-0.5">•</span>
               <span>
                 Your selected port must be available and not in use by another
-                application
+                application (auto-detection will find an alternative if busy)
               </span>
             </li>
           </ul>
