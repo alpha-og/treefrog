@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { isWails } from "../utils/env";
+import { createLogger } from "../utils/logger";
 import { FolderOpen } from "lucide-react";
+
+const log = createLogger("ProjectPicker");
 
 interface ProjectPickerProps {
   visible: boolean;
@@ -57,10 +60,10 @@ export default function ProjectPicker({
           // Directly confirm the project instead of just setting input
           await confirm(project.root);
         }
-      } catch (err) {
-        // User cancelled or error occurred
-        console.error("Failed to open dialog:", err);
-        setError(err instanceof Error ? err.message : "Failed to open folder dialog");
+       } catch (err) {
+         // User cancelled or error occurred
+         log.error("Failed to open directory dialog", err);
+         setError(err instanceof Error ? err.message : "Failed to open folder dialog");
       } finally {
         setIsSubmitting(false);
       }
