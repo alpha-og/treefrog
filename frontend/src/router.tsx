@@ -6,6 +6,16 @@ import SettingsPage from "./pages/Settings";
 
 const rootRoute = new RootRoute({
   component: RootLayout,
+  notFoundComponent: () => {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold">Page Not Found</h1>
+          <p className="text-gray-500">The requested page could not be found.</p>
+        </div>
+      </div>
+    );
+  },
 });
 
 const homeRoute = new Route({
@@ -28,7 +38,10 @@ const settingsRoute = new Route({
 
 const routeTree = rootRoute.addChildren([homeRoute, editorRoute, settingsRoute]);
 
-export const router = new Router({ routeTree });
+export const router = new Router({ 
+  routeTree,
+  defaultPreloadDelay: 0,
+});
 
 declare module "@tanstack/react-router" {
   interface Register {
