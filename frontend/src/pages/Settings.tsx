@@ -1,95 +1,21 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
-import {
-  ArrowLeft,
-  Globe,
-  Lock,
-  Palette,
-  AlertCircle,
-  CheckCircle,
-  Zap,
-  Save,
-} from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, Zap, Palette } from "lucide-react";
 import { useAppStore } from "../stores/appStore";
-import { syncConfig } from "../services/configService";
 import LatexCompilerSettings from "../components/LatexCompilerSettings";
 import FramelessWindow from "../components/FramelessWindow";
 
+type SettingsTab = "compiler" | "appearance";
+
 export default function Settings() {
   const navigate = useNavigate();
-  const {
-    builderUrl,
-    builderToken,
-    theme,
-    setBuilderUrl,
-    setBuilderToken,
-    setTheme,
-  } = useAppStore();
+  const { theme, setTheme } = useAppStore();
+  const [activeTab, setActiveTab] = useState<SettingsTab>("compiler");
 
-  const [tempUrl, setTempUrl] = useState(builderUrl);
-  const [tempToken, setTempToken] = useState(builderToken);
-  const [tempTheme, setTempTheme] = useState(theme);
-  const [errors, setErrors] = useState<{ url?: string; token?: string }>({});
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
-
-  useEffect(() => {
-    setTempUrl(builderUrl);
-    setTempToken(builderToken);
-    setTempTheme(theme);
-  }, [builderUrl, builderToken, theme]);
-
-  useEffect(() => {
-    const changed =
-      tempUrl !== builderUrl ||
-      tempToken !== builderToken ||
-      tempTheme !== theme;
-    setHasChanges(changed);
-  }, [tempUrl, tempToken, tempTheme, builderUrl, builderToken, theme]);
-
-  const validateForm = () => {
-    const newErrors: { url?: string; token?: string } = {};
-
-    if (!tempUrl.trim()) {
-      newErrors.url = "Remote Builder URL is required";
-    } else if (!isValidUrl(tempUrl)) {
-      newErrors.url = "Please enter a valid URL";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const isValidUrl = (url: string) => {
-    try {
-      new URL(url);
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
-  const handleSaveAll = async () => {
-    if (!validateForm()) return;
-
-    setIsSaving(true);
-    try {
-      await syncConfig(tempUrl, tempToken);
-      setBuilderUrl(tempUrl);
-      setBuilderToken(tempToken);
-      setTheme(tempTheme);
-
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (err) {
-      setErrors({
-        url: `Failed to save settings: ${err}`,
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
+    { id: "compiler", label: "LaTeX Compiler", icon: <Zap size={16} /> },
+    { id: "appearance", label: "Appearance", icon: <Palette size={16} /> },
+  ];
 
   return (
     <FramelessWindow title="Treefrog" subtitle="Settings">
@@ -97,170 +23,109 @@ export default function Settings() {
         className="flex-1 bg-gradient-to-br from-base-200 via-base-100 to-base-200 flex flex-col overflow-hidden"
         style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}
       >
-        {/* Sticky Header */}
-        <div className="sticky top-0 z-20 border-b border-base-content/10 bg-base-100/95 backdrop-blur-sm">
-          <div className="px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => navigate({ to: "/" })}
-                className="btn btn-ghost btn-sm btn-circle hover:bg-primary/10 transition-all"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <div>
-                <h1 className="text-2xl font-bold">Settings</h1>
-                <p className="text-sm text-base-content/60">
-                  Customize your Treefrog experience
-                </p>
-              </div>
-            </div>
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 flex-shrink-0 border-b border-base-content/5">
+          <button
+            onClick={() => navigate({ to: "/" })}
+            className="btn btn-ghost btn-sm btn-circle hover:bg-primary/10 transition-all"
+            title="Go back"
+          >
+            <ArrowLeft size={18} className="text-primary" />
+          </button>
+          <h1 className="text-lg font-bold">Settings</h1>
+          <div className="w-10" />
+        </div>
 
-            <div className="flex items-center gap-3">
-              {saveSuccess && (
-                <div className="flex items-center gap-2 text-success text-sm font-medium animate-in fade-in">
-                  <CheckCircle className="w-4 h-4" />
-                  Saved
-                </div>
-              )}
+        {/* Tab Navigation */}
+        <div className="border-b border-base-content/5 px-6">
+          <div className="flex gap-4">
+            {tabs.map((tab) => (
               <button
-                onClick={handleSaveAll}
-                disabled={!hasChanges || isSaving}
-                className="btn btn-primary btn-sm gap-2 shadow-lg hover:shadow-xl transition-all"
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-2 py-3 text-sm font-medium transition-all duration-300 border-b-2 -mb-[1px] ${
+                  activeTab === tab.id
+                    ? "border-primary text-primary"
+                    : "border-transparent text-base-content/70 hover:text-base-content"
+                }`}
               >
-                {isSaving ? (
-                  <>
-                    <span className="loading loading-spinner loading-sm"></span>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save size={16} />
-                    Save
-                  </>
-                )}
+                {tab.icon}
+                {tab.label}
               </button>
-            </div>
+            ))}
           </div>
-
-          {errors.url && (
-            <div className="px-6 pb-4">
-              <div className="bg-error/10 border border-error/30 rounded-lg p-3 flex items-start gap-3">
-                <AlertCircle className="w-4 h-4 text-error flex-shrink-0 mt-0.5" />
-                <span className="text-error text-sm font-medium">
-                  {errors.url}
-                </span>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Main Content - Scrollable */}
         <main className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl w-full mx-auto px-6 py-8">
-            <div className="space-y-6">
-              {/* Remote Builder Settings */}
-              <section>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 pb-2 border-b border-base-content/10">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
-                      <Globe size={18} className="text-primary" />
-                    </div>
-                    <h2 className="text-lg font-bold">Remote Builder</h2>
-                    <span className="text-xs text-base-content/50 ml-auto">Remote Compilation Server</span>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div>
-                      <label className="label pb-2">
-                        <span className="label-text font-semibold text-sm">Builder URL</span>
-                      </label>
-                      <input
-                        type="url"
-                        value={tempUrl}
-                        onChange={(e) => {
-                          setTempUrl(e.target.value);
-                          if (errors.url) setErrors({ ...errors, url: undefined });
-                        }}
-                        placeholder="https://treefrog-renderer.onrender.com"
-                        className={`input input-bordered input-sm w-full transition-colors ${
-                          errors.url ? "input-error" : ""
-                        }`}
-                      />
-                      <p className="text-xs text-base-content/60 mt-2">
-                        URL of your remote LaTeX compilation server
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="label pb-2">
-                        <span className="label-text font-semibold text-sm">Authentication Token</span>
-                        <span className="label-text-alt text-xs">Optional</span>
-                      </label>
-                      <input
-                        type="password"
-                        value={tempToken}
-                        onChange={(e) => {
-                          setTempToken(e.target.value);
-                          if (errors.token)
-                            setErrors({ ...errors, token: undefined });
-                        }}
-                        placeholder="Enter token if required"
-                        className="input input-bordered input-sm w-full transition-colors"
-                      />
-                      <p className="text-xs text-base-content/60 mt-2">
-                        Leave blank if authentication is not required
-                      </p>
-                    </div>
-                  </div>
+          <div className="max-w-4xl w-full mx-auto px-6 py-8 md:py-12">
+            {/* LaTeX Compiler Tab */}
+            {activeTab === "compiler" && (
+              <div className="space-y-6 animate-fade-in">
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-bold mb-2">LaTeX Compiler</h2>
+                  <p className="text-base-content/70 text-sm md:text-base">
+                    Configure your local Docker environment or use a remote compiler
+                  </p>
                 </div>
-              </section>
 
-              {/* LaTeX Compiler Settings */}
-              <section>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 pb-2 border-b border-base-content/10">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-success/20 to-info/20 flex items-center justify-center">
-                      <Zap size={18} className="text-success" />
-                    </div>
-                    <h2 className="text-lg font-bold">LaTeX Compiler</h2>
-                    <span className="text-xs text-base-content/50 ml-auto">Local Docker Environment</span>
-                  </div>
-
+                {/* Settings Card - Following Home.tsx pattern */}
+                <div className="bg-gradient-to-br from-primary/10 via-secondary/5 to-base-100 border border-primary/20 rounded-2xl p-6 md:p-8 hover:border-primary/40 transition-all duration-300 shadow-xl hover:shadow-2xl hover:-translate-y-1">
                   <LatexCompilerSettings />
                 </div>
-              </section>
+              </div>
+            )}
 
-              {/* Appearance Settings */}
-              <section>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 pb-2 border-b border-base-content/10">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent/20 to-warning/20 flex items-center justify-center">
-                      <Palette size={18} className="text-accent" />
-                    </div>
-                    <h2 className="text-lg font-bold">Appearance</h2>
-                  </div>
+            {/* Appearance Tab */}
+            {activeTab === "appearance" && (
+              <div className="space-y-6 animate-fade-in">
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-bold mb-2">Appearance</h2>
+                  <p className="text-base-content/70 text-sm md:text-base">
+                    Customize your visual experience
+                  </p>
+                </div>
 
-                  <div className="flex items-center justify-between p-4 bg-base-100 border border-base-content/10 rounded-lg">
-                    <div>
-                      <label className="font-semibold text-sm">Dark Mode</label>
-                      <p className="text-xs text-base-content/60 mt-1">
-                        Enable dark theme for comfortable viewing
-                      </p>
+                {/* Theme Selection Card */}
+                <div className="bg-gradient-to-br from-primary/10 via-secondary/5 to-base-100 border border-primary/20 rounded-2xl p-6 md:p-8 hover:border-primary/40 transition-all duration-300 shadow-xl hover:shadow-2xl hover:-translate-y-1">
+                  <div className="space-y-6">
+                    {/* Dark Mode Toggle */}
+                    <div className="flex items-center justify-between p-4 bg-base-100/30 border border-base-content/10 rounded-xl hover:border-primary/20 transition-all duration-200">
+                      <div>
+                        <label className="font-semibold text-sm cursor-pointer">Dark Mode</label>
+                        <p className="text-xs text-base-content/70 mt-1">
+                          Switch between light and dark themes
+                        </p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        className="toggle toggle-primary toggle-sm"
+                        checked={theme === "dark"}
+                        onChange={(e) =>
+                          setTheme(e.target.checked ? "dark" : "light")
+                        }
+                      />
                     </div>
-                    <input
-                      type="checkbox"
-                      className="toggle toggle-primary toggle-sm"
-                      checked={tempTheme === "dark"}
-                      onChange={(e) =>
-                        setTempTheme(e.target.checked ? "dark" : "light")
-                      }
-                    />
+
+                    {/* Theme Preview */}
+                    <div className="space-y-3">
+                      <h3 className="text-sm font-semibold">Theme Colors</h3>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="rounded-xl p-4 bg-primary text-primary-content text-xs font-medium text-center border-2 border-primary/20 hover:border-primary/40 transition-all">
+                          Primary
+                        </div>
+                        <div className="rounded-xl p-4 bg-secondary text-secondary-content text-xs font-medium text-center border-2 border-secondary/20 hover:border-secondary/40 transition-all">
+                          Secondary
+                        </div>
+                        <div className="rounded-xl p-4 bg-accent text-accent-content text-xs font-medium text-center border-2 border-accent/20 hover:border-accent/40 transition-all">
+                          Accent
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </section>
-
-              <div className="h-4" />
-            </div>
+              </div>
+            )}
           </div>
         </main>
       </div>
