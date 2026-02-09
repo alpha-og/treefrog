@@ -303,12 +303,16 @@ func (s *Server) handleBuild(w http.ResponseWriter, r *http.Request) {
 		"fileSize":      fileSize,
 	}).Info("Build started")
 
-	// Pass correlation ID to build goroutine
+	// Create persistent context with correlation ID for the build goroutine
+	// Use s.buildCtx instead of r.Context() so build isn't canceled when request ends
+	buildCtx := context.WithValue(s.buildCtx, correlationIDKey{}, corrID)
+
+	// Pass persistent context to build goroutine
 	s.buildWG.Add(1)
 	go func(ctx context.Context, b *api.Build, opts api.BuildOptions) {
 		defer s.buildWG.Done()
 		s.runBuild(ctx, b, opts)
-	}(r.Context(), b, opts)
+	}(buildCtx, b, opts)
 
 	writeJSON(w, map[string]any{"id": id})
 }
