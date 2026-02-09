@@ -77,7 +77,15 @@ export const rendererService = {
     return await getApp().VerifyCustomImage(path);
   },
 
-  async detectBestMode(): Promise<RendererMode> {
-    return await getApp().DetectBestMode();
-  },
+   async detectBestMode(): Promise<RendererMode> {
+     return await getApp().DetectBestMode();
+   },
+
+   async setRemoteUrl(url: string): Promise<void> {
+     return await getApp().SetRendererRemoteURL(url);
+   },
+
+   async setRemoteToken(token: string): Promise<void> {
+     return await getApp().SetRendererRemoteToken(token);
+   },
 };
