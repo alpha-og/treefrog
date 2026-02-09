@@ -85,19 +85,7 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
-      # Generate Wails bindings BEFORE building frontend
-      # This creates the wailsjs/wailsjs directory that Vite needs
-      - name: Generate Wails bindings
-        run: |
-          cd wails
-          BUILD_FLAGS=""
-          if [[ "$DISTRO" == "24.04" && "${{ runner.os }}" == "Linux" ]]; then
-            BUILD_FLAGS="-tags webkit2_41"
-          fi
-          wails build -s $BUILD_FLAGS
-        shell: bash
-
-      # Build frontend
+      # Build frontend first
       - name: Build frontend
         run: |
           cd frontend
@@ -110,7 +98,7 @@ jobs:
           cp -r frontend/dist/* wails/frontend/dist/
         shell: bash
 
-      # Build Treefrog for platform
+      # Generate Wails bindings and build Treefrog for platform
       - name: Build Treefrog for ${{ matrix.platform }}
         run: |
           cd wails
