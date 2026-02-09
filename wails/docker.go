@@ -68,38 +68,18 @@ func (dm *DockerManager) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to prepare image: %w", err)
 	}
 
-	// Check port availability
-	port := dm.config.Port
-	if !IsPortAvailable(port) {
-		newPort, err := FindAvailablePort(0)
-		if err != nil {
-			return fmt.Errorf("port %d unavailable: %w", port, err)
-		}
-		dm.logger.WithFields(logrus.Fields{
-			"requested_port": port,
-			"actual_port":    newPort,
-		}).Info("Port in use, using alternative port")
-		port = newPort
-		dm.config.Port = port
+	// Handle port with intelligent fallback
+	port, err := dm.resolvePort(ctx)
+	if err != nil {
+		return err
 	}
 
 	// Stop any existing container
 	dm.stopContainer(ctx)
 
-	// Start container
-	dm.logger.WithFields(logrus.Fields{
-		"port": port,
-	}).Info("Starting container")
-	cmd := exec.CommandContext(ctx, "docker", "run", "-d", "--rm",
-		"-p", fmt.Sprintf("127.0.0.1:%d:9000", port),
-		"--name", "treefrog-renderer",
-		LocalImageName)
-
-	output, err := cmd.CombinedOutput()
-	dm.logs.WriteString(string(output))
-
-	if err != nil {
-		return fmt.Errorf("failed to start: %w", err)
+	// Start container with retry
+	if err := dm.startContainerWithRetry(ctx, port); err != nil {
+		return err
 	}
 
 	// Health check
@@ -111,6 +91,112 @@ func (dm *DockerManager) Start(ctx context.Context) error {
 	dm.isRunning = true
 	dm.logger.Info("Container started successfully")
 	return nil
+}
+
+// resolvePort finds an available port with intelligent fallback
+func (dm *DockerManager) resolvePort(ctx context.Context) (int, error) {
+	port := dm.config.Port
+
+	// Try configured port first
+	if IsPortAvailable(port) {
+		dm.logger.WithFields(logrus.Fields{
+			"port": port,
+		}).Debug("Configured port is available")
+		return port, nil
+	}
+
+	dm.logger.WithFields(logrus.Fields{
+		"port": port,
+	}).Warn("Configured port in use, searching for alternative")
+
+	// Try to find nearby ports first (better UX)
+	for offset := 1; offset <= 10; offset++ {
+		candidatePort := port + offset
+		if candidatePort <= 65535 && IsPortAvailable(candidatePort) {
+			dm.logger.WithFields(logrus.Fields{
+				"requested_port": port,
+				"actual_port":    candidatePort,
+			}).Info("Using nearby available port")
+			dm.config.Port = candidatePort
+			return candidatePort, nil
+		}
+
+		candidatePort = port - offset
+		if candidatePort >= 1024 && IsPortAvailable(candidatePort) {
+			dm.logger.WithFields(logrus.Fields{
+				"requested_port": port,
+				"actual_port":    candidatePort,
+			}).Info("Using nearby available port")
+			dm.config.Port = candidatePort
+			return candidatePort, nil
+		}
+	}
+
+	// Fall back to ephemeral range
+	newPort, err := FindAvailablePort(0)
+	if err != nil {
+		return 0, fmt.Errorf("no available ports found (requested: %d): %w", port, err)
+	}
+
+	dm.logger.WithFields(logrus.Fields{
+		"requested_port": port,
+		"actual_port":    newPort,
+	}).Warn("Using ephemeral port due to port unavailability")
+	dm.config.Port = newPort
+	return newPort, nil
+}
+
+// startContainerWithRetry attempts to start container with exponential backoff
+func (dm *DockerManager) startContainerWithRetry(ctx context.Context, port int) error {
+	maxRetries := dm.config.MaxRetries
+	if maxRetries == 0 {
+		maxRetries = DefaultMaxRetries
+	}
+
+	delay := dm.config.RetryDelay
+	if delay == 0 {
+		delay = DefaultRetryDelay
+	}
+
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		dm.logger.WithFields(logrus.Fields{
+			"port":    port,
+			"attempt": attempt + 1,
+		}).Debug("Starting container")
+
+		cmd := exec.CommandContext(ctx, "docker", "run", "-d", "--rm",
+			"-p", fmt.Sprintf("127.0.0.1:%d:9000", port),
+			"--name", "treefrog-renderer",
+			LocalImageName)
+
+		output, err := cmd.CombinedOutput()
+		dm.logs.WriteString(string(output))
+
+		if err == nil {
+			dm.logger.WithFields(logrus.Fields{
+				"port": port,
+			}).Info("Container started")
+			return nil
+		}
+
+		lastErr = err
+		dm.logger.WithFields(logrus.Fields{
+			"port":    port,
+			"attempt": attempt + 1,
+			"error":   err,
+		}).Warn("Container start failed")
+
+		if attempt < maxRetries-1 {
+			backoffDelay := time.Duration(float64(delay) * (dm.config.RetryBackoff))
+			dm.logger.WithFields(logrus.Fields{
+				"delay_ms": backoffDelay.Milliseconds(),
+			}).Debug("Waiting before retry")
+			time.Sleep(backoffDelay)
+		}
+	}
+
+	return fmt.Errorf("failed to start container after %d attempts: %w", maxRetries, lastErr)
 }
 
 // Stop stops the Docker container
