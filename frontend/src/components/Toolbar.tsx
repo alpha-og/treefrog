@@ -19,8 +19,8 @@ interface ToolbarProps {
 }
 
 export default function Toolbar({
-  projectRoot,
-  onOpenProject,
+  _projectRoot,
+  _onOpenProject,
   onBuild,
   engine,
   onEngineChange,
