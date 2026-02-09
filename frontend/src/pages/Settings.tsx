@@ -1,21 +1,39 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { ArrowLeft, Zap, Palette } from "lucide-react";
+import { useState, useRef } from "react";
+import { ArrowLeft, Zap, Palette, Check, Moon, Sun, Monitor } from "lucide-react";
 import { useAppStore } from "../stores/appStore";
 import LatexCompilerSettings from "../components/LatexCompilerSettings";
 import FramelessWindow from "../components/FramelessWindow";
 
 type SettingsTab = "compiler" | "appearance";
+type ThemeMode = "dark" | "light" | "system";
 
 export default function Settings() {
   const navigate = useNavigate();
   const { theme, setTheme } = useAppStore();
   const [activeTab, setActiveTab] = useState<SettingsTab>("compiler");
+  const [themeMode, setThemeMode] = useState<ThemeMode>(theme as ThemeMode);
+  const latexCompilerSettingsRef = useRef<{ save: () => Promise<void> }>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
     { id: "compiler", label: "LaTeX Compiler", icon: <Zap size={16} /> },
     { id: "appearance", label: "Appearance", icon: <Palette size={16} /> },
   ];
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      if (activeTab === "compiler" && latexCompilerSettingsRef.current?.save) {
+        await latexCompilerSettingsRef.current.save();
+      } else if (activeTab === "appearance") {
+        // Save theme preference
+        setTheme(themeMode);
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <FramelessWindow title="Treefrog" subtitle="Settings">
@@ -56,7 +74,25 @@ export default function Settings() {
               </div>
             </div>
 
-            <div className="w-1/4" />
+             <div className="w-1/4 flex justify-end">
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="btn btn-sm btn-primary gap-1"
+              >
+                {isSaving ? (
+                  <>
+                    <span className="loading loading-spinner loading-sm"></span>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Check size={16} />
+                    Save
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -75,7 +111,7 @@ export default function Settings() {
 
                 {/* Settings Card - Following Home.tsx pattern */}
                 <div className="bg-gradient-to-br from-primary/10 via-secondary/5 to-base-100 border border-primary/20 rounded-2xl p-6 md:p-8 hover:border-primary/40 transition-all duration-300 shadow-xl hover:shadow-2xl hover:-translate-y-1">
-                  <LatexCompilerSettings />
+                  <LatexCompilerSettings ref={latexCompilerSettingsRef} />
                 </div>
               </div>
             )}
@@ -92,7 +128,46 @@ export default function Settings() {
 
                 {/* Theme Selection Card */}
                 <div className="bg-gradient-to-br from-primary/10 via-secondary/5 to-base-100 border border-primary/20 rounded-2xl p-6 md:p-8 hover:border-primary/40 transition-all duration-300 shadow-xl hover:shadow-2xl hover:-translate-y-1">
-                  <p className="text-base-content/70">More appearance options coming soon...</p>
+                  <div>
+                    <label className="label pb-4">
+                      <span className="label-text font-semibold">Theme</span>
+                    </label>
+                    <div className="join grid grid-cols-3 w-full">
+                      <button
+                        className={`join-item btn ${
+                          themeMode === "light"
+                            ? "btn-primary"
+                            : "btn-outline"
+                        }`}
+                        onClick={() => setThemeMode("light")}
+                      >
+                        <Sun size={16} />
+                        Light
+                      </button>
+                      <button
+                        className={`join-item btn ${
+                          themeMode === "system"
+                            ? "btn-primary"
+                            : "btn-outline"
+                        }`}
+                        onClick={() => setThemeMode("system")}
+                      >
+                        <Monitor size={16} />
+                        System
+                      </button>
+                      <button
+                        className={`join-item btn ${
+                          themeMode === "dark"
+                            ? "btn-primary"
+                            : "btn-outline"
+                        }`}
+                        onClick={() => setThemeMode("dark")}
+                      >
+                        <Moon size={16} />
+                        Dark
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
