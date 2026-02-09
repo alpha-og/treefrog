@@ -10,19 +10,13 @@ import {
   RefreshCw,
   AlertCircle,
   CheckCircle,
-  Zap,
-  Download,
-  Cpu,
   Wrench,
   Globe,
-  Search,
   Check,
   X,
   Loader2,
   Shield,
-  Sliders,
   LogIn,
-  Server,
 } from "lucide-react";
 
 const log = createLogger("LatexCompilerSettings");
@@ -133,22 +127,7 @@ export default function LatexCompilerSettings() {
     }
   };
 
-  const handleDetectBestMode = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const detectedMode = await rendererService.detectBestMode();
-      setRendererDetectedMode(detectedMode);
-      setRendererMode(detectedMode);
-      await rendererService.setMode(detectedMode);
-      toast.success(`Auto-detected best mode: ${detectedMode}`);
-    } catch (err) {
-      setError(`Failed to detect mode: ${err}`);
-      toast.error(`Failed to detect mode: ${err}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+
 
   const handleImageSourceChange = async (newSource: ImageSource) => {
     setIsLoading(true);
@@ -380,280 +359,280 @@ export default function LatexCompilerSettings() {
         </div>
       )}
 
-      {/* Status & Controls Card - Horizontal Layout */}
-      <div className={`${status.bgColor} border ${status.borderColor} rounded-xl p-4 flex items-center justify-between hover:border-primary/40 transition-all`}>
-        {/* Left: Status Badge */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            {status.icon}
-            <div>
-              <p className="text-xs font-semibold text-base-content/60 uppercase">Status</p>
-              <p className={`text-sm font-bold ${status.color}`}>{status.text}</p>
-            </div>
-          </div>
-          
-          {/* Status Details */}
-          <div className="hidden sm:flex items-center gap-4 ml-4 pl-4 border-l border-base-content/10">
-            <div className="text-center">
-              <p className="text-xs text-base-content/60 uppercase">Mode</p>
-              <p className="text-sm font-semibold capitalize">{rendererMode}</p>
-            </div>
-            {isRunning && (
-              <div className="text-center">
-                <p className="text-xs text-base-content/60 uppercase">Port</p>
-                <p className="text-sm font-semibold text-primary">{rendererPort}</p>
+       {/* Rendering Mode Selection */}
+       <div>
+         <label className="label pb-2">
+           <span className="label-text font-semibold">Rendering Mode</span>
+         </label>
+         <select
+           className="select select-bordered w-full"
+           value={rendererMode}
+           onChange={(e) => handleModeChange(e.target.value as RendererMode)}
+           disabled={isLoading || isRunning}
+         >
+           <option value="auto">Auto (Recommended)</option>
+           <option value="local">Local (Docker)</option>
+           <option value="remote">Remote (External)</option>
+         </select>
+       </div>
+
+       {/* UNIFIED COMPILER SETTINGS SECTION */}
+       <div className="bg-base-100/30 border border-base-content/10 rounded-xl overflow-hidden">
+         {/* LOCAL COMPILER SECTION */}
+         <div className="p-4 space-y-4">
+           <div>
+             <div className="flex items-center gap-2 mb-3">
+               <Wrench className="w-4 h-4 text-primary" />
+               <h3 className="text-sm font-bold text-base-content/80">Local Compiler</h3>
+             </div>
+
+             {/* Local Status Card */}
+             <div className={`${status.bgColor} border ${status.borderColor} rounded-lg p-3 flex items-center justify-between mb-3`}>
+               <div className="flex items-center gap-2">
+                 {status.icon}
+                 <div>
+                   <p className={`text-sm font-bold ${status.color}`}>{status.text}</p>
+                 </div>
+               </div>
+
+               {/* Local Controls */}
+               <div className="flex gap-1">
+                 <button
+                   className="btn btn-success btn-xs gap-1"
+                   onClick={handleStart}
+                   disabled={isLoading || isRunning}
+                   title="Start renderer"
+                 >
+                   <Play className="w-3 h-3" />
+                   <span className="hidden sm:inline">Start</span>
+                 </button>
+                 <button
+                   className="btn btn-warning btn-xs gap-1"
+                   onClick={handleStop}
+                   disabled={isLoading || !isRunning}
+                   title="Stop renderer"
+                 >
+                   <Square className="w-3 h-3" />
+                   <span className="hidden sm:inline">Stop</span>
+                 </button>
+                 <button
+                   className="btn btn-info btn-xs gap-1"
+                   onClick={handleRestart}
+                   disabled={isLoading || !isRunning}
+                   title="Restart renderer"
+                 >
+                   <RefreshCw className="w-3 h-3" />
+                   <span className="hidden sm:inline">Restart</span>
+                 </button>
+               </div>
+             </div>
+
+             {/* Port Configuration */}
+             <div>
+               <label className="label pb-2">
+                 <span className="label-text font-semibold text-xs">Port Number</span>
+               </label>
+               <div className="flex gap-2">
+                 <input
+                   type="number"
+                   className="input input-bordered input-sm flex-1"
+                   value={portInput}
+                   onChange={(e) => setPortInput(e.target.value)}
+                   min="1024"
+                   max="65535"
+                   disabled={isLoading || isRunning}
+                 />
+                 <button
+                   className="btn btn-outline btn-sm"
+                   onClick={handlePortChange}
+                   disabled={isLoading || isRunning || portInput === rendererPort.toString()}
+                 >
+                   Apply
+                 </button>
+               </div>
+               <p className="text-xs text-base-content/70 mt-1">1024 - 65535</p>
+             </div>
+
+             {/* Auto-Start Toggle */}
+             <div className="pt-3 mt-3 border-t border-base-content/10">
+               <div className="flex items-center justify-between">
+                 <div>
+                   <p className="font-semibold text-sm">Auto-start on launch</p>
+                   <p className="text-xs text-base-content/70">Start/stop with app</p>
+                 </div>
+                 <input
+                   type="checkbox"
+                   className="toggle toggle-primary toggle-sm"
+                   checked={rendererAutoStart}
+                   onChange={handleAutoStartToggle}
+                   disabled={isLoading}
+                 />
+               </div>
+             </div>
+
+             {/* Image Source */}
+             {showImageSource && (
+               <div className="mt-3 pt-3 border-t border-base-content/10">
+                 <label className="label pb-2">
+                   <span className="label-text font-semibold text-xs">Image Source</span>
+                 </label>
+                 <select
+                   className="select select-bordered select-sm w-full"
+                   value={rendererImageSource}
+                   onChange={(e) => handleImageSourceChange(e.target.value as ImageSource)}
+                   disabled={isLoading || isRunning}
+                 >
+                   <option value="ghcr">GitHub Registry (Default)</option>
+                   <option value="embedded">Build from Source</option>
+                   <option value="custom">Custom Image</option>
+                 </select>
+
+                 {rendererImageSource === "custom" && (
+                   <div className="space-y-2 mt-3">
+                     <div className="tabs tabs-boxed tabs-xs">
+                       <button
+                         className={`tab ${showCustomTabs === "registry" ? "tab-active" : ""}`}
+                         onClick={() => setShowCustomTabs("registry")}
+                       >
+                         Registry
+                       </button>
+                       <button
+                         className={`tab ${showCustomTabs === "tar" ? "tab-active" : ""}`}
+                         onClick={() => setShowCustomTabs("tar")}
+                       >
+                         Tar
+                       </button>
+                     </div>
+
+                     {showCustomTabs === "registry" ? (
+                       <div className="flex gap-2">
+                         <input
+                           type="text"
+                           className="input input-bordered input-sm flex-1"
+                           placeholder="registry/image:tag"
+                           value={rendererCustomRegistry}
+                           onChange={(e) => setRendererCustomRegistry(e.target.value)}
+                           disabled={isLoading || isRunning}
+                         />
+                         <button
+                           className="btn btn-outline btn-sm"
+                           onClick={handleVerifyCustomImage}
+                           disabled={isVerifyingImage || isLoading || isRunning || !rendererCustomRegistry}
+                         >
+                           {isVerifyingImage ? (
+                             <Loader2 className="w-3 h-3 animate-spin" />
+                           ) : imageVerificationStatus === "valid" ? (
+                             <Check className="w-3 h-3 text-success" />
+                           ) : imageVerificationStatus === "invalid" ? (
+                             <X className="w-3 h-3 text-error" />
+                           ) : (
+                             <Shield className="w-3 h-3" />
+                           )}
+                         </button>
+                       </div>
+                     ) : (
+                       <div className="flex gap-2">
+                         <input
+                           type="text"
+                           className="input input-bordered input-sm flex-1"
+                           placeholder="/path/to/image.tar"
+                           value={rendererCustomTarPath}
+                           onChange={(e) => setRendererCustomTarPath(e.target.value)}
+                           disabled={isLoading || isRunning}
+                         />
+                         <button
+                           className="btn btn-outline btn-sm"
+                           onClick={handleVerifyCustomImage}
+                           disabled={isVerifyingImage || isLoading || isRunning || !rendererCustomTarPath}
+                         >
+                           {isVerifyingImage ? (
+                             <Loader2 className="w-3 h-3 animate-spin" />
+                           ) : imageVerificationStatus === "valid" ? (
+                             <Check className="w-3 h-3 text-success" />
+                           ) : imageVerificationStatus === "invalid" ? (
+                             <X className="w-3 h-3 text-error" />
+                           ) : (
+                             <Shield className="w-3 h-3" />
+                           )}
+                         </button>
+                       </div>
+                     )}
+
+                     {imageVerificationStatus === "valid" && (
+                       <div className="bg-success/10 border border-success/20 rounded-lg p-2 flex items-center gap-2 text-xs text-success">
+                         <Check className="w-3 h-3" />
+                         Verified
+                       </div>
+                     )}
+                     {imageVerificationStatus === "invalid" && (
+                       <div className="bg-error/10 border border-error/20 rounded-lg p-2 flex items-center gap-2 text-xs text-error">
+                         <X className="w-3 h-3" />
+                         Failed
+                       </div>
+                     )}
+                   </div>
+                 )}
+               </div>
+             )}
+           </div>
+         </div>
+
+         {/* DIVIDER */}
+         <div className="border-t border-base-content/10"></div>
+
+         {/* REMOTE COMPILER SECTION */}
+         <div className="p-4 space-y-4">
+           <div>
+             <div className="flex items-center gap-2 mb-3">
+               <Globe className="w-4 h-4 text-primary" />
+               <h3 className="text-sm font-bold text-base-content/80">Remote Compiler</h3>
+             </div>
+
+              {/* Remote Status */}
+              <div className="bg-base-content/5 border border-base-content/10 rounded-lg p-3 mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 bg-base-content/40 rounded-full"></div>
+                  <p className="text-sm text-base-content/60">External Compiler</p>
+                </div>
+                <p className="text-xs text-base-content/50">{rendererRemoteUrl ? "Configured" : "Not configured"}</p>
               </div>
-            )}
-            {rendererMode === "auto" && rendererDetectedMode && (
-              <div className="text-center">
-                <p className="text-xs text-base-content/60 uppercase">Using</p>
-                <div className="badge badge-primary badge-xs capitalize">{rendererDetectedMode}</div>
-              </div>
-            )}
-          </div>
-        </div>
 
-        {/* Right: Container Controls */}
-        {!isRemoteMode && (
-          <div className="flex gap-1.5">
-            <button
-              className="btn btn-success btn-xs gap-1"
-              onClick={handleStart}
-              disabled={isLoading || isRunning}
-              title="Start renderer"
-            >
-              <Play className="w-3 h-3" />
-              <span className="hidden sm:inline">Start</span>
-            </button>
-            <button
-              className="btn btn-warning btn-xs gap-1"
-              onClick={handleStop}
-              disabled={isLoading || !isRunning}
-              title="Stop renderer"
-            >
-              <Square className="w-3 h-3" />
-              <span className="hidden sm:inline">Stop</span>
-            </button>
-            <button
-              className="btn btn-info btn-xs gap-1"
-              onClick={handleRestart}
-              disabled={isLoading || !isRunning}
-              title="Restart renderer"
-            >
-              <RefreshCw className="w-3 h-3" />
-              <span className="hidden sm:inline">Restart</span>
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Rendering Mode */}
-      <div>
-        <label className="label pb-2">
-          <span className="label-text font-semibold text-sm">Rendering Mode</span>
-        </label>
-        <div className="flex gap-2">
-          <select
-            className="select select-bordered select-sm flex-1"
-            value={rendererMode}
-            onChange={(e) => handleModeChange(e.target.value as RendererMode)}
-            disabled={isLoading || isRunning}
-          >
-            <option value="auto">Auto (Recommended)</option>
-            <option value="local">Local (Docker)</option>
-            <option value="remote">Remote (External)</option>
-          </select>
-          <button
-            className="btn btn-outline btn-sm gap-1"
-            onClick={handleDetectBestMode}
-            disabled={isLoading || isRunning}
-          >
-            <Search className="w-3 h-3" />
-            Detect
-          </button>
-        </div>
-        <p className="text-xs text-base-content/70 mt-1">Auto tries remote first, then local Docker</p>
-      </div>
-
-      {/* Image Source */}
-      {showImageSource && (
-        <div>
-          <label className="label pb-2">
-            <span className="label-text font-semibold text-sm">Image Source</span>
-          </label>
-          <select
-            className="select select-bordered select-sm w-full"
-            value={rendererImageSource}
-            onChange={(e) => handleImageSourceChange(e.target.value as ImageSource)}
-            disabled={isLoading || isRunning}
-          >
-            <option value="ghcr">GitHub Registry (Default)</option>
-            <option value="embedded">Build from Source</option>
-            <option value="custom">Custom Image</option>
-          </select>
-
-          {rendererImageSource === "custom" && (
-            <div className="space-y-2 mt-3">
-              <div className="tabs tabs-boxed tabs-xs">
-                <button
-                  className={`tab ${showCustomTabs === "registry" ? "tab-active" : ""}`}
-                  onClick={() => setShowCustomTabs("registry")}
-                >
-                  Registry
-                </button>
-                <button
-                  className={`tab ${showCustomTabs === "tar" ? "tab-active" : ""}`}
-                  onClick={() => setShowCustomTabs("tar")}
-                >
-                  Tar
-                </button>
+              {/* Compiler URL */}
+              <div>
+                <label className="label pb-2">
+                  <span className="label-text font-semibold text-xs">Compiler URL</span>
+                </label>
+                <input
+                  type="text"
+                  className="input input-bordered input-sm w-full"
+                  placeholder="https://compiler.com"
+                  value={rendererRemoteUrl}
+                  onChange={(e) => setRendererRemoteUrl(e.target.value)}
+                  disabled={isLoading}
+                />
+                <p className="text-xs text-base-content/70 mt-1">API endpoint for remote compiler</p>
               </div>
 
-              {showCustomTabs === "registry" ? (
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    className="input input-bordered input-sm flex-1"
-                    placeholder="registry/image:tag"
-                    value={rendererCustomRegistry}
-                    onChange={(e) => setRendererCustomRegistry(e.target.value)}
-                    disabled={isLoading || isRunning}
-                  />
-                  <button
-                    className="btn btn-outline btn-sm"
-                    onClick={handleVerifyCustomImage}
-                    disabled={isVerifyingImage || isLoading || isRunning || !rendererCustomRegistry}
-                  >
-                    {isVerifyingImage ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : imageVerificationStatus === "valid" ? (
-                      <Check className="w-3 h-3 text-success" />
-                    ) : imageVerificationStatus === "invalid" ? (
-                      <X className="w-3 h-3 text-error" />
-                    ) : (
-                      <Shield className="w-3 h-3" />
-                    )}
-                  </button>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    className="input input-bordered input-sm flex-1"
-                    placeholder="/path/to/image.tar"
-                    value={rendererCustomTarPath}
-                    onChange={(e) => setRendererCustomTarPath(e.target.value)}
-                    disabled={isLoading || isRunning}
-                  />
-                  <button
-                    className="btn btn-outline btn-sm"
-                    onClick={handleVerifyCustomImage}
-                    disabled={isVerifyingImage || isLoading || isRunning || !rendererCustomTarPath}
-                  >
-                    {isVerifyingImage ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : imageVerificationStatus === "valid" ? (
-                      <Check className="w-3 h-3 text-success" />
-                    ) : imageVerificationStatus === "invalid" ? (
-                      <X className="w-3 h-3 text-error" />
-                    ) : (
-                      <Shield className="w-3 h-3" />
-                    )}
-                  </button>
-                </div>
-              )}
+             {/* API Key */}
+             <div className="pt-3 mt-3 border-t border-base-content/10">
+               <label className="label pb-2">
+                 <span className="label-text font-semibold text-xs">API Key (Optional)</span>
+               </label>
+               <input
+                 type="password"
+                 className="input input-bordered input-sm w-full"
+                 placeholder="Enter API key"
+                 value={rendererRemoteToken}
+                 onChange={(e) => setRendererRemoteToken(e.target.value)}
+                 disabled={isLoading}
+               />
+               <p className="text-xs text-base-content/70 mt-1">Authentication if required</p>
+             </div>
+           </div>
+         </div>
+       </div>
 
-              {imageVerificationStatus === "valid" && (
-                <div className="bg-success/10 border border-success/20 rounded-lg p-2 flex items-center gap-2 text-xs text-success">
-                  <Check className="w-3 h-3" />
-                  Verified
-                </div>
-              )}
-              {imageVerificationStatus === "invalid" && (
-                <div className="bg-error/10 border border-error/20 rounded-lg p-2 flex items-center gap-2 text-xs text-error">
-                  <X className="w-3 h-3" />
-                  Failed
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Port Configuration */}
-      <div>
-        <label className="label pb-2">
-          <span className="label-text font-semibold text-sm">Port Number</span>
-        </label>
-        <div className="flex gap-2">
-          <input
-            type="number"
-            className="input input-bordered input-sm flex-1"
-            value={portInput}
-            onChange={(e) => setPortInput(e.target.value)}
-            min="1024"
-            max="65535"
-            disabled={isLoading || isRunning}
-          />
-          <button
-            className="btn btn-outline btn-sm"
-            onClick={handlePortChange}
-            disabled={isLoading || isRunning || portInput === rendererPort.toString()}
-          >
-            Apply
-          </button>
-        </div>
-        <p className="text-xs text-base-content/70 mt-1">1024 - 65535, auto-selects if busy</p>
-      </div>
-
-      {/* Remote Configuration */}
-      {isRemoteMode && (
-        <div className="space-y-3">
-          <div>
-            <label className="label pb-2">
-              <span className="label-text font-semibold text-sm">Builder URL</span>
-            </label>
-            <input
-              type="text"
-              className="input input-bordered input-sm w-full"
-              placeholder="https://builder.com"
-              value={rendererRemoteUrl}
-              onChange={(e) => setRendererRemoteUrl(e.target.value)}
-              disabled={isLoading}
-            />
-          </div>
-          <div>
-            <label className="label pb-2">
-              <span className="label-text font-semibold text-sm">Token (Optional)</span>
-            </label>
-            <input
-              type="password"
-              className="input input-bordered input-sm w-full"
-              placeholder="Enter token"
-              value={rendererRemoteToken}
-              onChange={(e) => setRendererRemoteToken(e.target.value)}
-              disabled={isLoading}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Auto-Start Toggle */}
-      <div className="flex items-center justify-between p-3 bg-base-100/30 border border-base-content/10 rounded-xl">
-        <div>
-          <p className="font-semibold text-sm">Auto-start on launch</p>
-          <p className="text-xs text-base-content/70">Start/stop with app</p>
-        </div>
-        <input
-          type="checkbox"
-          className="toggle toggle-primary toggle-sm"
-          checked={rendererAutoStart}
-          onChange={handleAutoStartToggle}
-          disabled={isLoading || isRemoteMode}
-        />
-      </div>
-
-      {/* Logs */}
+      {/* Logs - Available for both local and remote */}
       <div className="bg-base-100/30 border border-base-content/10 rounded-xl overflow-hidden flex flex-col h-40">
         <button
           onClick={() => setShowLogs(!showLogs)}
