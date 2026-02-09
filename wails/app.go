@@ -71,22 +71,23 @@ type SyncTeXResult struct {
 
 // App struct
 type App struct {
-	ctx          context.Context
-	config       Config
-	configPath   string
-	configMu     sync.Mutex
-	rootMu       sync.Mutex
-	projectRoot  string
-	cacheDir     string
-	statusMu     sync.Mutex
-	status       BuildStatus
-	remoteMu     sync.Mutex
-	remoteID     string
-	builderURL   string
-	builderToken string
-	dockerMgr    *DockerManager
-	buildWg      sync.WaitGroup
-	metrics      *MetricsCollector
+	ctx           context.Context
+	config        Config
+	configPath    string
+	configMu      sync.Mutex
+	rootMu        sync.Mutex
+	projectRoot   string
+	cacheDir      string
+	statusMu      sync.Mutex
+	status        BuildStatus
+	remoteMu      sync.Mutex
+	remoteID      string
+	builderURL    string
+	builderToken  string
+	dockerMgr     *DockerManager
+	buildWg       sync.WaitGroup
+	metrics       *MetricsCollector
+	remoteMonitor *RemoteBuilderMonitor
 }
 
 // NewApp creates a new App application struct
@@ -109,6 +110,12 @@ func (a *App) startup(ctx context.Context) {
 
 	// Initialize metrics collector
 	a.metrics = NewMetricsCollector(Logger)
+
+	// Initialize remote builder monitor if URL is configured
+	if a.config.BuilderURL != "" {
+		a.remoteMonitor = NewRemoteBuilderMonitor(a.config.BuilderURL, Logger)
+		a.remoteMonitor.Start()
+	}
 
 	// Initialize Docker manager for renderer
 	if a.config.Renderer == nil {
@@ -171,6 +178,11 @@ func (a *App) shutdown(ctx context.Context) {
 		if err := a.dockerMgr.Stop(ctx); err != nil {
 			Logger.WithError(err).Error("Failed to stop renderer on shutdown")
 		}
+	}
+
+	// Stop remote builder monitor if running
+	if a.remoteMonitor != nil {
+		a.remoteMonitor.Stop()
 	}
 }
 

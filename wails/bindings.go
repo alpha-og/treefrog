@@ -1343,3 +1343,23 @@ func (a *App) ResetCompilationMetrics() error {
 	Logger.Info("Compilation metrics reset by user")
 	return nil
 }
+
+// GetRemoteBuilderHealth returns the current remote builder health status
+func (a *App) GetRemoteBuilderHealth() RemoteBuilderHealth {
+	if a.remoteMonitor == nil {
+		return RemoteBuilderHealth{
+			URL:       a.builderURL,
+			IsHealthy: false,
+			LastError: "Remote builder monitor not initialized",
+		}
+	}
+	return a.remoteMonitor.GetHealth()
+}
+
+// IsRemoteBuilderHealthy returns whether the remote builder is healthy
+func (a *App) IsRemoteBuilderHealthy() bool {
+	if a.remoteMonitor == nil {
+		return false
+	}
+	return a.remoteMonitor.IsHealthy()
+}
