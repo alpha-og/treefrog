@@ -86,6 +86,7 @@ type App struct {
 	builderToken string
 	dockerMgr    *DockerManager
 	buildWg      sync.WaitGroup
+	metrics      *MetricsCollector
 }
 
 // NewApp creates a new App application struct
@@ -105,6 +106,9 @@ func (a *App) startup(ctx context.Context) {
 	}
 	a.builderURL = a.config.BuilderURL
 	a.builderToken = a.config.BuilderToken
+
+	// Initialize metrics collector
+	a.metrics = NewMetricsCollector(Logger)
 
 	// Initialize Docker manager for renderer
 	if a.config.Renderer == nil {

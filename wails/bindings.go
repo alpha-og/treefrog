@@ -561,6 +561,7 @@ func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape boo
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
+	buildStart := time.Now()
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
@@ -572,6 +573,10 @@ func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape boo
 			a.status.Message = "Build timeout"
 			a.status.EndedAt = time.Now().Format(time.RFC3339)
 			a.statusMu.Unlock()
+			// Record timeout as failed attempt
+			if a.metrics != nil {
+				a.metrics.RecordAttempt(false, time.Since(buildStart))
+			}
 			a.emitBuildStatus(a.status)
 			return
 		case <-ticker.C:
@@ -583,6 +588,10 @@ func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape boo
 				a.status.EndedAt = time.Now().Format(time.RFC3339)
 				statusCopy := a.status
 				a.statusMu.Unlock()
+				// Record error as failed attempt
+				if a.metrics != nil {
+					a.metrics.RecordAttempt(false, time.Since(buildStart))
+				}
 				a.emitBuildStatus(statusCopy)
 				return
 			}
@@ -602,6 +611,10 @@ func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape boo
 					a.status.Message = err.Error()
 					a.status.EndedAt = time.Now().Format(time.RFC3339)
 					a.statusMu.Unlock()
+					// Record download error as failed attempt
+					if a.metrics != nil {
+						a.metrics.RecordAttempt(false, time.Since(buildStart))
+					}
 					a.emitBuildStatus(a.status)
 					return
 				}
@@ -609,6 +622,10 @@ func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape boo
 				a.status.State = "success"
 				a.status.EndedAt = time.Now().Format(time.RFC3339)
 				a.statusMu.Unlock()
+				// Record successful build
+				if a.metrics != nil {
+					a.metrics.RecordAttempt(true, time.Since(buildStart))
+				}
 				a.emitBuildStatus(a.status)
 				return
 			}
@@ -617,6 +634,10 @@ func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape boo
 				a.statusMu.Lock()
 				a.status.EndedAt = time.Now().Format(time.RFC3339)
 				a.statusMu.Unlock()
+				// Record failed build
+				if a.metrics != nil {
+					a.metrics.RecordAttempt(false, time.Since(buildStart))
+				}
 				a.emitBuildStatus(a.status)
 				return
 			}
@@ -1303,4 +1324,22 @@ func (a *App) DetectBestMode() string {
 	ctx := context.Background()
 	mode := a.dockerMgr.DetectBestMode(ctx)
 	return string(mode)
+}
+
+// GetCompilationMetrics returns compilation statistics
+func (a *App) GetCompilationMetrics() CompilationMetrics {
+	if a.metrics == nil {
+		return CompilationMetrics{}
+	}
+	return a.metrics.GetMetrics()
+}
+
+// ResetCompilationMetrics clears all compilation metrics
+func (a *App) ResetCompilationMetrics() error {
+	if a.metrics == nil {
+		return fmt.Errorf("metrics not initialized")
+	}
+	a.metrics.Reset()
+	Logger.Info("Compilation metrics reset by user")
+	return nil
 }
