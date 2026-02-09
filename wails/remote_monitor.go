@@ -12,13 +12,13 @@ import (
 
 // RemoteBuilderHealth tracks remote builder status
 type RemoteBuilderHealth struct {
-	URL              string        `json:"url"`
-	IsHealthy        bool          `json:"isHealthy"`
-	LastCheck        time.Time     `json:"lastCheck"`
-	ConsecutiveFails int           `json:"consecutiveFails"`
-	LastError        string        `json:"lastError"`
-	ResponseTime     time.Duration `json:"responseTime"`
-	UpSince          time.Time     `json:"upSince"`
+	URL              string `json:"url"`
+	IsHealthy        bool   `json:"isHealthy"`
+	LastCheck        string `json:"lastCheck"` // RFC3339 timestamp
+	ConsecutiveFails int    `json:"consecutiveFails"`
+	LastError        string `json:"lastError"`
+	ResponseTime     int64  `json:"responseTime"` // milliseconds
+	UpSince          string `json:"upSince"`      // RFC3339 timestamp
 }
 
 // RemoteBuilderMonitor monitors remote builder health
@@ -121,20 +121,20 @@ func (rbm *RemoteBuilderMonitor) recordSuccess(duration time.Duration) {
 	wasUnhealthy := !rbm.health.IsHealthy
 
 	rbm.health.IsHealthy = true
-	rbm.health.LastCheck = time.Now()
+	rbm.health.LastCheck = time.Now().Format(time.RFC3339)
 	rbm.health.ConsecutiveFails = 0
 	rbm.health.LastError = ""
-	rbm.health.ResponseTime = duration
+	rbm.health.ResponseTime = duration.Milliseconds()
 
 	if wasUnhealthy {
-		rbm.health.UpSince = time.Now()
+		rbm.health.UpSince = time.Now().Format(time.RFC3339)
 		rbm.logger.WithFields(logrus.Fields{
 			"url":              rbm.health.URL,
-			"response_time_ms": duration.Milliseconds(),
+			"response_time_ms": rbm.health.ResponseTime,
 		}).Info("Remote builder recovered")
 	} else {
 		rbm.logger.WithFields(logrus.Fields{
-			"response_time_ms": duration.Milliseconds(),
+			"response_time_ms": rbm.health.ResponseTime,
 		}).Debug("Remote builder health check passed")
 	}
 }
@@ -142,7 +142,7 @@ func (rbm *RemoteBuilderMonitor) recordSuccess(duration time.Duration) {
 // recordFailure marks a failed health check
 func (rbm *RemoteBuilderMonitor) recordFailure(reason string) {
 	rbm.health.ConsecutiveFails++
-	rbm.health.LastCheck = time.Now()
+	rbm.health.LastCheck = time.Now().Format(time.RFC3339)
 	rbm.health.LastError = reason
 	rbm.health.ResponseTime = 0
 
@@ -180,8 +180,11 @@ func (rbm *RemoteBuilderMonitor) UpTime() time.Duration {
 	rbm.mu.RLock()
 	defer rbm.mu.RUnlock()
 
-	if rbm.health.IsHealthy && !rbm.health.UpSince.IsZero() {
-		return time.Since(rbm.health.UpSince)
+	if rbm.health.IsHealthy && rbm.health.UpSince != "" {
+		upSinceTime, err := time.Parse(time.RFC3339, rbm.health.UpSince)
+		if err == nil {
+			return time.Since(upSinceTime)
+		}
 	}
 	return 0
 }

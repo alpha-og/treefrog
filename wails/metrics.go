@@ -9,17 +9,17 @@ import (
 
 // CompilationMetrics tracks compilation statistics
 type CompilationMetrics struct {
-	TotalAttempts      int64         `json:"totalAttempts"`
-	SuccessfulCompiles int64         `json:"successfulCompiles"`
-	FailedCompiles     int64         `json:"failedCompiles"`
-	TotalDuration      time.Duration `json:"totalDuration"`
-	AverageDuration    time.Duration `json:"averageDuration"`
-	MinDuration        time.Duration `json:"minDuration"`
-	MaxDuration        time.Duration `json:"maxDuration"`
-	SuccessRate        float64       `json:"successRate"`
-	LastAttempt        time.Time     `json:"lastAttempt"`
-	LastSuccess        time.Time     `json:"lastSuccess"`
-	LastFailure        time.Time     `json:"lastFailure"`
+	TotalAttempts      int64   `json:"totalAttempts"`
+	SuccessfulCompiles int64   `json:"successfulCompiles"`
+	FailedCompiles     int64   `json:"failedCompiles"`
+	TotalDuration      int64   `json:"totalDuration"`   // milliseconds
+	AverageDuration    int64   `json:"averageDuration"` // milliseconds
+	MinDuration        int64   `json:"minDuration"`     // milliseconds
+	MaxDuration        int64   `json:"maxDuration"`     // milliseconds
+	SuccessRate        float64 `json:"successRate"`
+	LastAttempt        string  `json:"lastAttempt"` // RFC3339 timestamp
+	LastSuccess        string  `json:"lastSuccess"` // RFC3339 timestamp
+	LastFailure        string  `json:"lastFailure"` // RFC3339 timestamp
 }
 
 // MetricsCollector collects and aggregates metrics
@@ -34,7 +34,7 @@ func NewMetricsCollector(logger *logrus.Logger) *MetricsCollector {
 	return &MetricsCollector{
 		logger: logger,
 		metrics: &CompilationMetrics{
-			MinDuration: 24 * time.Hour, // Initialize to large value
+			MinDuration: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
 		},
 	}
 }
@@ -44,25 +44,26 @@ func (mc *MetricsCollector) RecordAttempt(success bool, duration time.Duration) 
 	mc.mu.Lock()
 	defer mc.mu.Unlock()
 
+	durationMs := duration.Milliseconds()
 	mc.metrics.TotalAttempts++
-	mc.metrics.LastAttempt = time.Now()
+	mc.metrics.LastAttempt = time.Now().Format(time.RFC3339)
 
 	if success {
 		mc.metrics.SuccessfulCompiles++
-		mc.metrics.LastSuccess = time.Now()
+		mc.metrics.LastSuccess = time.Now().Format(time.RFC3339)
 	} else {
 		mc.metrics.FailedCompiles++
-		mc.metrics.LastFailure = time.Now()
+		mc.metrics.LastFailure = time.Now().Format(time.RFC3339)
 	}
 
-	mc.metrics.TotalDuration += duration
+	mc.metrics.TotalDuration += durationMs
 
 	// Update min/max durations
-	if duration < mc.metrics.MinDuration {
-		mc.metrics.MinDuration = duration
+	if durationMs < mc.metrics.MinDuration {
+		mc.metrics.MinDuration = durationMs
 	}
-	if duration > mc.metrics.MaxDuration {
-		mc.metrics.MaxDuration = duration
+	if durationMs > mc.metrics.MaxDuration {
+		mc.metrics.MaxDuration = durationMs
 	}
 
 	// Update averages
@@ -70,7 +71,7 @@ func (mc *MetricsCollector) RecordAttempt(success bool, duration time.Duration) 
 
 	mc.logger.WithFields(logrus.Fields{
 		"success":        success,
-		"duration_ms":    duration.Milliseconds(),
+		"duration_ms":    durationMs,
 		"total_attempts": mc.metrics.TotalAttempts,
 		"success_rate":   mc.metrics.SuccessRate,
 	}).Debug("Compilation recorded")
@@ -84,9 +85,7 @@ func (mc *MetricsCollector) updateAverages() {
 		return
 	}
 
-	mc.metrics.AverageDuration = time.Duration(
-		int64(mc.metrics.TotalDuration) / mc.metrics.TotalAttempts,
-	)
+	mc.metrics.AverageDuration = mc.metrics.TotalDuration / mc.metrics.TotalAttempts
 
 	mc.metrics.SuccessRate = float64(mc.metrics.SuccessfulCompiles) /
 		float64(mc.metrics.TotalAttempts) * 100
@@ -111,7 +110,7 @@ func (mc *MetricsCollector) Reset() {
 	defer mc.mu.Unlock()
 
 	mc.metrics = &CompilationMetrics{
-		MinDuration: 24 * time.Hour,
+		MinDuration: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
 	}
 	mc.logger.Info("Metrics reset")
 }
@@ -131,8 +130,8 @@ func (mc *MetricsCollector) LogSummary() {
 		"successful":           mc.metrics.SuccessfulCompiles,
 		"failed":               mc.metrics.FailedCompiles,
 		"success_rate_percent": mc.metrics.SuccessRate,
-		"avg_duration_ms":      mc.metrics.AverageDuration.Milliseconds(),
-		"min_duration_ms":      mc.metrics.MinDuration.Milliseconds(),
-		"max_duration_ms":      mc.metrics.MaxDuration.Milliseconds(),
+		"avg_duration_ms":      mc.metrics.AverageDuration,
+		"min_duration_ms":      mc.metrics.MinDuration,
+		"max_duration_ms":      mc.metrics.MaxDuration,
 	}).Info("Compilation metrics summary")
 }
