@@ -22,7 +22,7 @@ import {
 const log = createLogger("LatexCompilerSettings");
 
 export default forwardRef(function LatexCompilerSettings(_, ref) {
-  const successTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
     rendererMode,
@@ -35,7 +35,6 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
     rendererCustomRegistry,
     rendererCustomTarPath,
     rendererStatus,
-    rendererDetectedMode,
     rendererLogs,
     setRendererMode,
     setRendererPort,
@@ -47,7 +46,6 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
     setRendererCustomRegistry,
     setRendererCustomTarPath,
     setRendererStatus,
-    setRendererDetectedMode,
     setRendererLogs,
   } = useAppStore();
 
@@ -61,9 +59,6 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
    const [showCustomTabs, setShowCustomTabs] = useState<"registry" | "tar">("registry");
    const [isVerifyingImage, setIsVerifyingImage] = useState(false);
    const [imageVerificationStatus, setImageVerificationStatus] = useState<"idle" | "valid" | "invalid">("idle");
-
-   // Track if remote settings have unsaved changes
-   const hasRemoteChanges = remoteUrlInput !== rendererRemoteUrl || remoteTokenInput !== rendererRemoteToken;
 
   useEffect(() => {
     loadConfig();
@@ -182,13 +177,13 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
       rendererService.verifyCustomImage(path),
       {
         loading: "Verifying custom image... (this may take up to 30 seconds)",
-        success: (isValid) => {
+        success: (isValid: boolean) => {
           setImageVerificationStatus(isValid ? "valid" : "invalid");
           return isValid ? "Image verified successfully" : "Image verification failed";
         },
-        error: (err) => {
+        error: (err: Error) => {
           setImageVerificationStatus("invalid");
-          return `Verification failed: ${err}`;
+          return `Verification failed: ${err.message}`;
         },
         finally: () => {
           setIsVerifyingImage(false);
@@ -376,10 +371,9 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
     }
   };
 
-  const status = getStatusDisplay();
-  const isRunning = rendererStatus === "running";
-  const isRemoteMode = rendererMode === "remote";
-  const showImageSource = rendererMode === "local" || rendererMode === "auto";
+   const status = getStatusDisplay();
+   const isRunning = rendererStatus === "running";
+   const showImageSource = rendererMode === "local" || rendererMode === "auto";
 
   return (
     <div className="space-y-4">
