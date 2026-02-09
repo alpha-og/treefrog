@@ -26,12 +26,14 @@ type RendererStatus struct {
 
 // DockerManager handles the Docker renderer lifecycle
 type DockerManager struct {
-	config    *RendererConfig
-	imageMgr  *ImageManager
-	logger    *logrus.Logger
-	isRunning bool
-	logs      strings.Builder
-	mu        sync.Mutex
+	config          *RendererConfig
+	imageMgr        *ImageManager
+	logger          *logrus.Logger
+	isRunning       bool
+	logs            strings.Builder
+	dockerVersion   string
+	dockerVersionOK bool
+	mu              sync.Mutex
 }
 
 // NewDockerManager creates a new DockerManager
@@ -52,6 +54,56 @@ func (dm *DockerManager) IsDockerInstalled() bool {
 	return cmd.Run() == nil
 }
 
+// CheckDockerVersion verifies Docker is installed and meets version requirements
+func (dm *DockerManager) CheckDockerVersion() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Get docker version output
+	cmd := exec.CommandContext(ctx, "docker", "version", "--format", "{{.Server.Version}}")
+	output, err := cmd.Output()
+	if err != nil {
+		dm.dockerVersionOK = false
+		return fmt.Errorf("failed to get docker version: %w", err)
+	}
+
+	version := strings.TrimSpace(string(output))
+	if version == "" {
+		dm.dockerVersionOK = false
+		return errors.New("docker version string is empty")
+	}
+
+	dm.dockerVersion = version
+
+	// Parse version - minimum 19.03
+	parts := strings.Split(version, ".")
+	if len(parts) < 2 {
+		dm.dockerVersionOK = false
+		return fmt.Errorf("invalid docker version format: %s", version)
+	}
+
+	// Extract major version
+	var major int
+	if _, err := fmt.Sscanf(parts[0], "%d", &major); err != nil {
+		dm.dockerVersionOK = false
+		return fmt.Errorf("invalid docker major version: %s", parts[0])
+	}
+
+	// Minimum required version is 19.03
+	const minMajor = 19
+	if major < minMajor {
+		dm.dockerVersionOK = false
+		return fmt.Errorf("docker version %s is too old (minimum required: 19.03)", version)
+	}
+
+	dm.dockerVersionOK = true
+	dm.logger.WithFields(logrus.Fields{
+		"version": version,
+	}).Info("Docker version check passed")
+
+	return nil
+}
+
 // Start starts the Docker container
 func (dm *DockerManager) Start(ctx context.Context) error {
 	dm.mu.Lock()
@@ -61,6 +113,12 @@ func (dm *DockerManager) Start(ctx context.Context) error {
 
 	if !dm.IsDockerInstalled() {
 		return errors.New("Docker not installed")
+	}
+
+	// Check Docker version
+	if err := dm.CheckDockerVersion(); err != nil {
+		dm.logger.WithError(err).Error("Docker version check failed")
+		return fmt.Errorf("docker version check failed: %w", err)
 	}
 
 	// Ensure image is available
@@ -301,6 +359,13 @@ func (dm *DockerManager) GetStatus() RendererStatus {
 	if !dockerInstalled {
 		state = "not-installed"
 		message = "Docker not installed"
+	} else if !dm.dockerVersionOK {
+		state = "error"
+		if dm.dockerVersion != "" {
+			message = fmt.Sprintf("Docker version %s is not supported (minimum: 19.03)", dm.dockerVersion)
+		} else {
+			message = "Docker version check failed"
+		}
 	} else if dm.isRunning {
 		state = "running"
 		message = fmt.Sprintf("Running on port %d", dm.config.Port)
