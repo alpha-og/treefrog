@@ -8,6 +8,7 @@ import {
   FolderOpen,
   FilePlus,
   FolderPlus,
+  MoreVertical,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { getFileIcon } from "@/utils/icons";
@@ -200,23 +201,23 @@ export default function Sidebar({
             </span>
           </div>
 
-          {/* Context menu button */}
-          <button
-            className="shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent"
-            onClick={(e) => {
-              e.stopPropagation();
-              const rect = e.currentTarget.getBoundingClientRect();
-              onFileMenu(
-                rect.right - 140,
-                rect.bottom + 4,
-                node.path,
-                node.isDir,
-              );
-            }}
-            title="More options"
-          >
-            <span className="text-xs text-muted-foreground">⋮</span>
-          </button>
+           {/* Context menu button */}
+           <button
+             className="shrink-0 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent"
+             onClick={(e) => {
+               e.stopPropagation();
+               const rect = e.currentTarget.getBoundingClientRect();
+               onFileMenu(
+                 rect.right - 140,
+                 rect.bottom + 4,
+                 node.path,
+                 node.isDir,
+               );
+             }}
+             title="More options"
+           >
+             <MoreVertical size={16} className="text-muted-foreground" />
+           </button>
         </motion.div>
 
         {/* Render children if expanded */}
