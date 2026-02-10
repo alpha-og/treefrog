@@ -3,18 +3,24 @@ import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { backdropFade, modalSlideUp } from "@/lib/animations";
+import { useAnimation, useReducedMotion } from "@/lib/animation-context";
 
 interface DialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   children: React.ReactNode;
+  animated?: boolean;
 }
 
-const Dialog = ({ open, onOpenChange, children }: DialogProps) => {
+const Dialog = ({ open, onOpenChange, children, animated = true }: DialogProps) => {
+  const { animationsEnabled } = useAnimation();
+  const prefersReducedMotion = useReducedMotion();
+  const shouldAnimate = animated && animationsEnabled && !prefersReducedMotion;
+
   return (
     <AnimatePresence>
       {open && (
-        <DialogContent onOpenChange={onOpenChange}>
+        <DialogContent onOpenChange={onOpenChange} animated={shouldAnimate}>
           {children}
         </DialogContent>
       )}
@@ -26,22 +32,27 @@ interface DialogContentProps {
   children: React.ReactNode;
   onOpenChange: (open: boolean) => void;
   className?: string;
+  animated?: boolean;
 }
 
 const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
-  ({ children, onOpenChange, className }, ref) => {
+  ({ children, onOpenChange, className, animated = true }, ref) => {
+    const { animationsEnabled } = useAnimation();
+    const prefersReducedMotion = useReducedMotion();
+    const shouldAnimate = animated && animationsEnabled && !prefersReducedMotion;
+
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         {/* Backdrop */}
         <motion.div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm"
-          variants={backdropFade}
-          initial="initial"
-          animate="animate"
-          exit="exit"
+          initial={shouldAnimate ? "initial" : undefined}
+          animate={shouldAnimate ? "animate" : undefined}
+          exit={shouldAnimate ? "exit" : undefined}
+          variants={shouldAnimate ? backdropFade : undefined}
           onClick={() => onOpenChange(false)}
         />
-        
+
         {/* Dialog Content */}
         <motion.div
           ref={ref}
@@ -49,21 +60,28 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
             "relative z-50 w-full max-w-lg rounded-2xl bg-card p-6 shadow-xl border",
             className
           )}
-          variants={modalSlideUp}
-          initial="initial"
-          animate="animate"
-          exit="exit"
+          initial={shouldAnimate ? "initial" : undefined}
+          animate={shouldAnimate ? "animate" : undefined}
+          exit={shouldAnimate ? "exit" : undefined}
+          variants={shouldAnimate ? modalSlideUp : undefined}
         >
           {children}
-          
+
           {/* Close button */}
-          <button
+          <motion.button
             onClick={() => onOpenChange(false)}
             className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            whileHover={
+              shouldAnimate ? { scale: 1.1 } : undefined
+            }
+            whileTap={
+              shouldAnimate ? { scale: 0.95 } : undefined
+            }
+            transition={{ duration: 0.1 }}
           >
             <X className="h-4 w-4" />
             <span className="sr-only">Close</span>
-          </button>
+          </motion.button>
         </motion.div>
       </div>
     );

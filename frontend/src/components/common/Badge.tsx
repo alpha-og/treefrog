@@ -2,6 +2,8 @@ import * as React from "react";
 import { motion } from "motion/react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
+import { scaleIn, subtlePulse, ANIMATION_DURATIONS } from "@/lib/animations";
+import { useAnimation, useReducedMotion } from "@/lib/animation-context";
 
 const badgeVariants = cva(
   "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
@@ -27,23 +29,68 @@ export interface BadgeProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof badgeVariants> {
   pulse?: boolean;
+  animated?: boolean;
+  animateOnMount?: boolean;
 }
 
 const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
-  ({ className, variant, pulse, ...props }, ref) => {
+  (
+    {
+      className,
+      variant,
+      pulse = false,
+      animated = true,
+      animateOnMount = true,
+      ...props
+    },
+    ref
+  ) => {
+    const { animationsEnabled } = useAnimation();
+    const prefersReducedMotion = useReducedMotion();
+    const shouldAnimate = animated && animationsEnabled && !prefersReducedMotion;
+
+    // Combine entrance animation with pulse for better effect
+    const badgeMotionVariants = {
+      initial: { opacity: 0, scale: 0.8 },
+      animate: {
+        opacity: 1,
+        scale: 1,
+        transition: {
+          duration: ANIMATION_DURATIONS.normal,
+          ease: [0.33, 1, 0.68, 1],
+        },
+      },
+    };
+
     return (
       <motion.div
         ref={ref}
         className={cn(badgeVariants({ variant }), className)}
-        initial={pulse ? { scale: 1 } : undefined}
-        animate={pulse ? { 
-          scale: [1, 1.05, 1],
-        } : undefined}
-        transition={pulse ? {
-          duration: 2,
-          repeat: Infinity,
-          ease: "easeInOut"
-        } : undefined}
+        initial={shouldAnimate && animateOnMount ? "initial" : undefined}
+        animate={
+          shouldAnimate && (animateOnMount || pulse) ? "animate" : undefined
+        }
+        whileHover={
+          shouldAnimate && !pulse
+            ? {
+                scale: 1.05,
+                transition: { duration: ANIMATION_DURATIONS.normal },
+              }
+            : undefined
+        }
+        variants={
+          shouldAnimate && animateOnMount ? badgeMotionVariants : undefined
+        }
+        transition={
+          shouldAnimate && pulse
+            ? {
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }
+            : undefined
+        }
+        {...(pulse && shouldAnimate ? { animate: { scale: [1, 1.04, 1] } } : {})}
         {...props}
       />
     );

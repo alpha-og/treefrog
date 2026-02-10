@@ -4,6 +4,7 @@ import { RouterProvider } from "@tanstack/react-router";
 import { Toaster } from "sonner";
 import { router } from "./router";
 import { createLogger } from "./utils/logger";
+import { AnimationProvider } from "./lib/animation-context";
 import "./globals.css";
 
 const log = createLogger("Main");
@@ -66,8 +67,10 @@ const root = document.getElementById("root");
 if (root) {
   createRoot(root).render(
     <React.StrictMode>
-      <RouterProvider router={router} />
-      <Toaster position="top-right" richColors closeButton />
+      <AnimationProvider>
+        <RouterProvider router={router} />
+        <Toaster position="top-right" richColors closeButton />
+      </AnimationProvider>
     </React.StrictMode>
   );
 }
