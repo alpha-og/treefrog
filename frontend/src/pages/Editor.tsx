@@ -106,7 +106,7 @@ export default function Editor() {
 
   // ========== UI STATE ==========
   const [engine, setEngine] = useState<string>("pdflatex");
-  const [shellEscape, setShellEscape] = useState<boolean>(true);
+  const [shellEscape, setShellEscape] = useState<boolean>(false);
   const [zoom, setZoom] = useState<number>(1.2);
   const [numPages, setNumPages] = useState<number>(0);
   const [pageInput, setPageInput] = useState<string>("1");

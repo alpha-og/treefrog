@@ -264,14 +264,33 @@ func (a *App) setRoot(root string) error {
 	return nil
 }
 
-// getCompilerURL returns the current compiler URL
 // getCompilerURL returns the current compiler URL based on renderer mode
 func (a *App) getCompilerURL() string {
 	a.configMu.Lock()
 	defer a.configMu.Unlock()
 
-	// If using remote mode and remote URL is configured, use it
-	if a.config.Renderer != nil && a.config.Renderer.Mode == "remote" && a.config.Renderer.RemoteURL != "" {
+	if a.config.Renderer == nil {
+		if a.compilerURL != "" {
+			return a.compilerURL
+		}
+		return "https://compiler.example.com"
+	}
+
+	// Determine effective mode
+	effectiveMode := a.config.Renderer.Mode
+
+	// For auto mode, use remote URL if configured
+	// (auto mode prefers remote when available)
+	if effectiveMode == ModeAuto && a.config.Renderer.RemoteURL != "" {
+		Logger.WithFields(logrus.Fields{
+			"mode":      "auto",
+			"remoteUrl": a.config.Renderer.RemoteURL,
+		}).Debug("Auto mode: using remote URL")
+		return a.config.Renderer.RemoteURL
+	}
+
+	// If explicitly using remote mode and remote URL is configured, use it
+	if effectiveMode == ModeRemote && a.config.Renderer.RemoteURL != "" {
 		return a.config.Renderer.RemoteURL
 	}
 
@@ -287,12 +306,30 @@ func (a *App) getCompilerToken() string {
 	a.configMu.Lock()
 	defer a.configMu.Unlock()
 
-	// If using remote mode, return remote token
-	if a.config.Renderer != nil && a.config.Renderer.Mode == "remote" {
+	if a.config.Renderer == nil {
+		return a.compilerToken
+	}
+
+	// Determine effective mode
+	effectiveMode := a.config.Renderer.Mode
+
+	// For auto mode, use remote token if remote URL is configured
+	// (auto mode prefers remote when available)
+	if effectiveMode == ModeAuto && a.config.Renderer.RemoteURL != "" {
+		Logger.WithFields(logrus.Fields{
+			"mode":      "auto",
+			"remoteUrl": a.config.Renderer.RemoteURL,
+			"hasToken":  a.config.Renderer.RemoteToken != "",
+		}).Debug("Auto mode: using remote token")
 		return a.config.Renderer.RemoteToken
 	}
 
-	// Fall back to legacy compiler token
+	// If explicitly using remote mode, return remote token
+	if effectiveMode == ModeRemote {
+		return a.config.Renderer.RemoteToken
+	}
+
+	// Fall back to legacy compiler token (local mode)
 	return a.compilerToken
 }
 
