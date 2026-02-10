@@ -168,14 +168,15 @@ export default function Home({ onSelectProject, loading }: HomeProps) {
                     </p>
                   </div>
 
-                  {/* Recent Projects Grid */}
-                  {storeHydrated && projects && projects.length > 0 ? (
-                    <motion.div 
-                      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-                      variants={staggerContainer}
-                      initial="initial"
-                      animate="animate"
-                    >
+                   {/* Recent Projects Grid */}
+                   {storeHydrated && projects && projects.length > 0 ? (
+                     <motion.div 
+                       key={`projects-grid-${projects.length}`}
+                       className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                       variants={staggerContainer}
+                       initial="initial"
+                       animate="animate"
+                     >
                       {projects.map((project, index) => (
                         <motion.div
                           key={project.path}

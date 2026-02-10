@@ -20,8 +20,8 @@ export function EditorPane({ theme, fileContent, isBinary, currentFile, onSave }
 
   const showEditor = hasFile && !isBinary;
 
-  return (
-    <section className="editor flex-1 h-full flex flex-col bg-card border-l border-border overflow-hidden">
+   return (
+     <section className="editor flex-1 h-full flex flex-col bg-card overflow-hidden">
       <div className="border-b border-border px-4 py-3 font-semibold text-sm shrink-0">
         {hasFile ? currentFile.split("/").pop() : "Editor"}
       </div>
