@@ -57,8 +57,8 @@ func main() {
 
 	cfg := api.Config{
 		Port:    getenv("PORT", "9000"),
-		Token:   os.Getenv("BUILDER_TOKEN"),
-		WorkDir: getenv("BUILDER_WORKDIR", "/tmp/treefrog-builds"),
+		Token:   os.Getenv("COMPILER_TOKEN"),
+		WorkDir: getenv("COMPILER_WORKDIR", "/tmp/treefrog-builds"),
 	}
 
 	log.WithFields(logrus.Fields{
@@ -90,7 +90,7 @@ func main() {
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins: []string{"*"},
 		AllowedMethods: []string{"GET", "POST", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"Accept", "Authorization", "Content-Type", "X-Builder-Token"},
+		AllowedHeaders: []string{"Accept", "Authorization", "Content-Type", "X-Compiler-Token"},
 		MaxAge:         300,
 	}))
 
@@ -759,7 +759,7 @@ func (s *Server) authorize(w http.ResponseWriter, r *http.Request) bool {
 		return true
 	}
 
-	providedToken := r.Header.Get("X-Builder-Token")
+	providedToken := r.Header.Get("X-Compiler-Token")
 	if subtle.ConstantTimeCompare([]byte(providedToken), []byte(s.cfg.Token)) != 1 {
 		corrID, _ := r.Context().Value(correlationIDKey{}).(string)
 		s.log.WithFields(logrus.Fields{

@@ -388,7 +388,7 @@ func (dm *DockerManager) DetectBestMode(ctx context.Context) RendererMode {
 
 	// Try remote first (if configured)
 	if dm.config.RemoteURL != "" && dm.pingRemote(ctx) {
-		dm.logger.Info("Remote builder available")
+		dm.logger.Info("Remote compiler available")
 		return ModeRemote
 	}
 

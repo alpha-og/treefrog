@@ -18,10 +18,10 @@ import (
 
 // Config holds application configuration
 type Config struct {
-	ProjectRoot  string          `json:"projectRoot"`
-	BuilderURL   string          `json:"builderUrl"`
-	BuilderToken string          `json:"builderToken"`
-	Renderer     *RendererConfig `json:"renderer,omitempty"`
+	ProjectRoot   string          `json:"projectRoot"`
+	CompilerURL   string          `json:"compilerUrl"`
+	CompilerToken string          `json:"compilerToken"`
+	Renderer      *RendererConfig `json:"renderer,omitempty"`
 }
 
 // BuildStatus represents the current state of a build
@@ -52,9 +52,9 @@ type FileEntry struct {
 
 // ProjectInfo holds information about the current project
 type ProjectInfo struct {
-	Name       string `json:"name"`
-	Root       string `json:"root"`
-	BuilderURL string `json:"builderUrl"`
+	Name        string `json:"name"`
+	Root        string `json:"root"`
+	CompilerURL string `json:"compilerUrl"`
 }
 
 // GitStatus represents the git status output
@@ -82,12 +82,12 @@ type App struct {
 	status        BuildStatus
 	remoteMu      sync.Mutex
 	remoteID      string
-	builderURL    string
-	builderToken  string
+	compilerURL   string
+	compilerToken string
 	dockerMgr     *DockerManager
 	buildWg       sync.WaitGroup
 	metrics       *MetricsCollector
-	remoteMonitor *RemoteBuilderMonitor
+	remoteMonitor *RemoteCompilerMonitor
 }
 
 // NewApp creates a new App application struct
@@ -105,15 +105,15 @@ func (a *App) startup(ctx context.Context) {
 	if a.config.ProjectRoot != "" {
 		a.setRoot(a.config.ProjectRoot)
 	}
-	a.builderURL = a.config.BuilderURL
-	a.builderToken = a.config.BuilderToken
+	a.compilerURL = a.config.CompilerURL
+	a.compilerToken = a.config.CompilerToken
 
 	// Initialize metrics collector
 	a.metrics = NewMetricsCollector(Logger)
 
-	// Initialize remote builder monitor if URL is configured
-	if a.config.BuilderURL != "" {
-		a.remoteMonitor = NewRemoteBuilderMonitor(a.config.BuilderURL, Logger)
+	// Initialize remote compiler monitor if URL is configured
+	if a.config.CompilerURL != "" {
+		a.remoteMonitor = NewRemoteCompilerMonitor(a.config.CompilerURL, Logger)
 		a.remoteMonitor.Start()
 	}
 
@@ -180,7 +180,7 @@ func (a *App) shutdown(ctx context.Context) {
 		}
 	}
 
-	// Stop remote builder monitor if running
+	// Stop remote compiler monitor if running
 	if a.remoteMonitor != nil {
 		a.remoteMonitor.Stop()
 	}
@@ -220,30 +220,30 @@ func (a *App) saveConfig() error {
 // GetConfig returns the current configuration
 func (a *App) GetConfig() Config {
 	return Config{
-		ProjectRoot:  a.getRoot(),
-		BuilderURL:   a.getBuilderURL(),
-		BuilderToken: a.getBuilderToken(),
+		ProjectRoot:   a.getRoot(),
+		CompilerURL:   a.getCompilerURL(),
+		CompilerToken: a.getCompilerToken(),
 	}
 }
 
-// SetBuilderConfig updates the builder configuration
-func (a *App) SetBuilderConfig(url, token string) {
+// SetCompilerConfig updates the compiler configuration
+func (a *App) SetCompilerConfig(url, token string) {
 	Logger.WithFields(logrus.Fields{
 		"url":      url,
 		"hasToken": token != "",
-	}).Info("Setting builder configuration")
+	}).Info("Setting compiler configuration")
 
 	a.configMu.Lock()
 	defer a.configMu.Unlock()
-	a.builderURL = url
-	a.builderToken = token
-	a.config.BuilderURL = url
-	a.config.BuilderToken = token
+	a.compilerURL = url
+	a.compilerToken = token
+	a.config.CompilerURL = url
+	a.config.CompilerToken = token
 
 	if err := a.saveConfig(); err != nil {
-		Logger.WithError(err).Error("Failed to save builder configuration")
+		Logger.WithError(err).Error("Failed to save compiler configuration")
 	} else {
-		Logger.Info("Builder configuration saved successfully")
+		Logger.Info("Compiler configuration saved successfully")
 	}
 }
 
@@ -264,21 +264,21 @@ func (a *App) setRoot(root string) error {
 	return nil
 }
 
-// getBuilderURL returns the current builder URL
-func (a *App) getBuilderURL() string {
+// getCompilerURL returns the current compiler URL
+func (a *App) getCompilerURL() string {
 	a.configMu.Lock()
 	defer a.configMu.Unlock()
-	if a.builderURL != "" {
-		return a.builderURL
+	if a.compilerURL != "" {
+		return a.compilerURL
 	}
-	return "https://builder.example.com"
+	return "https://compiler.example.com"
 }
 
-// getBuilderToken returns the current builder token
-func (a *App) getBuilderToken() string {
+// getCompilerToken returns the current compiler token
+func (a *App) getCompilerToken() string {
 	a.configMu.Lock()
 	defer a.configMu.Unlock()
-	return a.builderToken
+	return a.compilerToken
 }
 
 // getRemoteID returns the current remote build ID

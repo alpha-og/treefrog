@@ -10,8 +10,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// RemoteBuilderHealth tracks remote builder status
-type RemoteBuilderHealth struct {
+// RemoteCompilerHealth tracks remote compiler status
+type RemoteCompilerHealth struct {
 	URL              string `json:"url"`
 	IsHealthy        bool   `json:"isHealthy"`
 	LastCheck        string `json:"lastCheck"` // RFC3339 timestamp
@@ -21,10 +21,10 @@ type RemoteBuilderHealth struct {
 	UpSince          string `json:"upSince"`      // RFC3339 timestamp
 }
 
-// RemoteBuilderMonitor monitors remote builder health
-type RemoteBuilderMonitor struct {
+// RemoteCompilerMonitor monitors remote compiler health
+type RemoteCompilerMonitor struct {
 	logger         *logrus.Logger
-	health         *RemoteBuilderHealth
+	health         *RemoteCompilerHealth
 	mu             sync.RWMutex
 	checkInterval  time.Duration
 	maxConsecutive int
@@ -33,15 +33,15 @@ type RemoteBuilderMonitor struct {
 	wg             sync.WaitGroup
 }
 
-// NewRemoteBuilderMonitor creates a new remote builder monitor
-func NewRemoteBuilderMonitor(url string, logger *logrus.Logger) *RemoteBuilderMonitor {
-	return &RemoteBuilderMonitor{
+// NewRemoteCompilerMonitor creates a new remote compiler monitor
+func NewRemoteCompilerMonitor(url string, logger *logrus.Logger) *RemoteCompilerMonitor {
+	return &RemoteCompilerMonitor{
 		logger:         logger,
 		checkInterval:  30 * time.Second,
 		maxConsecutive: 3,
 		timeout:        10 * time.Second,
 		stopChan:       make(chan struct{}),
-		health: &RemoteBuilderHealth{
+		health: &RemoteCompilerHealth{
 			URL:       url,
 			IsHealthy: true,
 		},
@@ -49,23 +49,23 @@ func NewRemoteBuilderMonitor(url string, logger *logrus.Logger) *RemoteBuilderMo
 }
 
 // Start begins health monitoring
-func (rbm *RemoteBuilderMonitor) Start() {
+func (rbm *RemoteCompilerMonitor) Start() {
 	rbm.wg.Add(1)
 	go rbm.monitorLoop()
 	rbm.logger.WithFields(logrus.Fields{
 		"url": rbm.health.URL,
-	}).Info("Remote builder monitoring started")
+	}).Info("Remote compiler monitoring started")
 }
 
 // Stop stops health monitoring
-func (rbm *RemoteBuilderMonitor) Stop() {
+func (rbm *RemoteCompilerMonitor) Stop() {
 	close(rbm.stopChan)
 	rbm.wg.Wait()
-	rbm.logger.Info("Remote builder monitoring stopped")
+	rbm.logger.Info("Remote compiler monitoring stopped")
 }
 
-// monitorLoop continuously monitors builder health
-func (rbm *RemoteBuilderMonitor) monitorLoop() {
+// monitorLoop continuously monitors compiler health
+func (rbm *RemoteCompilerMonitor) monitorLoop() {
 	defer rbm.wg.Done()
 
 	ticker := time.NewTicker(rbm.checkInterval)
@@ -82,7 +82,7 @@ func (rbm *RemoteBuilderMonitor) monitorLoop() {
 }
 
 // checkHealth performs a single health check
-func (rbm *RemoteBuilderMonitor) checkHealth() {
+func (rbm *RemoteCompilerMonitor) checkHealth() {
 	rbm.mu.Lock()
 	defer rbm.mu.Unlock()
 
@@ -117,7 +117,7 @@ func (rbm *RemoteBuilderMonitor) checkHealth() {
 }
 
 // recordSuccess marks a successful health check
-func (rbm *RemoteBuilderMonitor) recordSuccess(duration time.Duration) {
+func (rbm *RemoteCompilerMonitor) recordSuccess(duration time.Duration) {
 	wasUnhealthy := !rbm.health.IsHealthy
 
 	rbm.health.IsHealthy = true
@@ -131,16 +131,16 @@ func (rbm *RemoteBuilderMonitor) recordSuccess(duration time.Duration) {
 		rbm.logger.WithFields(logrus.Fields{
 			"url":              rbm.health.URL,
 			"response_time_ms": rbm.health.ResponseTime,
-		}).Info("Remote builder recovered")
+		}).Info("Remote compiler recovered")
 	} else {
 		rbm.logger.WithFields(logrus.Fields{
 			"response_time_ms": rbm.health.ResponseTime,
-		}).Debug("Remote builder health check passed")
+		}).Debug("Remote compiler health check passed")
 	}
 }
 
 // recordFailure marks a failed health check
-func (rbm *RemoteBuilderMonitor) recordFailure(reason string) {
+func (rbm *RemoteCompilerMonitor) recordFailure(reason string) {
 	rbm.health.ConsecutiveFails++
 	rbm.health.LastCheck = time.Now().Format(time.RFC3339)
 	rbm.health.LastError = reason
@@ -152,31 +152,31 @@ func (rbm *RemoteBuilderMonitor) recordFailure(reason string) {
 			"url":               rbm.health.URL,
 			"consecutive_fails": rbm.health.ConsecutiveFails,
 			"reason":            reason,
-		}).Warn("Remote builder marked as unhealthy")
+		}).Warn("Remote compiler marked as unhealthy")
 	} else {
 		rbm.logger.WithFields(logrus.Fields{
 			"consecutive_fails": rbm.health.ConsecutiveFails,
 			"reason":            reason,
-		}).Debug("Remote builder health check failed")
+		}).Debug("Remote compiler health check failed")
 	}
 }
 
 // GetHealth returns the current health status
-func (rbm *RemoteBuilderMonitor) GetHealth() RemoteBuilderHealth {
+func (rbm *RemoteCompilerMonitor) GetHealth() RemoteCompilerHealth {
 	rbm.mu.RLock()
 	defer rbm.mu.RUnlock()
 	return *rbm.health
 }
 
-// IsHealthy returns whether the builder is considered healthy
-func (rbm *RemoteBuilderMonitor) IsHealthy() bool {
+// IsHealthy returns whether the compiler is considered healthy
+func (rbm *RemoteCompilerMonitor) IsHealthy() bool {
 	rbm.mu.RLock()
 	defer rbm.mu.RUnlock()
 	return rbm.health.IsHealthy
 }
 
-// UpTime returns how long the builder has been up (if it's healthy)
-func (rbm *RemoteBuilderMonitor) UpTime() time.Duration {
+// UpTime returns how long the compiler has been up (if it's healthy)
+func (rbm *RemoteCompilerMonitor) UpTime() time.Duration {
 	rbm.mu.RLock()
 	defer rbm.mu.RUnlock()
 

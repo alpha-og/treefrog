@@ -34,9 +34,9 @@ func (a *App) GetProject() (*ProjectInfo, error) {
 		name = filepath.Base(root)
 	}
 	return &ProjectInfo{
-		Name:       name,
-		Root:       root,
-		BuilderURL: a.getBuilderURL(),
+		Name:        name,
+		Root:        root,
+		CompilerURL: a.getCompilerURL(),
 	}, nil
 }
 
@@ -448,8 +448,8 @@ func (a *App) runBuild(mainFile, engine string, shellEscape bool) {
 	}()
 
 	root := a.getRoot()
-	builderURL := a.getBuilderURL()
-	builderToken := a.getBuilderToken()
+	compilerURL := a.getCompilerURL()
+	compilerToken := a.getCompilerToken()
 
 	// Create zip of project
 	zipPath := filepath.Join(a.cacheDir, "build.zip")
@@ -463,8 +463,8 @@ func (a *App) runBuild(mainFile, engine string, shellEscape bool) {
 		return
 	}
 
-	// Upload to builder
-	remoteID, err := a.uploadBuild(zipPath, mainFile, engine, shellEscape, builderURL, builderToken)
+	// Upload to compiler
+	remoteID, err := a.uploadBuild(zipPath, mainFile, engine, shellEscape, compilerURL, compilerToken)
 	if err != nil {
 		a.statusMu.Lock()
 		a.status.State = "error"
@@ -478,12 +478,12 @@ func (a *App) runBuild(mainFile, engine string, shellEscape bool) {
 	a.setRemoteID(remoteID)
 
 	// Poll for completion
-	a.pollBuildStatus(remoteID, mainFile, engine, shellEscape, builderURL, builderToken)
+	a.pollBuildStatus(remoteID, mainFile, engine, shellEscape, compilerURL, compilerToken)
 }
 
-// uploadBuild uploads the project zip to the builder
-func (a *App) uploadBuild(zipPath, mainFile, engine string, shellEscape bool, builderURL, builderToken string) (string, error) {
-	Logger.Infof("Uploading build to %s - mainFile: %s, engine: %s", builderURL, mainFile, engine)
+// uploadBuild uploads the project zip to the compiler
+func (a *App) uploadBuild(zipPath, mainFile, engine string, shellEscape bool, compilerURL, compilerToken string) (string, error) {
+	Logger.Infof("Uploading build to %s - mainFile: %s, engine: %s", compilerURL, mainFile, engine)
 
 	file, err := os.Open(zipPath)
 	if err != nil {
@@ -521,18 +521,18 @@ func (a *App) uploadBuild(zipPath, mainFile, engine string, shellEscape bool, bu
 	}
 	writer.Close()
 
-	req, err := http.NewRequest("POST", builderURL+"/build", body)
+	req, err := http.NewRequest("POST", compilerURL+"/build", body)
 	if err != nil {
 		Logger.Errorf("Failed to create HTTP request: %v", err)
 		return "", err
 	}
 
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-	if builderToken != "" {
-		req.Header.Set("X-Builder-Token", builderToken)
+	if compilerToken != "" {
+		req.Header.Set("X-Compiler-Token", compilerToken)
 	}
 
-	Logger.Debugf("Sending HTTP POST request to %s/build", builderURL)
+	Logger.Debugf("Sending HTTP POST request to %s/build", compilerURL)
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -543,7 +543,7 @@ func (a *App) uploadBuild(zipPath, mainFile, engine string, shellEscape bool, bu
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("builder error: %s", string(respBody))
+		return "", fmt.Errorf("compiler error: %s", string(respBody))
 	}
 
 	var result struct {
@@ -556,8 +556,8 @@ func (a *App) uploadBuild(zipPath, mainFile, engine string, shellEscape bool, bu
 	return result.ID, nil
 }
 
-// pollBuildStatus polls the builder for build status
-func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape bool, builderURL, builderToken string) {
+// pollBuildStatus polls the compiler for build status
+func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape bool, compilerURL, compilerToken string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
@@ -580,7 +580,7 @@ func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape boo
 			a.emitBuildStatus(a.status)
 			return
 		case <-ticker.C:
-			status, err := a.checkRemoteBuild(remoteID, builderURL, builderToken)
+			status, err := a.checkRemoteBuild(remoteID, compilerURL, compilerToken)
 			if err != nil {
 				a.statusMu.Lock()
 				a.status.State = "error"
@@ -605,7 +605,7 @@ func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape boo
 
 			if status == "success" {
 				// Download PDF
-				if err := a.downloadPDF(remoteID, builderURL, builderToken); err != nil {
+				if err := a.downloadPDF(remoteID, compilerURL, compilerToken); err != nil {
 					a.statusMu.Lock()
 					a.status.State = "error"
 					a.status.Message = err.Error()
@@ -646,10 +646,10 @@ func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape boo
 }
 
 // checkRemoteBuild checks the status of a remote build
-func (a *App) checkRemoteBuild(remoteID, builderURL, builderToken string) (string, error) {
+func (a *App) checkRemoteBuild(remoteID, compilerURL, compilerToken string) (string, error) {
 	Logger.Debugf("Checking remote build status for: %s", remoteID)
 
-	url := builderURL + "/build/" + remoteID + "/status"
+	url := compilerURL + "/build/" + remoteID + "/status"
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -657,8 +657,8 @@ func (a *App) checkRemoteBuild(remoteID, builderURL, builderToken string) (strin
 		return "", err
 	}
 
-	if builderToken != "" {
-		req.Header.Set("X-Builder-Token", builderToken)
+	if compilerToken != "" {
+		req.Header.Set("X-Compiler-Token", compilerToken)
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -690,10 +690,10 @@ func (a *App) checkRemoteBuild(remoteID, builderURL, builderToken string) (strin
 }
 
 // downloadPDF downloads the built PDF
-func (a *App) downloadPDF(remoteID, builderURL, builderToken string) error {
+func (a *App) downloadPDF(remoteID, compilerURL, compilerToken string) error {
 	Logger.Infof("Downloading PDF for build: %s", remoteID)
 
-	url := builderURL + "/build/" + remoteID + "/artifacts/pdf"
+	url := compilerURL + "/build/" + remoteID + "/artifacts/pdf"
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -701,8 +701,8 @@ func (a *App) downloadPDF(remoteID, builderURL, builderToken string) error {
 		return err
 	}
 
-	if builderToken != "" {
-		req.Header.Set("X-Builder-Token", builderToken)
+	if compilerToken != "" {
+		req.Header.Set("X-Compiler-Token", compilerToken)
 	}
 
 	client := &http.Client{Timeout: 30 * time.Second}
@@ -1071,9 +1071,9 @@ func (a *App) SyncTeXView(file string, line, col int) (*SyncTeXResult, error) {
 		"col":  col,
 	}).Debug("SyncTeX forward search request")
 
-	builderURL := a.getBuilderURL()
+	compilerURL := a.getCompilerURL()
 	url := fmt.Sprintf("%s/build/%s/synctex/view?file=%s&line=%d",
-		builderURL, remoteID, url.QueryEscape(file), line)
+		compilerURL, remoteID, url.QueryEscape(file), line)
 	if col > 0 {
 		url += fmt.Sprintf("&col=%d", col)
 	}
@@ -1084,9 +1084,9 @@ func (a *App) SyncTeXView(file string, line, col int) (*SyncTeXResult, error) {
 		return nil, err
 	}
 
-	builderToken := a.getBuilderToken()
-	if builderToken != "" {
-		req.Header.Set("X-Builder-Token", builderToken)
+	compilerToken := a.getCompilerToken()
+	if compilerToken != "" {
+		req.Header.Set("X-Compiler-Token", compilerToken)
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -1131,9 +1131,9 @@ func (a *App) SyncTeXEdit(page int, x, y float64) (*SyncTeXResult, error) {
 		"y":    y,
 	}).Debug("SyncTeX reverse search request")
 
-	builderURL := a.getBuilderURL()
+	compilerURL := a.getCompilerURL()
 	url := fmt.Sprintf("%s/build/%s/synctex/edit?page=%d&x=%f&y=%f",
-		builderURL, remoteID, page, x, y)
+		compilerURL, remoteID, page, x, y)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -1141,9 +1141,9 @@ func (a *App) SyncTeXEdit(page int, x, y float64) (*SyncTeXResult, error) {
 		return nil, err
 	}
 
-	builderToken := a.getBuilderToken()
-	if builderToken != "" {
-		req.Header.Set("X-Builder-Token", builderToken)
+	compilerToken := a.getCompilerToken()
+	if compilerToken != "" {
+		req.Header.Set("X-Compiler-Token", compilerToken)
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -1370,20 +1370,20 @@ func (a *App) ResetCompilationMetrics() error {
 	return nil
 }
 
-// GetRemoteBuilderHealth returns the current remote builder health status
-func (a *App) GetRemoteBuilderHealth() RemoteBuilderHealth {
+// GetRemoteCompilerHealth returns the current remote compiler health status
+func (a *App) GetRemoteCompilerHealth() RemoteCompilerHealth {
 	if a.remoteMonitor == nil {
-		return RemoteBuilderHealth{
-			URL:       a.builderURL,
+		return RemoteCompilerHealth{
+			URL:       a.compilerURL,
 			IsHealthy: false,
-			LastError: "Remote builder monitor not initialized",
+			LastError: "Remote compiler monitor not initialized",
 		}
 	}
 	return a.remoteMonitor.GetHealth()
 }
 
-// IsRemoteBuilderHealthy returns whether the remote builder is healthy
-func (a *App) IsRemoteBuilderHealthy() bool {
+// IsRemoteCompilerHealthy returns whether the remote compiler is healthy
+func (a *App) IsRemoteCompilerHealthy() bool {
 	if a.remoteMonitor == nil {
 		return false
 	}

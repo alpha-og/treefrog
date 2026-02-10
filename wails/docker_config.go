@@ -51,7 +51,7 @@ type RendererConfig struct {
 	ImageSource ImageSource `json:"imageSource"`
 	ImageRef    string      `json:"imageRef"`
 
-	// Remote builder settings
+	// Remote compiler settings
 	RemoteURL   string `json:"remoteUrl"` // JSON tag uses lowercase 'url'
 	RemoteToken string `json:"remoteToken"`
 

@@ -1,4 +1,4 @@
-FROM golang:1.23-bookworm AS builder
+FROM golang:1.23-bookworm AS compiler
 WORKDIR /build
 # Copy module files first for layer caching
 COPY go.mod go.sum ./
@@ -40,12 +40,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Create non-root user with proper permissions
 RUN useradd -m -s /bin/bash appuser && chown -R appuser:appuser /tmp
 # Copy binary from builder
-COPY --from=builder /latex-server /usr/local/bin/latex-server
+COPY --from=compiler /latex-server /usr/local/bin/latex-server
 # Switch to non-root user
 USER appuser
 EXPOSE 9000
 ENV PORT=9000
-ENV BUILDER_WORKDIR=/tmp/treefrog-builds
+ENV COMPILER_WORKDIR=/tmp/treefrog-builds
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:9000/health || exit 1
