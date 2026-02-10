@@ -8,7 +8,7 @@ Treefrog is a desktop application that provides:
 - **Monaco Editor** - LaTeX editing with syntax highlighting
 - **Live PDF Preview** - SyncTeX support for source↔PDF navigation
 - **Git Integration** - Version control and repository management
-- **Remote Compilation** - Offload LaTeX builds to a remote builder service
+- **Remote Compilation** - Offload LaTeX builds to a remote compiler service
 - **Local Docker Renderer** - Optional bundled Docker container for local LaTeX compilation
 - **Project Management** - File browser and LaTeX project support
 
@@ -18,7 +18,7 @@ Treefrog is a desktop application that provides:
 - **Go** 1.21+ (for building)
 - **Node.js** 15+ and **pnpm** (for frontend)
 - **Wails CLI**: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
-- **Builder API Token** - Get from your remote builder service
+- **Compiler API Token** - Get from your remote compiler service
 
 ### Development
 
@@ -30,7 +30,7 @@ make dev
 make doctor
 ```
 
-The app will open at a local dev server. Set your Builder URL and Token in Settings.
+The app will open at a local dev server. Set your Compiler URL and Token in Settings.
 
 ### Build for Distribution
 
@@ -48,7 +48,7 @@ Built app will be in `wails/build/bin/`
 
 1. **Launch** the application
 2. **Settings** → Configure:
-   - **Builder Settings**: Enter your remote Builder URL and API Token (optional)
+   - **Compiler Settings**: Enter your remote Compiler URL and API Token (optional)
    - **Renderer Settings**: Configure local Docker renderer (optional)
 3. **File** → **Open Project** → Select your LaTeX project folder
 4. **Edit** `.tex` files in the editor
@@ -82,9 +82,9 @@ Settings are stored at:
 - **Linux**: `~/.config/treefrog/config.json`
 - **Windows**: `%APPDATA%/treefrog/config.json`
 
-### Builder Settings (Optional)
-- **Builder URL**: Remote LaTeX compiler endpoint
-- **Builder Token**: API token for authentication
+### Compiler Settings (Optional)
+- **Compiler URL**: Remote LaTeX compiler endpoint
+- **Compiler Token**: API token for authentication
 
 ### Renderer Settings (Optional)
 - **Port**: Container port (default: 8080, range: 1024-65535)
@@ -111,7 +111,7 @@ treefrog/
 │   ├── docker_config.go # Docker configuration and validators
 │   ├── menu.go         # Native menu bar
 │   └── main.go         # Entry point
-├── remote-builder/     # LaTeX compilation service
+├── latex-compiler/     # LaTeX compilation service
 │   └── Dockerfile      # Docker build
 ├── Makefile            # Build commands
 └── README.md           # This file
@@ -122,14 +122,14 @@ treefrog/
 When you click "Build", the app:
 
 1. Zips your project with compilation options (engine, shell-escape, etc.)
-2. Uploads to remote builder via HTTP
+2. Uploads to remote compiler via HTTP
 3. Polls `/build/{id}/status` every 2 seconds
 4. Downloads PDF from `/build/{id}/artifacts/pdf` on success
 5. Displays PDF in the viewer with live updates
 
 Key technical details:
 - PDF is transferred as base64-encoded string (Wails binary safety)
-- HTTP header: `X-Builder-Token` for authentication
+- HTTP header: `X-Compiler-Token` for authentication
 - Build status values: `running`, `success`, `error`
 - PDF is validated before display (checks `%PDF` magic bytes)
 
@@ -141,7 +141,7 @@ Key technical details:
 make dev              # Start dev server with hot reload
 make build            # Build for current platform
 make build-all        # Build for macOS, Windows, Linux
-make builder          # Start remote builder (Docker)
+make compiler          # Start remote compiler (Docker)
 make stop             # Stop Docker services
 make doctor           # Check Wails setup
 ```
@@ -157,12 +157,12 @@ When running `make dev`:
 
 ```bash
 # Start the builder service (requires Docker)
-make builder
+make compiler
 
 # Or manually: 
-cd remote-builder
-docker build -t treefrog-builder .
-docker run -p 9000:9000 treefrog-builder
+cd latex-compiler
+docker build -t treefrog-compiler .
+docker run -p 9000:9000 treefrog-compiler
 ```
 
 ## Features
@@ -190,11 +190,11 @@ cd wails && wails build  # Rebuild Go binary
 ```
 
 ### Build fails
-- Verify Builder URL is accessible (if using remote builder)
+- Verify Compiler URL is accessible (if using remote compiler)
 - Check API Token is correct
 - Ensure main `.tex` file is selected
 - Enable shell-escape if document needs it
-- Check remote builder logs
+- Check remote compiler logs
 
 ### Docker Renderer issues
 
@@ -213,7 +213,7 @@ cd wails && wails build  # Rebuild Go binary
 - Restart the app after installing Docker
 
 ### PDF doesn't display
-- Verify remote builder successfully compiled document
+- Verify remote compiler successfully compiled document
 - Check `.log` file from remote build
 - Ensure PDF is valid (not empty)
 - Try rebuilding the project

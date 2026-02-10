@@ -9,7 +9,7 @@ services:
       - "127.0.0.1:9000:9000"
     environment:
       - PORT=9000
-      - BUILDER_TOKEN=${BUILDER_TOKEN:-}
+      - COMPILER_TOKEN=${COMPILER_TOKEN:-}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9000/health"]

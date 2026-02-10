@@ -41,9 +41,9 @@ build-all:
 	cd wails && wails build -platform windows/amd64
 	cd wails && wails build -platform linux/amd64
 
-# Remote Builder (Docker)
-builder:
-	@echo "Starting remote builder..."
+# Remote Compiler (Docker)
+compiler:
+	@echo "Starting remote compiler..."
 	docker compose up --build -d
 
 stop:
