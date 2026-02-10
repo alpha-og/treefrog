@@ -15,7 +15,7 @@ import {
   X,
   Loader2,
   Shield,
-  LogIn,
+  FileText,
 } from "lucide-react";
 import { Button } from "./common/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./common/Card";
@@ -28,6 +28,66 @@ import { ANIMATION_DURATIONS, fadeInUp } from "@/lib/animations";
 import { useAnimation, useReducedMotion } from "@/lib/animation-context";
 
 const log = createLogger("LatexCompilerSettings");
+
+// Reusable Logs Display Component
+function LogsDisplay({
+  logs,
+  title = "Logs",
+  shouldAnimate,
+}: {
+  logs: string;
+  title?: string;
+  shouldAnimate: boolean;
+}) {
+  const [showLogs, setShowLogs] = useState(false);
+
+  return (
+    <motion.div layout>
+      <motion.button
+        onClick={() => setShowLogs(!showLogs)}
+        className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors border-t border-border"
+        whileHover={shouldAnimate ? { backgroundColor: "rgba(0,0,0,0.05)" } : undefined}
+        whileTap={shouldAnimate ? { scale: 0.98 } : undefined}
+      >
+        <div className="flex items-center gap-2">
+          <FileText className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-medium">{title}</span>
+        </div>
+        <motion.div
+          animate={showLogs ? { rotate: 180 } : { rotate: 0 }}
+          transition={shouldAnimate ? { duration: ANIMATION_DURATIONS.normal } : undefined}
+        >
+          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+        </motion.div>
+      </motion.button>
+
+      <AnimatePresence>
+        {showLogs && (
+          <motion.div
+            className="p-4 bg-muted/20 overflow-hidden"
+            initial={shouldAnimate ? { opacity: 0, scaleY: 0 } : undefined}
+            animate={shouldAnimate ? { opacity: 1, scaleY: 1 } : undefined}
+            exit={shouldAnimate ? { opacity: 0, scaleY: 0 } : undefined}
+            transition={
+              shouldAnimate
+                ? {
+                    opacity: { duration: ANIMATION_DURATIONS.fast },
+                    scaleY: { type: "spring", stiffness: 400, damping: 35, duration: ANIMATION_DURATIONS.normal },
+                  }
+                : undefined
+            }
+            style={{ originY: 0 }}
+            layout
+          >
+            <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-word max-h-64 overflow-y-auto">
+              {logs || "No logs available yet"}
+            </pre>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
 
 export default forwardRef(function LatexCompilerSettings(_, ref) {
   const { animationsEnabled } = useAnimation();
@@ -46,6 +106,7 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
     rendererCustomTarPath,
     rendererStatus,
     rendererLogs,
+    buildLog,
     setRendererMode,
     setRendererPort,
     setRendererAutoStart,
@@ -57,13 +118,13 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
     setRendererCustomTarPath,
     setRendererStatus,
     setRendererLogs,
+    setBuildLog,
   } = useAppStore();
 
    const [portInput, setPortInput] = useState(rendererPort.toString());
    const [remoteUrlInput, setRemoteUrlInput] = useState(rendererRemoteUrl);
    const [remoteTokenInput, setRemoteTokenInput] = useState(rendererRemoteToken);
    const [isLoading, setIsLoading] = useState(false);
-   const [showLogs, setShowLogs] = useState(false);
    const [showCustomTabs, setShowCustomTabs] = useState<"registry" | "tar">("registry");
    const [isVerifyingImage, setIsVerifyingImage] = useState(false);
    const [imageVerificationStatus, setImageVerificationStatus] = useState<"idle" | "valid" | "invalid">("idle");
@@ -74,8 +135,18 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
        await waitForWails();
        await loadConfig();
        await loadStatus();
+       // Fetch initial logs
+       await loadLogs();
      };
      initializeSettings();
+    }, []);
+
+    // Poll for log updates every 2 seconds
+    useEffect(() => {
+      const interval = setInterval(() => {
+        loadLogs();
+      }, 2000);
+      return () => clearInterval(interval);
     }, []);
 
     // Sync remote inputs when config loads
@@ -149,13 +220,32 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
        if (status.logs) {
          setRendererLogs(status.logs);
        }
+       } catch (err) {
+         const errorMsg = err instanceof Error ? err.message : String(err);
+         log.error("Failed to load renderer status", err);
+         toast.error(`Failed to load renderer status: ${errorMsg}`);
+         setRendererStatus("error");
+       }
+    };
+
+    const loadLogs = async () => {
+      try {
+        // Fetch local renderer logs
+        const rendererLogsStr = await rendererService.getRendererLogs();
+        if (rendererLogsStr) {
+          setRendererLogs(rendererLogsStr);
+        }
+
+        // Fetch remote build logs
+        const buildLogsStr = await rendererService.getBuildLog();
+        if (buildLogsStr) {
+          setBuildLog(buildLogsStr);
+        }
       } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : String(err);
-        log.error("Failed to load renderer status", err);
-        toast.error(`Failed to load renderer status: ${errorMsg}`);
-        setRendererStatus("error");
+        // Silently fail on log fetch (don't show toast for polling)
+        log.debug("Failed to fetch logs", err);
       }
-   };
+    };
 
   const handleModeChange = async (newMode: RendererMode) => {
     setIsLoading(true);
@@ -553,12 +643,19 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
                        Failed
                      </motion.div>
                    )}
-                 </motion.div>
-               )}
-             </motion.div>
-           )}
-         </CardContent>
-       </Card>
+                  </motion.div>
+                )}
+              </motion.div>
+            )}
+
+            {/* Local Compiler Logs */}
+            <LogsDisplay
+              logs={rendererLogs}
+              title="Renderer Logs"
+              shouldAnimate={shouldAnimate}
+            />
+          </CardContent>
+        </Card>
 
          {/* REMOTE COMPILER CARD */}
          <Card disableHover>
@@ -587,67 +684,25 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
            />
 
            {/* API Key */}
-           <Input
-             label="API Key (Optional)"
-             type="password"
-             placeholder="Enter API key"
-             value={remoteTokenInput}
-             onChange={(e) => setRemoteTokenInput(e.target.value)}
-             disabled={isLoading}
-             description="Authentication if required"
-           />
+            <Input
+              label="API Key (Optional)"
+              type="password"
+              placeholder="Enter API key"
+              value={remoteTokenInput}
+              onChange={(e) => setRemoteTokenInput(e.target.value)}
+              disabled={isLoading}
+              description="Authentication if required"
+            />
 
+            {/* Remote Compiler Build Logs */}
+            <LogsDisplay
+              logs={buildLog}
+              title="Build Logs"
+              shouldAnimate={shouldAnimate}
+            />
 
-         </CardContent>
-       </Card>
-
-        {/* Logs Card */}
-        <motion.div layout>
-          <Card disableHover>
-            <motion.button
-              onClick={() => setShowLogs(!showLogs)}
-              className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
-              whileHover={shouldAnimate ? { backgroundColor: "rgba(0,0,0,0.05)" } : undefined}
-              whileTap={shouldAnimate ? { scale: 0.98 } : undefined}
-            >
-              <div className="flex items-center gap-2">
-                <LogIn className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Logs</span>
-              </div>
-              <motion.div
-                animate={showLogs ? { rotate: 180 } : { rotate: 0 }}
-                transition={shouldAnimate ? { duration: ANIMATION_DURATIONS.normal } : undefined}
-              >
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
-              </motion.div>
-            </motion.button>
-
-            <AnimatePresence>
-              {showLogs && (
-                <motion.div
-                  className="border-t border-border p-4 bg-muted/20 overflow-hidden"
-                  initial={shouldAnimate ? { opacity: 0, scaleY: 0 } : undefined}
-                  animate={shouldAnimate ? { opacity: 1, scaleY: 1 } : undefined}
-                  exit={shouldAnimate ? { opacity: 0, scaleY: 0 } : undefined}
-                  transition={
-                    shouldAnimate
-                      ? {
-                          opacity: { duration: ANIMATION_DURATIONS.fast },
-                          scaleY: { type: "spring", stiffness: 400, damping: 35, duration: ANIMATION_DURATIONS.normal },
-                        }
-                      : undefined
-                  }
-                  style={{ originY: 0 }}
-                  layout
-                >
-                  <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-word max-h-64 overflow-y-auto">
-                    {rendererLogs || "No logs available yet"}
-                  </pre>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </Card>
-        </motion.div>
-     </motion.div>
-   );
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
 });
