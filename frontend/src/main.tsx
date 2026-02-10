@@ -8,6 +8,20 @@ import "./globals.css";
 
 const log = createLogger("Main");
 
+// Initialize theme on app startup to prevent flash
+const initializeTheme = () => {
+  const storedTheme = localStorage.getItem("treefrog-app-theme");
+  const theme = storedTheme || "dark"; // Default to dark
+  
+  if (theme === "dark") {
+    document.documentElement.classList.add("dark");
+  } else {
+    document.documentElement.classList.remove("dark");
+  }
+};
+
+initializeTheme();
+
 // Import Wails runtime to ensure window.go is available in dev mode
 // Use dynamic import to handle missing bindings on fresh clones
 import("wailsjs/runtime").catch(() => {

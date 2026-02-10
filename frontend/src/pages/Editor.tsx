@@ -163,14 +163,7 @@ export default function Editor() {
 
   // ========== EFFECTS ==========
 
-  // Apply theme
-  useEffect(() => {
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [theme]);
+
 
   // Sync config to server
   useEffect(() => {

@@ -68,8 +68,11 @@ export const useAppStore = create<AppState>()(
       setCompilerUrl: (url) => set({ compilerUrl: url }),
       setCompilerToken: (token) => set({ compilerToken: token }),
       setTheme: (theme) => {
-        const themeName = theme === "dark" ? "rusty-dark" : "rusty-light";
-        document.documentElement.setAttribute("data-theme", themeName);
+        if (theme === "dark") {
+          document.documentElement.classList.add("dark");
+        } else {
+          document.documentElement.classList.remove("dark");
+        }
         set({ theme });
       },
       setCurrentProject: (path) => set({ currentProject: path }),
