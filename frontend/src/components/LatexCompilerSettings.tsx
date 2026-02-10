@@ -624,11 +624,19 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
           <AnimatePresence>
             {showLogs && (
               <motion.div
-                className="border-t border-border p-4 bg-muted/20"
-                initial={shouldAnimate ? { opacity: 0 } : undefined}
-                animate={shouldAnimate ? { opacity: 1 } : undefined}
-                exit={shouldAnimate ? { opacity: 0 } : undefined}
-                transition={shouldAnimate ? { duration: ANIMATION_DURATIONS.fast } : undefined}
+                className="border-t border-border p-4 bg-muted/20 overflow-hidden"
+                initial={shouldAnimate ? { opacity: 0, scaleY: 0 } : undefined}
+                animate={shouldAnimate ? { opacity: 1, scaleY: 1 } : undefined}
+                exit={shouldAnimate ? { opacity: 0, scaleY: 0 } : undefined}
+                transition={
+                  shouldAnimate
+                    ? {
+                        opacity: { duration: ANIMATION_DURATIONS.fast },
+                        scaleY: { type: "spring", stiffness: 400, damping: 35, duration: ANIMATION_DURATIONS.normal },
+                      }
+                    : undefined
+                }
+                style={{ originY: 0 }}
                 layout
               >
                 <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-word max-h-64 overflow-y-auto">
