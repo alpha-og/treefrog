@@ -21,6 +21,7 @@ interface AppState {
   rendererStatus: "running" | "stopped" | "error" | "not-installed" | "building";
   rendererDetectedMode: RendererMode | null;
   rendererLogs: string;
+  buildLog: string;
   _hasHydrated: boolean;
   setApiUrl: (url: string) => void;
   setCompilerUrl: (url: string) => void;
@@ -40,6 +41,7 @@ interface AppState {
   setRendererStatus: (status: "running" | "stopped" | "error" | "not-installed" | "building") => void;
   setRendererDetectedMode: (mode: RendererMode | null) => void;
   setRendererLogs: (logs: string) => void;
+  setBuildLog: (log: string) => void;
   setHasHydrated: (state: boolean) => void;
 }
 
@@ -60,43 +62,45 @@ export const useAppStore = create<AppState>()(
       rendererRemoteToken: "",
       rendererCustomRegistry: "",
       rendererCustomTarPath: "",
-      rendererStatus: "stopped",
-      rendererDetectedMode: null,
-      rendererLogs: "",
-      _hasHydrated: false,
-      setApiUrl: (url) => set({ apiUrl: url }),
-      setCompilerUrl: (url) => set({ compilerUrl: url }),
-      setCompilerToken: (token) => set({ compilerToken: token }),
-       setTheme: (theme) => {
-        if (theme === "dark") {
-          document.documentElement.classList.add("dark");
-        } else if (theme === "light") {
-          document.documentElement.classList.remove("dark");
-        } else if (theme === "system") {
-          // Check system preference
-          const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-          if (isDark) {
-            document.documentElement.classList.add("dark");
-          } else {
-            document.documentElement.classList.remove("dark");
-          }
-        }
-        set({ theme });
-      },
-      setCurrentProject: (path) => set({ currentProject: path }),
-      setRendererMode: (mode) => set({ rendererMode: mode }),
-      setRendererPort: (port) => set({ rendererPort: port }),
-      setRendererAutoStart: (enabled) => set({ rendererAutoStart: enabled }),
-      setRendererImageSource: (source) => set({ rendererImageSource: source }),
-      setRendererImageRef: (ref) => set({ rendererImageRef: ref }),
-      setRendererRemoteUrl: (url) => set({ rendererRemoteUrl: url }),
-      setRendererRemoteToken: (token) => set({ rendererRemoteToken: token }),
-      setRendererCustomRegistry: (registry) => set({ rendererCustomRegistry: registry }),
-      setRendererCustomTarPath: (path) => set({ rendererCustomTarPath: path }),
-      setRendererStatus: (status) => set({ rendererStatus: status }),
-      setRendererDetectedMode: (mode) => set({ rendererDetectedMode: mode }),
-      setRendererLogs: (logs) => set({ rendererLogs: logs }),
-      setHasHydrated: (state) => set({ _hasHydrated: state }),
+       rendererStatus: "stopped",
+       rendererDetectedMode: null,
+       rendererLogs: "",
+       buildLog: "",
+       _hasHydrated: false,
+       setApiUrl: (url) => set({ apiUrl: url }),
+       setCompilerUrl: (url) => set({ compilerUrl: url }),
+       setCompilerToken: (token) => set({ compilerToken: token }),
+        setTheme: (theme) => {
+         if (theme === "dark") {
+           document.documentElement.classList.add("dark");
+         } else if (theme === "light") {
+           document.documentElement.classList.remove("dark");
+         } else if (theme === "system") {
+           // Check system preference
+           const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+           if (isDark) {
+             document.documentElement.classList.add("dark");
+           } else {
+             document.documentElement.classList.remove("dark");
+           }
+         }
+         set({ theme });
+       },
+       setCurrentProject: (path) => set({ currentProject: path }),
+       setRendererMode: (mode) => set({ rendererMode: mode }),
+       setRendererPort: (port) => set({ rendererPort: port }),
+       setRendererAutoStart: (enabled) => set({ rendererAutoStart: enabled }),
+       setRendererImageSource: (source) => set({ rendererImageSource: source }),
+       setRendererImageRef: (ref) => set({ rendererImageRef: ref }),
+       setRendererRemoteUrl: (url) => set({ rendererRemoteUrl: url }),
+       setRendererRemoteToken: (token) => set({ rendererRemoteToken: token }),
+       setRendererCustomRegistry: (registry) => set({ rendererCustomRegistry: registry }),
+       setRendererCustomTarPath: (path) => set({ rendererCustomTarPath: path }),
+       setRendererStatus: (status) => set({ rendererStatus: status }),
+       setRendererDetectedMode: (mode) => set({ rendererDetectedMode: mode }),
+       setRendererLogs: (logs) => set({ rendererLogs: logs }),
+       setBuildLog: (log) => set({ buildLog: log }),
+       setHasHydrated: (state) => set({ _hasHydrated: state }),
     }),
     {
       name: "treefrog-app",
