@@ -78,56 +78,56 @@ export default function ProjectCard({
           }}
         />
 
-        {/* Main content */}
-        <div className="p-5">
-          {/* Header with icon and actions */}
-          <div className="flex items-start justify-between gap-3 mb-4">
-            {/* Icon with gradient background */}
-            <div className="flex items-center gap-3">
-              <motion.div 
-                className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/25 via-primary/15 to-secondary/20 flex items-center justify-center shrink-0 shadow-md"
-                variants={{
-                  hover: {
-                    background: "linear-gradient(135deg, oklch(0.65 0.15 45 / 0.35), oklch(0.65 0.15 45 / 0.25), oklch(0.75 0.1 60 / 0.3))"
-                  }
-                }}
-              >
-                {initials ? (
-                  <span className="text-sm font-bold text-primary">{initials}</span>
-                ) : (
-                  <FolderOpen size={20} className="text-primary" />
-                )}
-              </motion.div>
+         {/* Main content */}
+         <div className="p-5">
+           {/* Header with icon and actions */}
+           <div className="flex items-start justify-between gap-3 mb-4 min-w-0">
+             {/* Icon with gradient background */}
+             <div className="flex items-center gap-3 min-w-0 flex-1">
+               <motion.div 
+                 className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/25 via-primary/15 to-secondary/20 flex items-center justify-center shrink-0 shadow-md"
+                 variants={{
+                   hover: {
+                     background: "linear-gradient(135deg, oklch(0.65 0.15 45 / 0.35), oklch(0.65 0.15 45 / 0.25), oklch(0.75 0.1 60 / 0.3))"
+                   }
+                 }}
+               >
+                 {initials ? (
+                   <span className="text-sm font-bold text-primary">{initials}</span>
+                 ) : (
+                   <FolderOpen size={20} className="text-primary" />
+                 )}
+               </motion.div>
 
-              {/* Title - Primary content */}
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-base text-foreground group-hover:text-primary transition-colors truncate leading-tight">
-                  {project.name}
-                </h3>
-              </div>
-            </div>
+               {/* Title - Primary content */}
+               <div className="flex-1 min-w-0">
+                 <h3 className="font-semibold text-base text-foreground group-hover:text-primary transition-colors truncate leading-tight" title={project.name}>
+                   {project.name}
+                 </h3>
+               </div>
+             </div>
 
-            {/* Delete button - On hover */}
-            <motion.button
-              onClick={(e) => {
-                e.stopPropagation();
-                onRemove(project.path);
-              }}
-              className="shrink-0 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-destructive/15 hover:text-destructive text-muted-foreground"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              title="Remove from recent"
-            >
-              <Trash2 size={16} />
-            </motion.button>
-          </div>
+             {/* Delete button - On hover */}
+             <motion.button
+               onClick={(e) => {
+                 e.stopPropagation();
+                 onRemove(project.path);
+               }}
+               className="shrink-0 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-destructive/15 hover:text-destructive text-muted-foreground"
+               whileHover={{ scale: 1.05 }}
+               whileTap={{ scale: 0.95 }}
+               title="Remove from recent"
+             >
+               <Trash2 size={16} />
+             </motion.button>
+           </div>
 
-          {/* Path - Secondary content */}
-          <div className="mb-4 px-0.5">
-            <p className="text-xs font-mono text-muted-foreground truncate hover:text-foreground/70 transition-colors break-all line-clamp-2">
-              {project.path}
-            </p>
-          </div>
+           {/* Path - Secondary content */}
+           <div className="mb-4 px-0.5 min-w-0">
+             <p className="text-xs font-mono text-muted-foreground hover:text-foreground/70 transition-colors truncate" title={project.path}>
+               {project.path}
+             </p>
+           </div>
 
           {/* Footer with metadata */}
           <div className="flex items-center justify-between pt-3 border-t border-border">
