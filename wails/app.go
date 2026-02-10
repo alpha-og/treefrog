@@ -265,19 +265,34 @@ func (a *App) setRoot(root string) error {
 }
 
 // getCompilerURL returns the current compiler URL
+// getCompilerURL returns the current compiler URL based on renderer mode
 func (a *App) getCompilerURL() string {
 	a.configMu.Lock()
 	defer a.configMu.Unlock()
+
+	// If using remote mode and remote URL is configured, use it
+	if a.config.Renderer != nil && a.config.Renderer.Mode == "remote" && a.config.Renderer.RemoteURL != "" {
+		return a.config.Renderer.RemoteURL
+	}
+
+	// Fall back to local/legacy compiler URL
 	if a.compilerURL != "" {
 		return a.compilerURL
 	}
 	return "https://compiler.example.com"
 }
 
-// getCompilerToken returns the current compiler token
+// getCompilerToken returns the current compiler token based on renderer mode
 func (a *App) getCompilerToken() string {
 	a.configMu.Lock()
 	defer a.configMu.Unlock()
+
+	// If using remote mode, return remote token
+	if a.config.Renderer != nil && a.config.Renderer.Mode == "remote" {
+		return a.config.Renderer.RemoteToken
+	}
+
+	// Fall back to legacy compiler token
 	return a.compilerToken
 }
 
