@@ -60,9 +60,9 @@ const Toggle = React.forwardRef<HTMLInputElement, ToggleProps>(
   return (
     <div className={cn("flex items-center gap-3", label && "justify-between")}>
       {(label || description) && (
-        <div className="space-y-1">
+        <div>
           {label && (
-            <label className="text-sm font-medium text-foreground cursor-pointer">
+            <label className="text-sm font-medium text-foreground cursor-pointer mb-1 block">
               {label}
             </label>
           )}

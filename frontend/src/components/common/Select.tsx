@@ -53,9 +53,9 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
       : [];
 
     return (
-      <div className="w-full space-y-2">
+      <div className="w-full">
         {label && (
-          <label className="text-sm font-medium text-foreground">
+          <label className="text-sm font-medium text-foreground mb-2 block">
             {label}
           </label>
         )}
