@@ -602,50 +602,52 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
        </Card>
 
         {/* Logs Card */}
-        <Card disableHover>
-          <motion.button
-            onClick={() => setShowLogs(!showLogs)}
-            className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
-            whileHover={shouldAnimate ? { backgroundColor: "rgba(0,0,0,0.05)" } : undefined}
-            whileTap={shouldAnimate ? { scale: 0.98 } : undefined}
-          >
-            <div className="flex items-center gap-2">
-              <LogIn className="w-4 h-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Logs</span>
-            </div>
-            <motion.div
-              animate={showLogs ? { rotate: 180 } : { rotate: 0 }}
-              transition={shouldAnimate ? { duration: ANIMATION_DURATIONS.normal } : undefined}
+        <motion.div layout>
+          <Card disableHover>
+            <motion.button
+              onClick={() => setShowLogs(!showLogs)}
+              className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
+              whileHover={shouldAnimate ? { backgroundColor: "rgba(0,0,0,0.05)" } : undefined}
+              whileTap={shouldAnimate ? { scale: 0.98 } : undefined}
             >
-              <ChevronDown className="w-4 h-4 text-muted-foreground" />
-            </motion.div>
-          </motion.button>
-
-          <AnimatePresence>
-            {showLogs && (
+              <div className="flex items-center gap-2">
+                <LogIn className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Logs</span>
+              </div>
               <motion.div
-                className="border-t border-border p-4 bg-muted/20 overflow-hidden"
-                initial={shouldAnimate ? { opacity: 0, scaleY: 0 } : undefined}
-                animate={shouldAnimate ? { opacity: 1, scaleY: 1 } : undefined}
-                exit={shouldAnimate ? { opacity: 0, scaleY: 0 } : undefined}
-                transition={
-                  shouldAnimate
-                    ? {
-                        opacity: { duration: ANIMATION_DURATIONS.fast },
-                        scaleY: { type: "spring", stiffness: 400, damping: 35, duration: ANIMATION_DURATIONS.normal },
-                      }
-                    : undefined
-                }
-                style={{ originY: 0 }}
-                layout
+                animate={showLogs ? { rotate: 180 } : { rotate: 0 }}
+                transition={shouldAnimate ? { duration: ANIMATION_DURATIONS.normal } : undefined}
               >
-                <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-word max-h-64 overflow-y-auto">
-                  {rendererLogs || "No logs available yet"}
-                </pre>
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
               </motion.div>
-            )}
-          </AnimatePresence>
-        </Card>
+            </motion.button>
+
+            <AnimatePresence>
+              {showLogs && (
+                <motion.div
+                  className="border-t border-border p-4 bg-muted/20 overflow-hidden"
+                  initial={shouldAnimate ? { opacity: 0, scaleY: 0 } : undefined}
+                  animate={shouldAnimate ? { opacity: 1, scaleY: 1 } : undefined}
+                  exit={shouldAnimate ? { opacity: 0, scaleY: 0 } : undefined}
+                  transition={
+                    shouldAnimate
+                      ? {
+                          opacity: { duration: ANIMATION_DURATIONS.fast },
+                          scaleY: { type: "spring", stiffness: 400, damping: 35, duration: ANIMATION_DURATIONS.normal },
+                        }
+                      : undefined
+                  }
+                  style={{ originY: 0 }}
+                  layout
+                >
+                  <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-word max-h-64 overflow-y-auto">
+                    {rendererLogs || "No logs available yet"}
+                  </pre>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </Card>
+        </motion.div>
      </motion.div>
    );
 });
