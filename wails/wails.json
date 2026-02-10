@@ -3,6 +3,7 @@
   "name": "treefrog",
   "outputfilename": "treefrog",
   "frontend:dir": "../frontend",
+  "go:dir": "./wails",
   "frontend:install": "pnpm install",
   "frontend:build": "pnpm build",
   "frontend:dev:build": "pnpm build",

@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from "axios";
 import { isWails } from "../utils/env";
 import { createLogger } from "../utils/logger";
+import { RendererMode } from "./rendererService";
 
 const log = createLogger("API");
 
@@ -76,9 +77,15 @@ declare global {
 interface WailsApp {
   // Project
   GetProject(): Promise<{ name: string; root: string; builderUrl: string }>;
-  SetProject(root: string): Promise<{ name: string; root: string; builderUrl: string }>;
-  OpenProjectDialog(): Promise<{ name: string; root: string; builderUrl: string }>;
-  
+  SetProject(
+    root: string,
+  ): Promise<{ name: string; root: string; builderUrl: string }>;
+  OpenProjectDialog(): Promise<{
+    name: string;
+    root: string;
+    builderUrl: string;
+  }>;
+
   // Files
   ListFiles(path: string): Promise<FileEntry[]>;
   ReadFile(path: string): Promise<string>;
@@ -88,30 +95,46 @@ interface WailsApp {
   DeleteFile(path: string, recursive: boolean): Promise<void>;
   MoveFile(from: string, toDir: string): Promise<void>;
   DuplicateFile(from: string, to: string): Promise<void>;
-  
+
   // Build
   GetBuildStatus(): Promise<BuildStatus>;
-  TriggerBuild(mainFile: string, engine: string, shellEscape: boolean): Promise<void>;
+  TriggerBuild(
+    mainFile: string,
+    engine: string,
+    shellEscape: boolean,
+  ): Promise<void>;
   GetBuildLog(): Promise<string>;
   GetPDFPath(): Promise<string>;
   GetPDFContent(): Promise<Uint8Array>;
   ExportPDF(): Promise<string>;
   ExportSource(): Promise<string>;
-  
+
   // Git
   GitStatus(): Promise<{ raw: string }>;
   GitCommit(message: string, files: string[], all: boolean): Promise<void>;
   GitPush(remote: string): Promise<void>;
   GitPull(remote: string): Promise<void>;
-  
+
   // SyncTeX
-  SyncTeXView(file: string, line: number, col: number): Promise<{ page: number; x: number; y: number }>;
-  SyncTeXEdit(page: number, x: number, y: number): Promise<{ page: number; x: number; y: number }>;
-  
+  SyncTeXView(
+    file: string,
+    line: number,
+    col: number,
+  ): Promise<{ page: number; x: number; y: number }>;
+  SyncTeXEdit(
+    page: number,
+    x: number,
+    y: number,
+  ): Promise<{ page: number; x: number; y: number }>;
+
   // Config
-  GetConfig(): Promise<{ projectRoot: string; builderUrl: string; builderToken: string }>;
+  GetConfig(): Promise<{
+    projectRoot: string;
+    builderUrl: string;
+    builderToken: string;
+  }>;
   SetBuilderConfig(url: string, token: string): Promise<void>;
-  
+
   // Renderer
   BuildRenderer(): Promise<void>;
   PullRenderer(imageRef: string): Promise<void>;
@@ -124,7 +147,7 @@ interface WailsApp {
   SetRendererMode(mode: string): Promise<void>;
   SetImageSource(source: string, ref: string): Promise<void>;
   VerifyCustomImage(path: string): Promise<boolean>;
-  DetectBestMode(): Promise<string>;
+  DetectBestMode(): Promise<RendererMode>;
   SetRendererRemoteURL(url: string): Promise<void>;
   SetRendererRemoteToken(token: string): Promise<void>;
   GetRendererLogs(): Promise<string>;
@@ -133,7 +156,8 @@ interface WailsApp {
 
 interface RendererStatus {
   state: "running" | "stopped" | "error" | "not-installed" | "building";
-  mode: string;
+  isRunning: boolean;
+  mode: RendererMode;
   message: string;
   port: number;
   logs: string;
