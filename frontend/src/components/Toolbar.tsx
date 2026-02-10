@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sun, Moon, Home, FileText, Eye, Sidebar as SidebarIcon, Check } from "lucide-react";
+import { Home, FileText, Eye, Sidebar as SidebarIcon, Check } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "motion/react";
 import BuildButton from "./BuildButton";
@@ -13,8 +13,6 @@ interface ToolbarProps {
   onEngineChange: (engine: string) => void;
   shell: boolean;
   onShellChange: (shell: boolean) => void;
-  theme: "light" | "dark";
-  onThemeToggle: () => void;
   onTogglePane: (pane: "sidebar" | "editor" | "preview") => void;
   panesVisible: { sidebar: boolean; editor: boolean; preview: boolean };
   configSynced?: boolean;
@@ -28,8 +26,6 @@ export default function Toolbar({
   onEngineChange,
   shell,
   onShellChange,
-  theme,
-  onThemeToggle,
   onTogglePane,
   panesVisible,
   configSynced,
@@ -40,29 +36,29 @@ export default function Toolbar({
   return (
     <>
       {/* Main Toolbar - Draggable */}
-      <header 
+      <header
         className="bg-card border-b px-6 py-3 flex items-center justify-between gap-6 h-16"
         style={{ "--wails-draggable": "drag" } as React.CSSProperties}
       >
-          {/* Left: Logo and Home */}
-          <div className="flex items-center gap-3 shrink-0" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
-           <motion.button
-             className="p-2 rounded-lg hover:bg-accent transition-colors"
-             onClick={() => navigate({ to: "/" })}
-             title="Go to home"
-             whileHover={{ scale: 1.05 }}
-             whileTap={{ scale: 0.95 }}
-           >
-             <Home size={20} className="text-primary" />
-           </motion.button>
-           <span className="text-sm font-semibold text-foreground/80">Treefrog</span>
-         </div>
+        {/* Left: Logo and Home */}
+        <div className="flex items-center gap-3 shrink-0" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
+          <motion.button
+            className="p-2 rounded-lg hover:bg-accent transition-colors"
+            onClick={() => navigate({ to: "/" })}
+            title="Go to home"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Home size={20} className="text-primary" />
+          </motion.button>
+          <span className="text-sm font-semibold text-foreground/80">Treefrog</span>
+        </div>
 
         {/* Center: Spacer */}
         <div className="flex-1" />
 
-          {/* Right: Controls and Settings */}
-          <div className="flex items-center gap-3 shrink-0" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
+        {/* Right: Controls and Settings */}
+        <div className="flex items-center gap-3 shrink-0" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
           {/* View Settings */}
           <div className="relative">
             <motion.button
@@ -82,7 +78,7 @@ export default function Toolbar({
             <AnimatePresence>
               {showViewMenu && (
                 <>
-                  <motion.div 
+                  <motion.div
                     className="absolute right-0 mt-2 w-56 bg-card border rounded-xl shadow-xl z-50 overflow-hidden"
                     initial={{ opacity: 0, y: -10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -172,20 +168,6 @@ export default function Toolbar({
             </AnimatePresence>
           </div>
 
-          {/* Theme Toggle */}
-          <motion.button
-            className="p-2 rounded-lg hover:bg-accent transition-colors"
-            onClick={onThemeToggle}
-            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            {theme === "dark" ? (
-              <Sun size={16} className="text-amber-500" />
-            ) : (
-              <Moon size={16} className="text-blue-500" />
-            )}
-          </motion.button>
 
           {/* Build Button with Engine Dropdown */}
           <BuildButton
@@ -201,7 +183,7 @@ export default function Toolbar({
       {/* Status Indicator - Fixed bottom right */}
       <AnimatePresence>
         {configSynced && (
-          <motion.div 
+          <motion.div
             className="fixed bottom-6 right-6 flex items-center gap-2 px-4 py-3 bg-emerald-500/10 rounded-lg shadow-lg border border-emerald-500/20"
             initial={{ opacity: 0, x: 100 }}
             animate={{ opacity: 1, x: 0 }}

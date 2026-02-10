@@ -90,11 +90,11 @@ export const slideInRight: Variants = {
 export const cardHover: Variants = {
   rest: { 
     y: 0, 
-    boxShadow: "0 10px 30px -10px rgba(0,0,0,0.1)" 
+    boxShadow: "0 4px 20px -8px oklch(0 0 0 / 0.15)" 
   },
   hover: { 
     y: -4, 
-    boxShadow: "0 20px 40px -15px rgba(0,0,0,0.15)",
+    boxShadow: "0 12px 32px -10px oklch(0 0 0 / 0.2)",
     transition: { 
       duration: 0.3, 
       ease: "easeOut" 
@@ -222,13 +222,13 @@ export const pulse: Variants = {
 // Glow pulse for cards
 export const glowPulse: Variants = {
   rest: {
-    boxShadow: "0 0 0 0 rgba(0,0,0,0)"
+    boxShadow: "0 0 0 0 oklch(0 0 0 / 0)"
   },
   hover: {
     boxShadow: [
-      "0 0 0 0 oklch(0.65 0.15 45 / 0.1)",
-      "0 0 20px 2px oklch(0.65 0.15 45 / 0.15)",
-      "0 0 0 0 oklch(0.65 0.15 45 / 0.1)"
+      "0 0 0 0 oklch(0.65 0.15 30 / 0.1)",
+      "0 0 20px 2px oklch(0.65 0.15 30 / 0.15)",
+      "0 0 0 0 oklch(0.65 0.15 30 / 0.1)"
     ],
     transition: {
       duration: 2,
