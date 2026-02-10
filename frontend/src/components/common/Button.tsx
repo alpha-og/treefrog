@@ -2,10 +2,15 @@ import * as React from "react";
 import { motion } from "motion/react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { buttonPress } from "@/lib/animations";
+import {
+  fadeIn,
+  ANIMATION_DURATIONS,
+} from "@/lib/animations";
+import { LoadingSpinner } from "./LoadingSpinner";
+import { useAnimation, useReducedMotion } from "@/lib/animation-context";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none cursor-pointer",
   {
     variants: {
       variant: {
@@ -35,31 +40,84 @@ export interface ButtonProps
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   loading?: boolean;
+  animationDisabled?: boolean;
+  loadingText?: string;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, loading, children, disabled, ...props }, ref) => {
+  (
+    {
+      className,
+      variant,
+      size,
+      loading,
+      children,
+      disabled,
+      animationDisabled = false,
+      loadingText,
+      ...props
+    },
+    ref
+  ) => {
     const isDisabled = disabled || loading;
-    
-    return (
-      <motion.button
-        className={cn(buttonVariants({ variant, size, className }))}
-        ref={ref}
-        disabled={isDisabled}
+    const { animationsEnabled } = useAnimation();
+    const prefersReducedMotion = useReducedMotion();
+    const shouldAnimate = !animationDisabled && animationsEnabled;
+
+    // Motion animation variants for button states
+    const motionVariants = {
+      rest: {
+        scale: 1,
+        boxShadow: "0 4px 12px -4px oklch(0 0 0 / 0.1)",
+      },
+      hover: {
+        scale: 1.02,
+        boxShadow: "0 8px 20px -6px oklch(0 0 0 / 0.15)",
+        transition: {
+          duration: ANIMATION_DURATIONS.normal,
+          ease: [0.23, 1, 0.32, 1],
+        },
+      },
+      press: {
+        scale: 0.98,
+        transition: {
+          duration: ANIMATION_DURATIONS.fast,
+          ease: [0.23, 1, 0.32, 1],
+        },
+      },
+      disabled: {
+        opacity: 0.6,
+        scale: 0.98,
+        transition: {
+          duration: ANIMATION_DURATIONS.fast,
+        },
+      },
+    };
+
+     return (
+       <motion.button
+         className={cn(buttonVariants({ variant, size, className }), isDisabled && "cursor-not-allowed")}
+         ref={ref}
+         disabled={isDisabled}
         initial="rest"
-        whileHover={isDisabled ? undefined : "hover"}
-        whileTap={isDisabled ? undefined : "press"}
-        variants={buttonPress}
+        animate={shouldAnimate ? (isDisabled ? "disabled" : "rest") : undefined}
+        whileHover={
+          shouldAnimate && !isDisabled && !prefersReducedMotion ? "hover" : undefined
+        }
+        whileTap={
+          shouldAnimate && !isDisabled && !prefersReducedMotion ? "press" : undefined
+        }
+        variants={shouldAnimate ? motionVariants : undefined}
         {...props}
       >
-        {loading && (
-          <motion.span
-            className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full"
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          />
+        {loading ? (
+          <>
+            <LoadingSpinner size="sm" variant="inherit" />
+            {loadingText && <span>{loadingText}</span>}
+          </>
+        ) : (
+          children
         )}
-        {children}
       </motion.button>
     );
   }
