@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ArrowLeft, Zap, Palette, Check, Moon, Sun, Monitor } from "lucide-react";
 import { motion } from "motion/react";
 import { useAppStore } from "@/stores/appStore";
@@ -19,8 +19,37 @@ export default function Settings() {
   const { theme, setTheme } = useAppStore();
   const [activeTab, setActiveTab] = useState<SettingsTab>("compiler");
   const [themeMode, setThemeMode] = useState<ThemeMode>(theme as ThemeMode);
+  const [savedThemeMode, setSavedThemeMode] = useState<ThemeMode>(theme as ThemeMode);
   const latexCompilerSettingsRef = useRef<{ save: () => Promise<void> }>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Sync theme changes immediately to DOM for preview
+  useEffect(() => {
+    applyTheme(themeMode);
+  }, [themeMode]);
+
+  // Apply theme to DOM
+  const applyTheme = (mode: ThemeMode) => {
+    if (mode === "dark") {
+      document.documentElement.classList.add("dark");
+    } else if (mode === "light") {
+      document.documentElement.classList.remove("dark");
+    } else if (mode === "system") {
+      // Check system preference
+      const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      if (isDark) {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
+    }
+  };
+
+  // Handle back navigation - restore saved theme if not saved
+  const handleBack = () => {
+    applyTheme(savedThemeMode);
+    navigate({ to: "/" });
+  };
 
   const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
     { id: "compiler", label: "LaTeX Compiler", icon: <Zap size={16} /> },
@@ -33,8 +62,9 @@ export default function Settings() {
       if (activeTab === "compiler" && latexCompilerSettingsRef.current?.save) {
         await latexCompilerSettingsRef.current.save();
       } else if (activeTab === "appearance") {
-        // Save theme preference
+        // Save theme preference to Zustand store (persists to localStorage)
         setTheme(themeMode);
+        setSavedThemeMode(themeMode);
       }
     } finally {
       setIsSaving(false);
@@ -52,7 +82,7 @@ export default function Settings() {
           <div className="flex items-center justify-between px-6 py-4 min-h-[60px]">
             <div className="flex items-center gap-3 w-1/4">
               <motion.button
-                onClick={() => navigate({ to: "/" })}
+                onClick={handleBack}
                 className="p-2 rounded-lg hover:bg-primary/10 transition-all"
                 title="Go back"
                 whileHover={{ scale: 1.05 }}

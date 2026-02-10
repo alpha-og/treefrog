@@ -6,7 +6,7 @@ interface AppState {
   apiUrl: string;
   compilerUrl: string;
   compilerToken: string;
-  theme: "light" | "dark";
+  theme: "light" | "dark" | "system";
   currentProject: string | null;
   // Renderer settings
   rendererMode: RendererMode;
@@ -25,7 +25,7 @@ interface AppState {
   setApiUrl: (url: string) => void;
   setCompilerUrl: (url: string) => void;
   setCompilerToken: (token: string) => void;
-  setTheme: (theme: "light" | "dark") => void;
+  setTheme: (theme: "light" | "dark" | "system") => void;
   setCurrentProject: (path: string | null) => void;
   // Renderer setters
   setRendererMode: (mode: RendererMode) => void;
@@ -67,11 +67,19 @@ export const useAppStore = create<AppState>()(
       setApiUrl: (url) => set({ apiUrl: url }),
       setCompilerUrl: (url) => set({ compilerUrl: url }),
       setCompilerToken: (token) => set({ compilerToken: token }),
-      setTheme: (theme) => {
+       setTheme: (theme) => {
         if (theme === "dark") {
           document.documentElement.classList.add("dark");
-        } else {
+        } else if (theme === "light") {
           document.documentElement.classList.remove("dark");
+        } else if (theme === "system") {
+          // Check system preference
+          const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          if (isDark) {
+            document.documentElement.classList.add("dark");
+          } else {
+            document.documentElement.classList.remove("dark");
+          }
         }
         set({ theme });
       },
