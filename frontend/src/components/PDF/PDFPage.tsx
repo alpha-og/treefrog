@@ -30,7 +30,7 @@ export default function PDFPage({
           </div>
         }
       />
-      <div className="text-center text-xs text-base-content/50 py-1 bg-base-200">
+      <div className="text-center text-xs text-foreground/50 py-1 bg-muted">
         Page {pageNum}
       </div>
     </div>

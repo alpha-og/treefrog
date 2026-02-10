@@ -1,6 +1,7 @@
 import { X, Minus, Square } from "lucide-react";
-import { useWailsRuntime } from "../hooks/useWailsRuntime";
+import { useWailsRuntime } from "@/hooks/useWailsRuntime";
 import { useEffect, useState, ReactNode } from "react";
+import { motion } from "motion/react";
 
 interface TitleBarProps {
   title?: string;
@@ -44,28 +45,34 @@ export default function TitleBar({ title = "Treefrog", subtitle, onClose }: Titl
 
   return (
     <div
-      className="w-full h-12 bg-base-200 border-b border-base-300 flex items-center px-4 gap-4 flex-shrink-0"
+      className="w-full h-12 bg-muted/50 border-b flex items-center px-4 gap-4 flex-shrink-0"
       style={{ "--wails-draggable": "drag" } as React.CSSProperties}
     >
       {/* Left: Window controls for macOS */}
       {platform === "darwin" && (
         <div className="flex items-center gap-2.5" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
           {/* Red - Close */}
-          <button
+          <motion.button
             onClick={handleClose}
-            className="w-3 h-3 rounded-full bg-red-500 hover:bg-red-600 transition-colors shadow-sm hover:scale-110"
+            className="w-3 h-3 rounded-full bg-red-500 hover:bg-red-600 shadow-sm"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
             title="Close"
           />
           {/* Yellow - Minimize */}
-          <button
+          <motion.button
             onClick={handleMinimize}
-            className="w-3 h-3 rounded-full bg-yellow-500 hover:bg-yellow-600 transition-colors shadow-sm hover:scale-110"
+            className="w-3 h-3 rounded-full bg-yellow-500 hover:bg-yellow-600 shadow-sm"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
             title="Minimize"
           />
           {/* Green - Maximize */}
-          <button
+          <motion.button
             onClick={handleMaximize}
-            className="w-3 h-3 rounded-full bg-green-500 hover:bg-green-600 transition-colors shadow-sm hover:scale-110"
+            className="w-3 h-3 rounded-full bg-green-500 hover:bg-green-600 shadow-sm"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
             title="Maximize"
           />
         </div>
@@ -73,36 +80,42 @@ export default function TitleBar({ title = "Treefrog", subtitle, onClose }: Titl
 
       {/* Center: Title and context-dependent info */}
       <div className="flex-1 flex flex-col items-center justify-center min-w-0">
-        <h1 className="text-sm font-semibold text-base-content truncate">{title}</h1>
+        <h1 className="text-sm font-semibold text-foreground truncate">{title}</h1>
         {subtitle && (
-          <div className="text-xs text-base-content/60">{subtitle}</div>
+          <div className="text-xs text-muted-foreground">{subtitle}</div>
         )}
       </div>
 
       {/* Right: Window controls for Windows/Linux */}
       {platform !== "darwin" && (
         <div className="flex items-center gap-1" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
-          <button
+          <motion.button
             onClick={handleMinimize}
-            className="p-1.5 hover:bg-base-content/20 rounded transition-colors"
+            className="p-1.5 hover:bg-accent rounded-md transition-colors"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             title="Minimize"
           >
-            <Minus size={14} className="text-base-content/70" />
-          </button>
-          <button
+            <Minus size={14} className="text-muted-foreground" />
+          </motion.button>
+          <motion.button
             onClick={handleMaximize}
-            className="p-1.5 hover:bg-base-content/20 rounded transition-colors"
+            className="p-1.5 hover:bg-accent rounded-md transition-colors"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             title="Maximize"
           >
-            <Square size={14} className="text-base-content/70" />
-          </button>
-          <button
+            <Square size={14} className="text-muted-foreground" />
+          </motion.button>
+          <motion.button
             onClick={handleClose}
-            className="p-1.5 hover:bg-error/20 hover:text-error rounded transition-colors"
+            className="p-1.5 hover:bg-destructive hover:text-white rounded-md transition-colors"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             title="Close"
           >
             <X size={14} />
-          </button>
+          </motion.button>
         </div>
       )}
     </div>

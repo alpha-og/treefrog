@@ -30,6 +30,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "wailsjs": path.resolve(__dirname, "../wails/frontend/wailsjs/wailsjs"),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
 });

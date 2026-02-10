@@ -17,7 +17,8 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "wailsjs/*": ["../wails/frontend/wailsjs/wailsjs/*"]
+      "wailsjs/*": ["../wails/frontend/wailsjs/wailsjs/*"],
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src"],

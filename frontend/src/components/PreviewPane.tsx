@@ -202,7 +202,7 @@ export default function PreviewPane({
   };
 
   return (
-    <section className="h-full flex flex-col bg-base-100 border-l border-base-content/5 relative overflow-hidden">
+    <section className="h-full flex flex-col bg-card border-l border-border relative overflow-hidden">
       {/* Background gradient accents */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -mr-48 -mt-48"></div>
@@ -210,19 +210,19 @@ export default function PreviewPane({
       </div>
 
       {/* Header with Controls - All in one line */}
-       <div className="border-b border-base-content/5 px-4 py-2 flex items-center justify-between gap-2 bg-linear-to-r from-base-100/80 to-transparent backdrop-blur-sm relative z-10">
+       <div className="border-b border-border px-4 py-2 flex items-center justify-between gap-2 bg-linear-to-r from-card/80 to-transparent backdrop-blur-sm relative z-10">
         {/* Left: Title */}
         <div className="flex items-center gap-2 shrink-0">
           <div className="p-1.5 rounded-lg bg-primary/10">
             <FileText size={16} className="text-primary" />
           </div>
-          <span className="font-semibold text-sm text-base-content whitespace-nowrap">Preview</span>
+          <span className="font-semibold text-sm text-foreground whitespace-nowrap">Preview</span>
         </div>
 
         {/* Center: Zoom + Page Navigation + Status */}
         <div className="flex items-center gap-1.5 justify-center overflow-auto">
           {/* Zoom Controls */}
-          <div className="flex items-center gap-1 bg-base-200/40 rounded-lg p-1.5 border border-base-content/5 hover:border-primary/20 transition-all duration-200 shrink-0">
+          <div className="flex items-center gap-1 bg-muted/40 rounded-lg p-1.5 border border-border hover:border-primary/20 transition-all duration-200 shrink-0">
             <button
               onClick={() => onZoomChange(clampZoom(zoom - 0.2))}
               className="p-1 rounded-md hover:bg-primary/15 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
@@ -231,13 +231,13 @@ export default function PreviewPane({
             >
               <ZoomOut
                 size={14}
-                className="text-base-content/70 group-hover:text-primary transition-all"
+                className="text-foreground/70 group-hover:text-primary transition-all"
               />
             </button>
             <select
               value={zoom}
               onChange={(e) => onZoomChange(Number(e.target.value))}
-               className="bg-transparent border-0 font-mono text-xs px-1.5 py-0.5 min-w-11 text-base-content/80 focus:outline-none hover:bg-base-300/20 transition-colors appearance-none cursor-pointer"
+               className="bg-transparent border-0 font-mono text-xs px-1.5 py-0.5 min-w-11 text-foreground/80 focus:outline-none hover:bg-accent/20 transition-colors appearance-none cursor-pointer"
             >
               {ZOOM_LEVELS.map((z) => (
                 <option key={z} value={z}>
@@ -253,7 +253,7 @@ export default function PreviewPane({
             >
               <ZoomIn
                 size={14}
-                className="text-base-content/70 group-hover:text-primary transition-all"
+                className="text-foreground/70 group-hover:text-primary transition-all"
               />
             </button>
           </div>
@@ -263,7 +263,7 @@ export default function PreviewPane({
 
           {/* Page Counter */}
           <div 
-            className="flex items-center gap-1 px-2.5 py-1.5 bg-base-200/40 rounded-lg border border-base-content/5 shrink-0 cursor-pointer hover:border-base-content/20 transition-all"
+            className="flex items-center gap-1 px-2.5 py-1.5 bg-muted/40 rounded-lg border border-border shrink-0 cursor-pointer hover:border-base-content/20 transition-all"
             onClick={() => setIsEditingPage(true)}
             title="Click to jump to a page"
           >
@@ -289,14 +289,14 @@ export default function PreviewPane({
                     setIsEditingPage(false);
                   }
                 }}
-                className="w-6 text-center font-mono text-xs bg-transparent border-0 focus:outline-none text-base-content font-medium"
+                className="w-6 text-center font-mono text-xs bg-transparent border-0 focus:outline-none text-foreground font-medium"
                 autoFocus
               />
             ) : (
-              <span className="text-xs font-medium text-base-content/80 font-mono">{displayPage}</span>
+              <span className="text-xs font-medium text-foreground/80 font-mono">{displayPage}</span>
             )}
-            <span className="text-xs text-base-content/60">/</span>
-            <span className="text-xs text-base-content/80 font-mono">{numPages}</span>
+            <span className="text-xs text-foreground/60">/</span>
+            <span className="text-xs text-foreground/80 font-mono">{numPages}</span>
           </div>
 
           {/* Status Indicator */}
@@ -334,15 +334,15 @@ export default function PreviewPane({
         <div className="relative shrink-0" ref={exportMenuRef}>
           <button
             onClick={() => setShowExportMenu(!showExportMenu)}
-            className="px-2.5 py-1.5 rounded-lg bg-base-200/40 hover:bg-base-200/60 border border-base-content/5 hover:border-base-content/20 transition-all duration-200 flex items-center justify-center group"
+            className="px-2.5 py-1.5 rounded-lg bg-muted/40 hover:bg-muted/60 border border-border hover:border-base-content/20 transition-all duration-200 flex items-center justify-center group"
             title="Export options"
           >
-            <MoreVertical size={14} className="text-base-content/70 group-hover:text-base-content transition-colors" />
+            <MoreVertical size={14} className="text-foreground/70 group-hover:text-foreground transition-colors" />
           </button>
           
           {/* Dropdown Menu */}
           {showExportMenu && (
-             <div className="absolute right-0 mt-1 bg-base-100 border border-base-content/10 rounded-lg shadow-lg z-50 overflow-hidden min-w-37.5">
+             <div className="absolute right-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-50 overflow-hidden min-w-37.5">
               {isWails() ? (
                 <>
                   <button
@@ -350,7 +350,7 @@ export default function PreviewPane({
                       handleExportPDF();
                       setShowExportMenu(false);
                     }}
-                    className="w-full px-4 py-2.5 text-left text-xs font-medium text-base-content hover:bg-primary/10 transition-colors flex items-center gap-2 border-b border-base-content/5 last:border-b-0"
+                    className="w-full px-4 py-2.5 text-left text-xs font-medium text-foreground hover:bg-primary/10 transition-colors flex items-center gap-2 border-b border-border last:border-b-0"
                   >
                     <Download size={14} className="text-primary" />
                     Export PDF
@@ -360,7 +360,7 @@ export default function PreviewPane({
                       handleExportSource();
                       setShowExportMenu(false);
                     }}
-                    className="w-full px-4 py-2.5 text-left text-xs font-medium text-base-content hover:bg-secondary/10 transition-colors flex items-center gap-2 border-b border-base-content/5 last:border-b-0"
+                    className="w-full px-4 py-2.5 text-left text-xs font-medium text-foreground hover:bg-secondary/10 transition-colors flex items-center gap-2 border-b border-border last:border-b-0"
                   >
                     <FileArchive size={14} className="text-secondary" />
                     Export Source
@@ -373,7 +373,7 @@ export default function PreviewPane({
                     target="_blank"
                     rel="noreferrer"
                     onClick={() => setShowExportMenu(false)}
-                    className="block w-full px-4 py-2.5 text-left text-xs font-medium text-base-content hover:bg-primary/10 transition-colors border-b border-base-content/5"
+                    className="block w-full px-4 py-2.5 text-left text-xs font-medium text-foreground hover:bg-primary/10 transition-colors border-b border-border"
                   >
                     <div className="flex items-center gap-2">
                       <Download size={14} className="text-primary" />
@@ -385,7 +385,7 @@ export default function PreviewPane({
                     target="_blank"
                     rel="noreferrer"
                     onClick={() => setShowExportMenu(false)}
-                    className="block w-full px-4 py-2.5 text-left text-xs font-medium text-base-content hover:bg-secondary/10 transition-colors"
+                    className="block w-full px-4 py-2.5 text-left text-xs font-medium text-foreground hover:bg-secondary/10 transition-colors"
                   >
                     <div className="flex items-center gap-2">
                       <FileArchive size={14} className="text-secondary" />
@@ -437,7 +437,7 @@ export default function PreviewPane({
       {/* Log Modal for Desktop */}
       {showLog && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-base-100 rounded-2xl shadow-2xl p-6 max-w-3xl w-full max-h-[80vh] flex flex-col m-4 border border-base-content/10">
+          <div className="bg-card rounded-2xl shadow-2xl p-6 max-w-3xl w-full max-h-[80vh] flex flex-col m-4 border border-border">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-primary/10">
@@ -445,11 +445,11 @@ export default function PreviewPane({
                 </div>
                 <h3 className="font-bold text-lg">Build Log</h3>
               </div>
-              <button onClick={() => setShowLog(false)} className="btn btn-sm btn-ghost hover:bg-base-200">
+              <button onClick={() => setShowLog(false)} className="btn btn-sm btn-ghost hover:bg-muted">
                 ✕
               </button>
             </div>
-            <pre className="bg-base-200/50 p-4 rounded-lg overflow-auto flex-1 text-xs font-mono whitespace-pre-wrap text-base-content/80 border border-base-content/5">
+            <pre className="bg-muted/50 p-4 rounded-lg overflow-auto flex-1 text-xs font-mono whitespace-pre-wrap text-foreground/80 border border-border">
               {logContent}
             </pre>
           </div>
@@ -472,28 +472,28 @@ export default function PreviewPane({
 
 
         {/* PDF Viewer */}
-         <div ref={pdfViewerRef} className="flex-1 overflow-auto min-h-0 bg-linear-to-br from-base-100 via-base-200/30 to-base-100 relative z-0">
+         <div ref={pdfViewerRef} className="flex-1 overflow-auto min-h-0 bg-linear-to-br from-card via-muted/30 to-card relative z-0">
          {projectRoot ? (
            buildStatus?.state === "building" ? (
-             <div className="flex flex-col items-center justify-center h-full text-base-content/50 gap-4 animate-in fade-in duration-500">
+             <div className="flex flex-col items-center justify-center h-full text-foreground/50 gap-4 animate-in fade-in duration-500">
                <div className="relative">
                  <div className="absolute inset-0 bg-warning/20 rounded-full blur-2xl animate-pulse"></div>
                  <Loader2 size={56} className="animate-spin text-warning relative" />
                </div>
                <div className="text-center">
-                 <p className="font-semibold text-base-content/80">Compiling LaTeX...</p>
-                 <p className="text-xs text-base-content/50 mt-2">This may take a moment</p>
+                 <p className="font-semibold text-foreground/80">Compiling LaTeX...</p>
+                 <p className="text-xs text-foreground/50 mt-2">This may take a moment</p>
                </div>
              </div>
            ) : pdfLoading ? (
-             <div className="flex flex-col items-center justify-center h-full text-base-content/50 gap-4 animate-in fade-in duration-500">
+             <div className="flex flex-col items-center justify-center h-full text-foreground/50 gap-4 animate-in fade-in duration-500">
                <div className="relative">
                  <div className="absolute inset-0 bg-info/20 rounded-full blur-2xl animate-pulse"></div>
                  <Loader2 size={56} className="animate-spin text-info relative" />
                </div>
                <div className="text-center">
-                 <p className="font-semibold text-base-content/80">Loading PDF...</p>
-                 <p className="text-xs text-base-content/50 mt-2">Please wait</p>
+                 <p className="font-semibold text-foreground/80">Loading PDF...</p>
+                 <p className="text-xs text-foreground/50 mt-2">Please wait</p>
                </div>
              </div>
           ) : pdfUrl && !pdfError ? (
@@ -519,13 +519,13 @@ export default function PreviewPane({
              </div>
            ) : null
          ) : (
-           <div className="flex flex-col items-center justify-center h-full text-base-content/50 gap-4">
+           <div className="flex flex-col items-center justify-center h-full text-foreground/50 gap-4">
              <div className="p-4 rounded-full bg-base-content/10">
                <FileText size={48} />
              </div>
              <div className="text-center">
                <p className="font-medium">No project selected</p>
-               <p className="text-sm text-base-content/60 mt-2">Choose a folder to get started</p>
+               <p className="text-sm text-foreground/60 mt-2">Choose a folder to get started</p>
              </div>
            </div>
          )}

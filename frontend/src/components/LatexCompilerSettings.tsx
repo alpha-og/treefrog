@@ -331,9 +331,9 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
         return {
           icon: <div className="w-2.5 h-2.5 bg-base-content/40 rounded-full"></div>,
           text: "Stopped",
-          color: "text-base-content/60",
+          color: "text-foreground/60",
           bgColor: "bg-base-content/5",
-          borderColor: "border-base-content/10",
+          borderColor: "border-border",
         };
       case "building":
         return {
@@ -408,13 +408,13 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
        </div>
 
        {/* UNIFIED COMPILER SETTINGS SECTION */}
-       <div className="bg-base-100/30 border border-base-content/10 rounded-xl overflow-hidden">
+       <div className="bg-card/30 border border-border rounded-xl overflow-hidden">
          {/* LOCAL COMPILER SECTION */}
          <div className="p-4 space-y-4">
            <div>
              <div className="flex items-center gap-2 mb-3">
                <Wrench className="w-4 h-4 text-primary" />
-               <h3 className="text-sm font-bold text-base-content/80">Local Compiler</h3>
+               <h3 className="text-sm font-bold text-foreground/80">Local Compiler</h3>
              </div>
 
              {/* Local Status Card */}
@@ -481,15 +481,15 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
                    Apply
                  </button>
                </div>
-               <p className="text-xs text-base-content/70 mt-1">1024 - 65535</p>
+               <p className="text-xs text-foreground/70 mt-1">1024 - 65535</p>
              </div>
 
              {/* Auto-Start Toggle */}
-             <div className="pt-3 mt-3 border-t border-base-content/10">
+             <div className="pt-3 mt-3 border-t border-border">
                <div className="flex items-center justify-between">
                  <div>
                    <p className="font-semibold text-sm">Auto-start on launch</p>
-                   <p className="text-xs text-base-content/70">Start/stop with app</p>
+                   <p className="text-xs text-foreground/70">Start/stop with app</p>
                  </div>
                  <input
                    type="checkbox"
@@ -503,7 +503,7 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
 
              {/* Image Source */}
              {showImageSource && (
-               <div className="mt-3 pt-3 border-t border-base-content/10">
+               <div className="mt-3 pt-3 border-t border-border">
                  <label className="label pb-2">
                    <span className="label-text font-semibold text-xs">Image Source</span>
                  </label>
@@ -609,23 +609,23 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
          </div>
 
          {/* DIVIDER */}
-         <div className="border-t border-base-content/10"></div>
+         <div className="border-t border-border"></div>
 
          {/* REMOTE COMPILER SECTION */}
          <div className="p-4 space-y-4">
            <div>
              <div className="flex items-center gap-2 mb-3">
                <Globe className="w-4 h-4 text-primary" />
-               <h3 className="text-sm font-bold text-base-content/80">Remote Compiler</h3>
+               <h3 className="text-sm font-bold text-foreground/80">Remote Compiler</h3>
              </div>
 
               {/* Remote Status */}
-              <div className="bg-base-content/5 border border-base-content/10 rounded-lg p-3 mb-3 flex items-center justify-between">
+              <div className="bg-base-content/5 border border-border rounded-lg p-3 mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-2.5 h-2.5 bg-base-content/40 rounded-full"></div>
-                  <p className="text-sm text-base-content/60">External Compiler</p>
+                  <p className="text-sm text-foreground/60">External Compiler</p>
                 </div>
-                <p className="text-xs text-base-content/50">{rendererRemoteUrl ? "Configured" : "Not configured"}</p>
+                <p className="text-xs text-foreground/50">{rendererRemoteUrl ? "Configured" : "Not configured"}</p>
               </div>
 
               {/* Compiler URL */}
@@ -641,11 +641,11 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
                   onChange={(e) => setRemoteUrlInput(e.target.value)}
                   disabled={isLoading}
                 />
-                <p className="text-xs text-base-content/70 mt-1">API endpoint for remote compiler</p>
+                <p className="text-xs text-foreground/70 mt-1">API endpoint for remote compiler</p>
               </div>
 
               {/* API Key */}
-              <div className="pt-3 mt-3 border-t border-base-content/10">
+              <div className="pt-3 mt-3 border-t border-border">
                 <label className="label pb-2">
                   <span className="label-text font-semibold text-xs">API Key (Optional)</span>
                 </label>
@@ -657,32 +657,32 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
                   onChange={(e) => setRemoteTokenInput(e.target.value)}
                   disabled={isLoading}
                 />
-                <p className="text-xs text-base-content/70 mt-1">Authentication if required</p>
+                <p className="text-xs text-foreground/70 mt-1">Authentication if required</p>
               </div>
            </div>
          </div>
        </div>
 
       {/* Logs - Available for both local and remote */}
-      <div className="bg-base-100/30 border border-base-content/10 rounded-xl overflow-hidden flex flex-col h-40">
+      <div className="bg-card/30 border border-border rounded-xl overflow-hidden flex flex-col h-40">
         <button
           onClick={() => setShowLogs(!showLogs)}
-           className="w-full flex items-center justify-between p-3 hover:bg-base-200/50 transition-colors shrink-0"
+           className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors shrink-0"
         >
           <div className="flex items-center gap-2">
-            <LogIn className="w-3 h-3 text-base-content/60" />
+            <LogIn className="w-3 h-3 text-foreground/60" />
             <span className="text-sm font-medium">Logs</span>
           </div>
           <ChevronDown
-            className={`w-3 h-3 text-base-content/60 transition-transform duration-300 ${
+            className={`w-3 h-3 text-foreground/60 transition-transform duration-300 ${
               showLogs ? "rotate-180" : ""
             }`}
           />
         </button>
 
         {showLogs && (
-          <div className="flex-1 overflow-y-auto border-t border-base-content/10 p-3">
-             <pre className="text-xs font-mono text-base-content/70 whitespace-pre-wrap break-word">
+          <div className="flex-1 overflow-y-auto border-t border-border p-3">
+             <pre className="text-xs font-mono text-foreground/70 whitespace-pre-wrap break-word">
               {rendererLogs || "No logs available yet"}
             </pre>
           </div>

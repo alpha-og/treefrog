@@ -8,40 +8,45 @@ import React, {
 import * as monaco from "monaco-editor";
 import { pdfjs } from "react-pdf";
 import { useNavigate } from "@tanstack/react-router";
+import { motion } from "motion/react";
 
 // Components
-import Toolbar from "../components/Toolbar";
-import Sidebar from "../components/Sidebar";
-import { EditorPane } from "../components/EditorPane";
-import PreviewPane from "../components/PreviewPane";
-import ProjectPicker from "../components/ProjectPicker";
-import ContextMenu from "../components/ContextMenu";
-import EmptyPlaceholder from "../components/EmptyPlaceholder";
-import FramelessWindow from "../components/FramelessWindow";
+import Toolbar from "@/components/Toolbar";
+import Sidebar from "@/components/Sidebar";
+import { EditorPane } from "@/components/EditorPane";
+import PreviewPane from "@/components/PreviewPane";
+import ProjectPicker from "@/components/ProjectPicker";
+import ContextMenu from "@/components/ContextMenu";
+import EmptyPlaceholder from "@/components/EmptyPlaceholder";
+import FramelessWindow from "@/components/FramelessWindow";
 
 // Types
-import { BuildStatus, ModalState } from "../types";
+import { BuildStatus, ModalState } from "@/types";
 
 // Stores
-import { useAppStore } from "../stores/appStore";
-import { useFileStore } from "../stores/fileStore";
-import { usePaneStore, useDimensionStore } from "../stores/layoutStore";
-import { useModalStore } from "../stores/modalStore";
-import { useRecentProjectsStore } from "../stores/recentProjectsStore";
+import { useAppStore } from "@/stores/appStore";
+import { useFileStore } from "@/stores/fileStore";
+import { usePaneStore, useDimensionStore } from "@/stores/layoutStore";
+import { useModalStore } from "@/stores/modalStore";
+import { useRecentProjectsStore } from "@/stores/recentProjectsStore";
 
 // Hooks
-import { useProject } from "../hooks/useProject";
-import { useFiles } from "../hooks/useFiles";
-import { useBuild } from "../hooks/useBuild";
-import { useGit } from "../hooks/useGit";
-import { useWebSocket } from "../hooks/useWebSocket";
+import { useProject } from "@/hooks/useProject";
+import { useFiles } from "@/hooks/useFiles";
+import { useBuild } from "@/hooks/useBuild";
+import { useGit } from "@/hooks/useGit";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 // Services
-import { syncConfig } from "../services/configService";
+import { syncConfig } from "@/services/configService";
 
 // Utils
-import { clampPage, modalTitle, modalPlaceholder, modalHint } from "../utils/ui";
-import { joinPath } from "../utils/path";
+import { clampPage, modalTitle, modalPlaceholder, modalHint } from "@/utils/ui";
+import { joinPath } from "@/utils/path";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/common/Button";
+import { Input } from "@/components/common/Input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/common/Dialog";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -160,8 +165,11 @@ export default function Editor() {
 
   // Apply theme
   useEffect(() => {
-    const themeName = theme === "dark" ? "rusty-dark" : "rusty-light";
-    document.documentElement.setAttribute("data-theme", themeName);
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
   }, [theme]);
 
   // Sync config to server
@@ -446,28 +454,28 @@ export default function Editor() {
       title="Treefrog" 
       subtitle={projectRoot ? <span className="font-mono text-xs">{projectRoot}</span> : undefined}
     >
-      <div className="flex-1 flex flex-col bg-base-100 overflow-hidden relative" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
+      <div className="flex-1 flex flex-col bg-background overflow-hidden relative" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
         {/* Background gradient accent */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -mr-48 -mt-48"></div>
           <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-secondary/5 rounded-full blur-3xl -mb-48"></div>
         </div>
 
-         {/* Toolbar - Modern and elegant */}
+         {/* Toolbar */}
          <Toolbar
-         projectRoot={projectRoot}
-         onOpenProject={() => setShowPicker(true)}
-         onBuild={triggerBuild}
-         engine={engine}
-         onEngineChange={setEngine}
-         shell={shellEscape}
-         onShellChange={setShellEscape}
-         theme={theme}
-         onThemeToggle={() => setTheme(theme === "dark" ? "light" : "dark")}
-         onTogglePane={togglePane}
-         panesVisible={visiblePanes}
-         configSynced={configSynced}
-       />
+          projectRoot={projectRoot}
+          onOpenProject={() => setShowPicker(true)}
+          onBuild={triggerBuild}
+          engine={engine}
+          onEngineChange={setEngine}
+          shell={shellEscape}
+          onShellChange={setShellEscape}
+          theme={theme}
+          onThemeToggle={() => setTheme(theme === "dark" ? "light" : "dark")}
+          onTogglePane={togglePane}
+          panesVisible={visiblePanes}
+          configSynced={configSynced}
+        />
 
         {/* Main Content */}
         <div className="flex-1 flex flex-row overflow-hidden relative z-10" ref={mainRef} style={_isResizing ? { userSelect: "none" } as React.CSSProperties : {}}>
@@ -478,7 +486,13 @@ export default function Editor() {
              {/* Sidebar */}
              {sidebar && (
                <>
-                 <div className="border-r border-base-content/5 backdrop-blur-sm bg-base-100/50 overflow-hidden animate-fade-in" style={{ width: `${sidebarWidth}px`, flexShrink: 0 }}>
+                 <motion.div 
+                   className="border-r backdrop-blur-sm bg-card/50 overflow-hidden"
+                   style={{ width: `${sidebarWidth}px`, flexShrink: 0 }}
+                   initial={{ opacity: 0, x: -20 }}
+                   animate={{ opacity: 1, x: 0 }}
+                   transition={{ duration: 0.3 }}
+                 >
                    <Sidebar
                      projectRoot={projectRoot}
                      entries={entries}
@@ -501,10 +515,10 @@ export default function Editor() {
                      onPush={push}
                      onPull={pull}
                    />
-                 </div>
+                 </motion.div>
                  {(editor || preview) && (
                    <div
-                     className="w-0.5 bg-gradient-to-b from-transparent via-base-content/20 to-transparent hover:bg-primary/50 hover:shadow-lg hover:shadow-primary/30 cursor-col-resize transition-all duration-200 hover:w-1"
+                     className="w-0.5 bg-gradient-to-b from-transparent via-border to-transparent hover:bg-primary/50 cursor-col-resize transition-all duration-200 hover:w-1"
                      onMouseDown={(e) => handleResizeStart("sidebar-editor", e)}
                    />
                  )}
@@ -514,12 +528,15 @@ export default function Editor() {
              {/* Editor */}
              {editor && (
                <>
-                 <div
-                   className="flex-1 min-w-0 animate-fade-in"
+                 <motion.div
+                   className="flex-1 min-w-0"
                    style={{
                      width: editorWidth > 0 ? `${editorWidth}px` : undefined,
                      flex: editorWidth > 0 ? "none" : 1,
                    }}
+                   initial={{ opacity: 0 }}
+                   animate={{ opacity: 1 }}
+                   transition={{ duration: 0.3 }}
                  >
                    <EditorPane
                      theme={theme}
@@ -528,10 +545,10 @@ export default function Editor() {
                      currentFile={currentFile}
                      onSave={handleSave}
                    />
-                 </div>
+                 </motion.div>
                  {preview && (
                    <div
-                     className="w-0.5 bg-gradient-to-b from-transparent via-base-content/20 to-transparent hover:bg-primary/50 hover:shadow-lg hover:shadow-primary/30 cursor-col-resize transition-all duration-200 hover:w-1"
+                     className="w-0.5 bg-gradient-to-b from-transparent via-border to-transparent hover:bg-primary/50 cursor-col-resize transition-all duration-200 hover:w-1"
                      onMouseDown={(e) => handleResizeStart("editor-preview", e)}
                      style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}
                    />
@@ -541,7 +558,12 @@ export default function Editor() {
 
              {/* Preview */}
              {preview && (
-               <div className="flex-1 min-w-0 animate-fade-in">
+               <motion.div 
+                 className="flex-1 min-w-0"
+                 initial={{ opacity: 0, x: 20 }}
+                 animate={{ opacity: 1, x: 0 }}
+                 transition={{ duration: 0.3 }}
+               >
                  <PreviewPane
                    apiUrl={apiUrl}
                    buildStatus={buildStatus}
@@ -559,7 +581,7 @@ export default function Editor() {
                   pageProxyRef={pageProxyRef}
                   registerPageRef={registerPageRef}
                 />
-              </div>
+              </motion.div>
             )}
           </>
         )}
@@ -618,20 +640,21 @@ export default function Editor() {
 
       {/* File Operations Modal */}
       {modal && (
-        <dialog className="modal modal-open">
-          <div className="modal-box">
-            <h3 className="font-bold text-lg mb-4">{modalTitle(modal)}</h3>
-            <p className="text-sm text-base-content/70 mb-4">
+        <Dialog open={!!modal} onOpenChange={() => closeModal()}>
+          <DialogHeader>
+            <DialogTitle>{modalTitle(modal)}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
               {modalHint(modal)}
             </p>
 
             {modal.kind !== "delete" && (
-              <input
+              <Input
                 type="text"
                 placeholder={modalPlaceholder(modal, currentDir)}
                 value={modalInput}
                 onChange={(e) => setModalInput(e.target.value)}
-                className="input input-bordered w-full"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === "Enter") confirmModal();
@@ -641,27 +664,27 @@ export default function Editor() {
             )}
 
             {modal.kind === "delete" && modal.isDir && (
-              <div className="alert alert-warning">
-                <span>This will delete the folder and all its contents.</span>
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 text-amber-600 text-sm">
+                This will delete the folder and all its contents.
               </div>
             )}
 
-            <div className="modal-action">
-              <button
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="ghost"
+                onClick={closeModal}
+              >
+                Cancel
+              </Button>
+              <Button
                 onClick={confirmModal}
-                className={`btn ${modal.kind === "delete" ? "btn-error" : "btn-primary"}`}
+                variant={modal.kind === "delete" ? "destructive" : "default"}
               >
                 Confirm
-              </button>
-              <button onClick={closeModal} className="btn">
-                Cancel
-              </button>
+              </Button>
             </div>
           </div>
-          <form method="dialog" className="modal-backdrop">
-            <button onClick={closeModal}>close</button>
-          </form>
-        </dialog>
+        </Dialog>
       )}
     </div>
     </FramelessWindow>

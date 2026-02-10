@@ -59,10 +59,10 @@ export default function ContextMenu({
       className="fixed"
       style={{ top: `${y}px`, left: `${x}px`, zIndex: 50 }}
     >
-      <div className="min-w-60 bg-base-100 rounded-xl shadow-2xl border border-base-content/10 backdrop-blur-sm overflow-hidden animate-fade-in">
+      <div className="min-w-60 bg-card rounded-xl shadow-2xl border border-border backdrop-blur-sm overflow-hidden animate-fade-in">
         {/* Header - File Path */}
-        <div className="px-4 py-3 border-b border-base-content/5 bg-linear-to-r from-base-100/50 to-transparent">
-          <p className="text-xs text-base-content/60 truncate font-mono" title={path}>
+        <div className="px-4 py-3 border-b border-border bg-linear-to-r from-card/50 to-transparent">
+          <p className="text-xs text-foreground/60 truncate font-mono" title={path}>
             {path.split("/").pop() || path}
           </p>
         </div>

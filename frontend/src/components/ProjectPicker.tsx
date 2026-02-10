@@ -80,7 +80,7 @@ export default function ProjectPicker({
           {isSubmitting ? (
             <div className="flex flex-col items-center gap-4 py-8">
               <span className="loading loading-spinner loading-lg text-primary"></span>
-              <p className="text-sm text-base-content/70">Opening folder picker...</p>
+              <p className="text-sm text-foreground/70">Opening folder picker...</p>
             </div>
           ) : error ? (
             <div className="space-y-4">
@@ -120,7 +120,7 @@ export default function ProjectPicker({
             </div>
           ) : (
             <div className="flex flex-col items-center gap-4 py-4">
-              <p className="text-sm text-base-content/70 text-center">
+              <p className="text-sm text-foreground/70 text-center">
                 Select a folder containing your LaTeX project.
               </p>
               <div className="modal-action">
@@ -155,7 +155,7 @@ export default function ProjectPicker({
     <dialog className="modal modal-open">
       <div className="modal-box w-full max-w-md">
         <h3 className="font-bold text-lg mb-4">Select Project Folder</h3>
-        <p className="text-sm text-base-content/70 mb-4">
+        <p className="text-sm text-foreground/70 mb-4">
           Enter an absolute path to your LaTeX project.
         </p>
 

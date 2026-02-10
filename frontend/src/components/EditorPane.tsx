@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { FileText } from "lucide-react";
-import { useEditor } from "../hooks/useEditor";
+import { motion } from "motion/react";
+import { useEditor } from "@/hooks/useEditor";
 
 interface EditorPaneProps {
   theme: "light" | "dark";
@@ -20,20 +21,25 @@ export function EditorPane({ theme, fileContent, isBinary, currentFile, onSave }
   const showEditor = hasFile && !isBinary;
 
   return (
-    <section className="editor flex-1 h-full flex flex-col bg-base-100 border-l border-base-300 overflow-hidden">
-      <div className="border-b border-base-300 px-4 py-3 font-semibold text-sm shrink-0">
+    <section className="editor flex-1 h-full flex flex-col bg-card border-l border-border overflow-hidden">
+      <div className="border-b border-border px-4 py-3 font-semibold text-sm shrink-0">
         {hasFile ? currentFile.split("/").pop() : "Editor"}
       </div>
 
       {!hasFile && (
-        <div className="flex flex-col items-center justify-center flex-1 text-base-content/50 gap-3">
+        <motion.div 
+          className="flex flex-col items-center justify-center flex-1 text-muted-foreground gap-3"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
           <FileText size={48} className="opacity-30" />
           <p className="text-sm">Select a file to view</p>
-        </div>
+        </motion.div>
       )}
 
       {hasFile && isBinary && (
-        <div className="flex items-center justify-center flex-1 text-base-content/50">
+        <div className="flex items-center justify-center flex-1 text-muted-foreground">
           Binary file selected
         </div>
       )}
