@@ -102,11 +102,19 @@ export const rendererService = {
      return await getApp().SetRendererRemoteToken(token);
    },
 
-   async setAutoStart(enabled: boolean): Promise<void> {
-     return await getApp().SetRendererAutoStart(enabled);
-   },
+    async setAutoStart(enabled: boolean): Promise<void> {
+      return await getApp().SetRendererAutoStart(enabled);
+    },
 
-   async setPort(port: number): Promise<void> {
-     return await getApp().SetRendererPort(port);
-   },
+    async setPort(port: number): Promise<void> {
+      return await getApp().SetRendererPort(port);
+    },
+
+    async getBuildLog(): Promise<string> {
+      return await getApp().GetBuildLog();
+    },
+
+    async getRendererLogs(): Promise<string> {
+      return await getApp().GetRendererLogs();
+    },
 };
