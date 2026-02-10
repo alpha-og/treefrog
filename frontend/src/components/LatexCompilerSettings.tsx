@@ -23,7 +23,7 @@ import { Input } from "./common/Input";
 import { Select } from "./common/Select";
 import { Toggle } from "./common/Toggle";
 import { Badge } from "./common/Badge";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { ANIMATION_DURATIONS, fadeInUp } from "@/lib/animations";
 import { useAnimation, useReducedMotion } from "@/lib/animation-context";
 
@@ -603,38 +603,41 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
 
         {/* Logs Card */}
         <Card disableHover>
-         <motion.button
-           onClick={() => setShowLogs(!showLogs)}
-           className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
-           whileHover={shouldAnimate ? { backgroundColor: "rgba(0,0,0,0.05)" } : undefined}
-           whileTap={shouldAnimate ? { scale: 0.98 } : undefined}
-         >
-           <div className="flex items-center gap-2">
-             <LogIn className="w-4 h-4 text-muted-foreground" />
-             <span className="text-sm font-medium">Logs</span>
-           </div>
-           <motion.div
-             animate={showLogs ? { rotate: 180 } : { rotate: 0 }}
-             transition={shouldAnimate ? { duration: ANIMATION_DURATIONS.normal } : undefined}
-           >
-             <ChevronDown className="w-4 h-4 text-muted-foreground" />
-           </motion.div>
-         </motion.button>
+          <motion.button
+            onClick={() => setShowLogs(!showLogs)}
+            className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
+            whileHover={shouldAnimate ? { backgroundColor: "rgba(0,0,0,0.05)" } : undefined}
+            whileTap={shouldAnimate ? { scale: 0.98 } : undefined}
+          >
+            <div className="flex items-center gap-2">
+              <LogIn className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Logs</span>
+            </div>
+            <motion.div
+              animate={showLogs ? { rotate: 180 } : { rotate: 0 }}
+              transition={shouldAnimate ? { duration: ANIMATION_DURATIONS.normal } : undefined}
+            >
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            </motion.div>
+          </motion.button>
 
-         {showLogs && (
-           <motion.div
-             className="border-t border-border p-4 bg-muted/20"
-             initial={shouldAnimate ? { opacity: 0, height: 0 } : undefined}
-             animate={shouldAnimate ? { opacity: 1, height: "auto" } : undefined}
-             exit={shouldAnimate ? { opacity: 0, height: 0 } : undefined}
-             transition={shouldAnimate ? { duration: ANIMATION_DURATIONS.fast } : undefined}
-           >
-             <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-word max-h-64 overflow-y-auto">
-               {rendererLogs || "No logs available yet"}
-             </pre>
-           </motion.div>
-         )}
-       </Card>
+          <AnimatePresence>
+            {showLogs && (
+              <motion.div
+                className="border-t border-border p-4 bg-muted/20"
+                initial={shouldAnimate ? { opacity: 0 } : undefined}
+                animate={shouldAnimate ? { opacity: 1 } : undefined}
+                exit={shouldAnimate ? { opacity: 0 } : undefined}
+                transition={shouldAnimate ? { duration: ANIMATION_DURATIONS.fast } : undefined}
+                layout
+              >
+                <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-word max-h-64 overflow-y-auto">
+                  {rendererLogs || "No logs available yet"}
+                </pre>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </Card>
      </motion.div>
    );
 });
