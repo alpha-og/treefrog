@@ -689,7 +689,7 @@ func (a *App) checkRemoteBuild(remoteID, compilerURL, compilerToken string) (str
 	return result.Status, nil
 }
 
-// downloadPDF downloads the built PDF
+// downloadPDF downloads the built PDF and build log
 func (a *App) downloadPDF(remoteID, compilerURL, compilerToken string) error {
 	Logger.Infof("Downloading PDF for build: %s", remoteID)
 
@@ -761,6 +761,62 @@ func (a *App) downloadPDF(remoteID, compilerURL, compilerToken string) error {
 	}
 
 	Logger.Infof("PDF validated successfully: %s", pdfPath)
+
+	// Also download the build log from remote compiler
+	if err := a.downloadBuildLog(remoteID, compilerURL, compilerToken); err != nil {
+		Logger.Warnf("Failed to download build log: %v", err)
+		// Don't fail the entire download if log fails - it's not critical
+	}
+
+	return nil
+}
+
+// downloadBuildLog downloads the build log from remote compiler
+func (a *App) downloadBuildLog(remoteID, compilerURL, compilerToken string) error {
+	Logger.Infof("Downloading build log for build: %s", remoteID)
+
+	url := compilerURL + "/build/" + remoteID + "/log"
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		Logger.Errorf("Failed to create build log request: %v", err)
+		return err
+	}
+
+	if compilerToken != "" {
+		req.Header.Set("X-Compiler-Token", compilerToken)
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		Logger.Errorf("Build log download failed: %v", err)
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		Logger.Warnf("Build log download returned status %d: %s", resp.StatusCode, string(body))
+		return fmt.Errorf("failed to download build log: %s", resp.Status)
+	}
+
+	logPath := filepath.Join(a.cacheDir, "build.log")
+
+	file, err := os.Create(logPath)
+	if err != nil {
+		Logger.Errorf("Failed to create build log file: %v", err)
+		return err
+	}
+	defer file.Close()
+
+	n, err := io.Copy(file, resp.Body)
+	if err != nil {
+		Logger.Errorf("Failed to save build log: %v", err)
+		return err
+	}
+
+	Logger.Debugf("Build log downloaded successfully (%d bytes)", n)
 	return nil
 }
 
