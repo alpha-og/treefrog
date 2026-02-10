@@ -53,6 +53,14 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url,
 ).toString();
 
+// Helper to resolve theme to light or dark
+function resolveTheme(theme: "light" | "dark" | "system"): "light" | "dark" {
+  if (theme === "system") {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  return theme;
+}
+
 export default function Editor() {
   // ========== ROUTER ==========
   const navigate = useNavigate();
@@ -530,14 +538,14 @@ export default function Editor() {
                    initial={{ opacity: 0 }}
                    animate={{ opacity: 1 }}
                    transition={{ duration: 0.3 }}
-                 >
-                   <EditorPane
-                     theme={theme}
-                     fileContent={fileContent}
-                     isBinary={isBinary}
-                     currentFile={currentFile}
-                     onSave={handleSave}
-                   />
+                  >
+                    <EditorPane
+                      theme={resolveTheme(theme)}
+                      fileContent={fileContent}
+                      isBinary={isBinary}
+                      currentFile={currentFile}
+                      onSave={handleSave}
+                    />
                  </motion.div>
                  {preview && (
                    <div

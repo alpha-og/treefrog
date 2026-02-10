@@ -16,7 +16,7 @@ export function EditorPane({ theme, fileContent, isBinary, currentFile, onSave }
   const hasFile = currentFile && currentFile.length > 0;
 
   // Always initialize editor, but hide it when no file or binary
-  useEditor(containerRef, theme, fileContent, isBinary, onSave);
+  useEditor(containerRef, theme, fileContent, isBinary, currentFile, onSave);
 
   const showEditor = hasFile && !isBinary;
 
