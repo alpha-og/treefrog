@@ -26,7 +26,7 @@ export const getProject = async () => {
     return project;
   } catch (err) {
     log.error("Failed to get project from HTTP", err);
-    return { name: "", root: "", builderUrl: "" };
+    return { name: "", root: "", compilerUrl: "" };
   }
 };
 

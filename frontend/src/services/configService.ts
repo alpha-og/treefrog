@@ -5,11 +5,11 @@ import * as App from "wailsjs/go/main/App";
 
 const log = createLogger("ConfigService");
 
-export const syncConfig = async (builderUrl: string, builderToken: string) => {
+export const syncConfig = async (compilerUrl: string, compilerToken: string) => {
   // Try Wails first
   if (isWails()) {
     try {
-      await App.SetBuilderConfig(builderUrl, builderToken);
+      await App.SetCompilerConfig(compilerUrl, compilerToken);
       log.debug("Config synced via Wails");
       return;
     } catch (err) {
@@ -19,7 +19,7 @@ export const syncConfig = async (builderUrl: string, builderToken: string) => {
   }
   
   // Fallback to HTTP
-  return POST("/config", { builderUrl, builderToken });
+  return POST("/config", { compilerUrl, compilerToken });
 };
 
 export const getConfig = async () => {

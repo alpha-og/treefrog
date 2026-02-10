@@ -53,7 +53,7 @@ export default function Editor() {
   const navigate = useNavigate();
 
   // ========== STORES ==========
-  const { theme, setTheme, apiUrl, builderUrl, builderToken } = useAppStore();
+  const { theme, setTheme, apiUrl, compilerUrl, compilerToken } = useAppStore();
   const { addProject } = useRecentProjectsStore();
   const {
     entries,
@@ -168,7 +168,7 @@ export default function Editor() {
   useEffect(() => {
     const doSync = async () => {
       try {
-        await syncConfig(builderUrl, builderToken);
+        await syncConfig(compilerUrl, compilerToken);
         setConfigSynced(true);
         window.setTimeout(() => setConfigSynced(false), 2000);
       } catch (err) {
@@ -176,7 +176,7 @@ export default function Editor() {
       }
     };
     doSync();
-  }, [builderUrl, builderToken]);
+  }, [compilerUrl, compilerToken]);
 
   // Load files when project is set
   useEffect(() => {

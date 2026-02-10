@@ -15,7 +15,7 @@ interface HomeProps {
 export default function Home({ onSelectProject, loading }: HomeProps) {
   const navigate = useNavigate();
   const { projects, removeProject } = useRecentProjectsStore();
-  const { setBuilderUrl, setBuilderToken } = useAppStore();
+  const { setCompilerUrl, setCompilerToken } = useAppStore();
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [storeHydrated, setStoreHydrated] = useState(false);

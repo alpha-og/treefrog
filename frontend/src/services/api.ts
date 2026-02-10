@@ -76,14 +76,14 @@ declare global {
 
 interface WailsApp {
   // Project
-  GetProject(): Promise<{ name: string; root: string; builderUrl: string }>;
+  GetProject(): Promise<{ name: string; root: string; compilerUrl: string }>;
   SetProject(
     root: string,
-  ): Promise<{ name: string; root: string; builderUrl: string }>;
+  ): Promise<{ name: string; root: string; compilerUrl: string }>;
   OpenProjectDialog(): Promise<{
     name: string;
     root: string;
-    builderUrl: string;
+    compilerUrl: string;
   }>;
 
   // Files
@@ -130,10 +130,10 @@ interface WailsApp {
   // Config
   GetConfig(): Promise<{
     projectRoot: string;
-    builderUrl: string;
-    builderToken: string;
+    compilerUrl: string;
+    compilerToken: string;
   }>;
-  SetBuilderConfig(url: string, token: string): Promise<void>;
+  SetCompilerConfig(url: string, token: string): Promise<void>;
 
   // Renderer
   BuildRenderer(): Promise<void>;

@@ -13,8 +13,7 @@ export const ZOOM_LEVELS = [
 
 export const THEME_KEY = "treefrog-theme";
 export const API_KEY = "treefrog-api-url";
-export const BUILDER_URL_KEY = "treefrog-builder-url";
-export const BUILDER_TOKEN_KEY = "treefrog-builder-token";
+export const COMPILER_URL_KEY = "treefrog-compiler-url";
+export const COMPILER_TOKEN_KEY = "treefrog-compiler-token";
 export const PANE_KEY = "treefrog-panes";
 export const DIM_KEY = "treefrog-pane-dims";
-

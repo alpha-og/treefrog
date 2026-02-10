@@ -4,34 +4,34 @@ import { useState, useEffect } from "react";
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  builderUrl: string;
-  builderToken: string;
+  compilerUrl: string;
+  compilerToken: string;
   onSave: (url: string, token: string) => void;
 }
 
 export default function SettingsModal({
   isOpen,
   onClose,
-  builderUrl,
-  builderToken,
+  compilerUrl,
+  compilerToken,
   onSave,
 }: SettingsModalProps) {
-  const [tempUrl, setTempUrl] = useState(builderUrl);
-  const [tempToken, setTempToken] = useState(builderToken);
+  const [tempUrl, setTempUrl] = useState(compilerUrl);
+  const [tempToken, setTempToken] = useState(compilerToken);
   const [errors, setErrors] = useState<{ url?: string; token?: string }>({});
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    setTempUrl(builderUrl);
-    setTempToken(builderToken);
+    setTempUrl(compilerUrl);
+    setTempToken(compilerToken);
     setErrors({});
-  }, [isOpen, builderUrl, builderToken]);
+  }, [isOpen, compilerUrl, compilerToken]);
 
   const validateForm = () => {
     const newErrors: { url?: string; token?: string } = {};
 
     if (!tempUrl.trim()) {
-      newErrors.url = "Builder URL is required";
+      newErrors.url = "Compiler URL is required";
     } else if (!isValidUrl(tempUrl)) {
       newErrors.url = "Please enter a valid URL";
     }
@@ -85,7 +85,7 @@ export default function SettingsModal({
                 <Globe size={20} className="text-primary-content" />
               </div>
               <div>
-                <h3 className="font-bold text-lg leading-tight">Builder Settings</h3>
+                <h3 className="font-bold text-lg leading-tight">Compiler Settings</h3>
                 <p className="text-xs text-base-content/60 mt-1">
                   Configure your LaTeX compilation server
                 </p>
@@ -101,12 +101,12 @@ export default function SettingsModal({
 
           {/* Content */}
           <div className="space-y-6">
-            {/* Builder URL Field */}
+            {/* Compiler URL Field */}
             <div>
               <label className="label pb-2">
                 <span className="label-text font-semibold flex items-center gap-2">
                   <Globe size={16} className="text-primary" />
-                  Builder URL
+                  Compiler URL
                 </span>
               </label>
               <input
@@ -127,17 +127,17 @@ export default function SettingsModal({
                 </div>
               )}
               <p className="text-xs text-base-content/60 mt-2">
-                The URL of your LaTeX compilation server. Make sure it's accessible
+                The URL of your LaTeX compilation server. Make sure it&apos;s accessible
                 and running.
               </p>
             </div>
 
-            {/* Builder Token Field */}
+            {/* Compiler Token Field */}
             <div>
               <label className="label pb-2">
                 <span className="label-text font-semibold flex items-center gap-2">
                   <Lock size={16} className="text-primary" />
-                  Builder Token
+                  Compiler Token
                 </span>
                 <span className="label-text-alt text-xs text-base-content/50">
                   Optional
@@ -154,7 +154,7 @@ export default function SettingsModal({
                 className="input input-bordered w-full focus:border-primary transition-colors"
               />
               <p className="text-xs text-base-content/60 mt-2">
-                Authentication token for the builder. Leave blank if not required.
+                Authentication token for the compiler. Leave blank if not required.
               </p>
             </div>
 

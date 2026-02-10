@@ -4,8 +4,8 @@ import type { RendererMode, ImageSource } from "../services/rendererService";
 
 interface AppState {
   apiUrl: string;
-  builderUrl: string;
-  builderToken: string;
+  compilerUrl: string;
+  compilerToken: string;
   theme: "light" | "dark";
   currentProject: string | null;
   // Renderer settings
@@ -23,8 +23,8 @@ interface AppState {
   rendererLogs: string;
   _hasHydrated: boolean;
   setApiUrl: (url: string) => void;
-  setBuilderUrl: (url: string) => void;
-  setBuilderToken: (token: string) => void;
+  setCompilerUrl: (url: string) => void;
+  setCompilerToken: (token: string) => void;
   setTheme: (theme: "light" | "dark") => void;
   setCurrentProject: (path: string | null) => void;
   // Renderer setters
@@ -47,8 +47,8 @@ export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
       apiUrl: "/api",
-      builderUrl: "https://treefrog-renderer.onrender.com",
-      builderToken: "",
+      compilerUrl: "https://treefrog-renderer.onrender.com",
+      compilerToken: "",
       theme: "dark",
       currentProject: null,
       rendererMode: "auto",
@@ -65,8 +65,8 @@ export const useAppStore = create<AppState>()(
       rendererLogs: "",
       _hasHydrated: false,
       setApiUrl: (url) => set({ apiUrl: url }),
-      setBuilderUrl: (url) => set({ builderUrl: url }),
-      setBuilderToken: (token) => set({ builderToken: token }),
+      setCompilerUrl: (url) => set({ compilerUrl: url }),
+      setCompilerToken: (token) => set({ compilerToken: token }),
       setTheme: (theme) => {
         const themeName = theme === "dark" ? "rusty-dark" : "rusty-light";
         document.documentElement.setAttribute("data-theme", themeName);
@@ -91,8 +91,8 @@ export const useAppStore = create<AppState>()(
       name: "treefrog-app",
       partialize: (state) => ({
         apiUrl: state.apiUrl,
-        builderUrl: state.builderUrl,
-        builderToken: state.builderToken,
+        compilerUrl: state.compilerUrl,
+        compilerToken: state.compilerToken,
         theme: state.theme,
         currentProject: state.currentProject,
         rendererMode: state.rendererMode,
