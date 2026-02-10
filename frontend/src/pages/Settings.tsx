@@ -56,20 +56,26 @@ export default function Settings() {
     { id: "appearance", label: "Appearance", icon: <Palette size={16} /> },
   ];
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      if (activeTab === "compiler" && latexCompilerSettingsRef.current?.save) {
-        await latexCompilerSettingsRef.current.save();
-      } else if (activeTab === "appearance") {
-        // Save theme preference to Zustand store (persists to localStorage)
-        setTheme(themeMode);
-        setSavedThemeMode(themeMode);
-      }
-    } finally {
-      setIsSaving(false);
-    }
-  };
+   const handleSave = async () => {
+     setIsSaving(true);
+     try {
+       // Always attempt to save compiler settings
+       if (latexCompilerSettingsRef.current?.save) {
+         await latexCompilerSettingsRef.current.save();
+       }
+       
+       // Always attempt to save appearance settings
+       if (themeMode !== savedThemeMode) {
+         setTheme(themeMode);
+         setSavedThemeMode(themeMode);
+       }
+
+       // Small delay to ensure state updates are visible
+       await new Promise(resolve => setTimeout(resolve, 300));
+     } finally {
+       setIsSaving(false);
+     }
+   };
 
   return (
     <FramelessWindow title="Treefrog" subtitle="Settings">
@@ -119,6 +125,7 @@ export default function Settings() {
                 onClick={handleSave}
                 loading={isSaving}
                 size="sm"
+                variant="default"
               >
                 <Check size={16} />
                 Save
@@ -135,70 +142,56 @@ export default function Settings() {
               initial="initial"
               animate="animate"
             >
-              {/* LaTeX Compiler Tab */}
-              {activeTab === "compiler" && (
-                <motion.div 
-                  className="space-y-6"
-                  variants={staggerItem}
-                >
-                  <div>
-                    <h2 className="text-2xl md:text-3xl font-bold mb-2">LaTeX Compiler</h2>
-                    <p className="text-muted-foreground text-sm md:text-base">
-                      Configure your local Docker environment or use a remote compiler
-                    </p>
-                  </div>
+               {/* LaTeX Compiler Tab */}
+               {activeTab === "compiler" && (
+                 <motion.div 
+                   className="space-y-6"
+                   variants={staggerItem}
+                 >
+                   {/* Settings Card */}
+                   <GlowCard>
+                     <LatexCompilerSettings ref={latexCompilerSettingsRef} />
+                   </GlowCard>
+                 </motion.div>
+               )}
 
-                  {/* Settings Card */}
-                  <GlowCard>
-                    <LatexCompilerSettings ref={latexCompilerSettingsRef} />
-                  </GlowCard>
-                </motion.div>
-              )}
-
-              {/* Appearance Tab */}
-              {activeTab === "appearance" && (
-                <motion.div 
-                  className="space-y-6"
-                  variants={staggerItem}
-                >
-                  <div>
-                    <h2 className="text-2xl md:text-3xl font-bold mb-2">Appearance</h2>
-                    <p className="text-muted-foreground text-sm md:text-base">
-                      Customize your visual experience
-                    </p>
-                  </div>
-
-                  {/* Theme Selection Card */}
-                  <GlowCard>
-                    <div>
-                      <label className="block text-sm font-semibold mb-4">Theme</label>
-                      <div className="grid grid-cols-3 gap-3">
-                        {[
-                          { mode: "light" as ThemeMode, icon: Sun, label: "Light" },
-                          { mode: "system" as ThemeMode, icon: Monitor, label: "System" },
-                          { mode: "dark" as ThemeMode, icon: Moon, label: "Dark" },
-                        ].map(({ mode, icon: Icon, label }) => (
-                          <motion.button
-                            key={mode}
-                            className={cn(
-                              "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
-                              themeMode === mode
-                                ? "border-primary bg-primary/5 text-primary"
-                                : "border-border bg-card text-muted-foreground hover:border-primary/50"
-                            )}
-                            onClick={() => setThemeMode(mode)}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                          >
-                            <Icon size={20} />
-                            <span className="text-sm font-medium">{label}</span>
-                          </motion.button>
-                        ))}
-                      </div>
-                    </div>
-                  </GlowCard>
-                </motion.div>
-              )}
+               {/* Appearance Tab */}
+               {activeTab === "appearance" && (
+                 <motion.div 
+                   className="space-y-6"
+                   variants={staggerItem}
+                 >
+                   {/* Theme Selection Card */}
+                   <GlowCard>
+                     <div>
+                       <label className="block text-sm font-semibold mb-4">Theme</label>
+                       <div className="grid grid-cols-3 gap-3">
+                         {[
+                           { mode: "light" as ThemeMode, icon: Sun, label: "Light" },
+                           { mode: "system" as ThemeMode, icon: Monitor, label: "System" },
+                           { mode: "dark" as ThemeMode, icon: Moon, label: "Dark" },
+                         ].map(({ mode, icon: Icon, label }) => (
+                           <motion.button
+                             key={mode}
+                             className={cn(
+                               "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
+                               themeMode === mode
+                                 ? "border-primary bg-primary/5 text-primary"
+                                 : "border-border bg-card text-muted-foreground hover:border-primary/50"
+                             )}
+                             onClick={() => setThemeMode(mode)}
+                             whileHover={{ scale: 1.02 }}
+                             whileTap={{ scale: 0.98 }}
+                           >
+                             <Icon size={20} />
+                             <span className="text-sm font-medium">{label}</span>
+                           </motion.button>
+                         ))}
+                       </div>
+                     </div>
+                   </GlowCard>
+                 </motion.div>
+               )}
             </motion.div>
           </div>
         </main>
