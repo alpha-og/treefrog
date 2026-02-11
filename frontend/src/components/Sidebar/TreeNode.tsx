@@ -42,6 +42,8 @@ export const TreeNode = memo(function TreeNode({
           onSelect(e);
         }
       } else {
+        // Clear selection when clicking folder without modifier
+        onSelect(e);
         onToggle();
       }
     } else {
@@ -49,6 +51,8 @@ export const TreeNode = memo(function TreeNode({
       if (hasModifier) {
         onSelect(e);
       } else {
+        // Clear selection when clicking file without modifier, then open
+        onSelect(e);
         onOpen();
       }
     }
@@ -63,12 +67,12 @@ export const TreeNode = memo(function TreeNode({
     <div>
        <motion.div
          className={cn(
-           "group relative flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-colors duration-150",
+           "group relative flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-all duration-150",
            isActive
-             ? "bg-primary/15 font-medium border-l-2 border-primary shadow-sm"
+             ? "bg-primary/20 font-medium shadow-md ring-1 ring-primary/40"
              : isSelected
-             ? "bg-primary/25 border-l-2 border-primary/60 shadow-sm"
-             : "hover:bg-accent/50"
+             ? "bg-primary/12 shadow-sm ring-1 ring-primary/30 text-primary font-medium"
+             : "hover:bg-accent/40"
          )}
          style={{ paddingLeft: `${0.5 + node.depth * 1}rem` }}
          onClick={handleClick}
@@ -113,11 +117,7 @@ export const TreeNode = memo(function TreeNode({
              className={cn(
                "truncate text-sm",
                node.isDir ? "font-medium" : "",
-               isActive 
-                 ? "text-foreground" 
-                 : isSelected
-                 ? "text-foreground font-medium"
-                 : "text-foreground/90"
+               isActive ? "text-foreground" : "text-foreground/90"
              )}
            >
             {node.name}

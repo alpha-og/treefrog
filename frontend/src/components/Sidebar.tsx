@@ -246,22 +246,22 @@ export default function Sidebar({
     }, [onNavigate, getCachedFolderContents]);
 
   // Handle node selection with multi-select
-  const handleNodeSelect = useCallback(
-    (path: string, e: React.MouseEvent) => {
-      const isCtrl = e.ctrlKey || e.metaKey;
-      const isShift = e.shiftKey;
+   const handleNodeSelect = useCallback(
+     (path: string, e: React.MouseEvent) => {
+       const isCtrl = e.ctrlKey || e.metaKey;
+       const isShift = e.shiftKey;
 
-      if (isShift && lastSelectedId) {
-        selectRange(lastSelectedId, path, flatPaths);
-      } else if (isCtrl) {
-        toggle(path);
-      } else {
-        clear();
-        select(path);
-      }
-    },
-    [flatPaths, lastSelectedId, select, toggle, selectRange, clear]
-  );
+       if (isShift && lastSelectedId) {
+         selectRange(lastSelectedId, path, flatPaths);
+       } else if (isCtrl) {
+         toggle(path);
+       } else {
+         // No modifier: just clear selection (don't select clicked item)
+         clear();
+       }
+     },
+     [flatPaths, lastSelectedId, toggle, selectRange, clear]
+   );
 
    // External drop handlers
    const {
