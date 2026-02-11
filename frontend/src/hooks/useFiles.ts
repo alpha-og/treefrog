@@ -7,8 +7,10 @@ import {
   fsCreate,
   fsRename,
   fsMove,
+  fsCopy,
   fsDuplicate,
   fsDelete,
+  fsUploadFiles,
 } from "../services/fsService";
 import { createLogger } from "../utils/logger";
 
@@ -26,6 +28,7 @@ export function useFiles() {
     setCurrentFile,
     setIsBinary,
     setFileContent,
+    cacheFolderContents,
     clear,
   } = useFileStore();
 
@@ -35,11 +38,17 @@ export function useFiles() {
         const data = await listFiles(dir || ".");
         setEntries(data);
         setCurrentDir(dir);
+        
+        // Cache the loaded folder contents for nested folder access
+        // This ensures that when we navigate to a subfolder, its contents are cached
+        if (dir !== "" && dir !== ".") {
+          cacheFolderContents(dir, data);
+        }
       } catch (err) {
         log.error("Failed to load files", { dir, error: err });
       }
     },
-    [setEntries, setCurrentDir]
+    [setEntries, setCurrentDir, cacheFolderContents]
   );
 
   const openFile = useCallback(
@@ -117,6 +126,20 @@ export function useFiles() {
     [currentDir, currentFile, loadEntries, openFile, setCurrentFile]
   );
 
+  const copyFile = useCallback(
+    async (from: string, to: string) => {
+      try {
+        await fsCopy(from, to);
+        await loadEntries(currentDir);
+        log.info("File copied successfully", { from, to });
+      } catch (err) {
+        log.error("Failed to copy file", { from, to, error: err });
+        throw err;
+      }
+    },
+    [currentDir, loadEntries]
+  );
+
   const duplicateFile = useCallback(
     async (from: string, to: string) => {
       try {
@@ -147,6 +170,23 @@ export function useFiles() {
     [currentDir, currentFile, loadEntries, setCurrentFile, setFileContent]
   );
 
+  const uploadFiles = useCallback(
+    async (files: File[], targetPath: string) => {
+      try {
+        await fsUploadFiles(files, targetPath);
+        await loadEntries(currentDir);
+        log.info("Files uploaded successfully", { 
+          count: files.length, 
+          target: targetPath 
+        });
+      } catch (err) {
+        log.error("Failed to upload files", { count: files.length, target: targetPath, error: err });
+        throw err;
+      }
+    },
+    [currentDir, loadEntries]
+  );
+
   const refresh = useCallback(async () => {
     await loadEntries(currentDir);
   }, [currentDir, loadEntries]);
@@ -163,8 +203,10 @@ export function useFiles() {
     createFile,
     renameFile,
     moveFile,
+    copyFile,
     duplicateFile,
     deleteFile,
+    uploadFiles,
     refresh,
     clear,
   };
