@@ -61,22 +61,23 @@ export const TreeNode = memo(function TreeNode({
 
   return (
     <div>
-      <motion.div
-        className={cn(
-          "group relative flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-colors duration-150",
-          isActive
-            ? "bg-primary/15 font-medium border-l-2 border-primary shadow-sm"
-            : "hover:bg-accent/50",
-          isSelected && !isActive && "bg-primary/10"
-        )}
-        style={{ paddingLeft: `${0.5 + node.depth * 1}rem` }}
-        onClick={handleClick}
-        onContextMenu={onContextMenu}
-        initial={{ opacity: 0, x: -2 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.2, ease: "easeOut" }}
-        layout
-      >
+       <motion.div
+         className={cn(
+           "group relative flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-colors duration-150",
+           isActive
+             ? "bg-primary/15 font-medium border-l-2 border-primary shadow-sm"
+             : isSelected
+             ? "bg-primary/25 border-l-2 border-primary/60 shadow-sm"
+             : "hover:bg-accent/50"
+         )}
+         style={{ paddingLeft: `${0.5 + node.depth * 1}rem` }}
+         onClick={handleClick}
+         onContextMenu={onContextMenu}
+         initial={{ opacity: 0, x: -2 }}
+         animate={{ opacity: 1, x: 0, scale: isSelected ? 1.01 : 1 }}
+         transition={{ duration: 0.2, ease: "easeOut" }}
+         layout
+       >
         {/* Expand/collapse chevron for folders */}
         {node.isDir && (
           <button
@@ -108,13 +109,17 @@ export const TreeNode = memo(function TreeNode({
               getFileIcon(node.name, false)
             )}
           </span>
-          <span
-            className={cn(
-              "truncate text-sm",
-              node.isDir ? "font-medium" : "",
-              isActive ? "text-foreground" : "text-foreground/90"
-            )}
-          >
+           <span
+             className={cn(
+               "truncate text-sm",
+               node.isDir ? "font-medium" : "",
+               isActive 
+                 ? "text-foreground" 
+                 : isSelected
+                 ? "text-foreground font-medium"
+                 : "text-foreground/90"
+             )}
+           >
             {node.name}
            </span>
          </div>
