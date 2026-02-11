@@ -12,17 +12,22 @@ import {
   CheckCircle2,
   XCircle,
   Zap,
+  Check,
+  MoreVertical,
 } from "lucide-react";
 import { ZOOM_LEVELS } from "../constants";
 import { usePDFUrl } from "../hooks/usePDFUrl";
 import { isWails } from "../utils/env";
 import { getBuildLog, exportPDFFile, exportSourceFile } from "../services/buildService";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenuWrapper,
   DropdownMenuTrigger,
   DropdownMenuContentWrapper,
   MenuItem,
   DropdownMenuSeparator,
+  DropdownMenuRadioGroup,
+  MenuRadioItem,
   MenuIcon,
 } from "@/components/common/Menu";
 import { Button } from "@/components/common/Button";
@@ -211,54 +216,81 @@ export default function PreviewPane({
           <span className="font-semibold text-sm text-foreground whitespace-nowrap">Preview</span>
         </div>
 
-        {/* Center: Zoom + Page Navigation + Status */}
-        <div className="flex items-center gap-1.5 justify-center overflow-auto">
-          {/* Zoom Controls */}
-          <div className="flex items-center gap-1 bg-muted/40 rounded-lg p-1.5 border border-border hover:border-primary/20 transition-all duration-200 shrink-0">
-            <button
-              onClick={() => onZoomChange(clampZoom(zoom - 0.2))}
-              className="p-1 rounded-md hover:bg-primary/15 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Zoom out"
-              disabled={zoom <= 0.6}
-            >
-              <ZoomOut
-                size={14}
-                className="text-foreground/70 group-hover:text-primary transition-all"
-              />
-            </button>
-            <select
-              value={zoom}
-              onChange={(e) => onZoomChange(Number(e.target.value))}
-               className="bg-transparent border-0 font-mono text-xs px-1.5 py-0.5 min-w-11 text-foreground/80 focus:outline-none hover:bg-accent/20 transition-colors appearance-none cursor-pointer"
-            >
-              {ZOOM_LEVELS.map((z) => (
-                <option key={z} value={z}>
-                  {Math.round(z * 100)}%
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={() => onZoomChange(clampZoom(zoom + 0.2))}
-              className="p-1 rounded-md hover:bg-primary/15 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Zoom in"
-              disabled={zoom >= 2.4}
-            >
-              <ZoomIn
-                size={14}
-                className="text-foreground/70 group-hover:text-primary transition-all"
-              />
-            </button>
-          </div>
+         {/* Center: Zoom + Page Navigation + Status */}
+         <div className="flex items-center gap-1.5 justify-center overflow-auto">
+            {/* Zoom Controls */}
+            <div className="flex items-center gap-1 h-7 bg-muted/40 rounded-lg p-1 border border-border hover:border-primary/20 transition-all duration-200 shrink-0">
+             {/* Zoom Out Button */}
+             <button
+               onClick={() => onZoomChange(clampZoom(zoom - 0.2))}
+               className="p-1 rounded-md hover:bg-primary/15 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+               title="Zoom out"
+               disabled={zoom <= 0.6}
+             >
+               <ZoomOut
+                 size={14}
+                 className="text-foreground/70 group-hover:text-primary transition-all"
+               />
+             </button>
+
+             {/* Zoom Dropdown */}
+             <DropdownMenuWrapper>
+               <DropdownMenuTrigger asChild>
+                 <button
+                   className="bg-transparent border-0 font-mono text-xs px-1.5 py-0.5 min-w-11 text-foreground/80 hover:bg-accent/20 transition-colors cursor-pointer rounded-md"
+                   title="Zoom options"
+                 >
+                   {Math.round(zoom * 100)}%
+                 </button>
+               </DropdownMenuTrigger>
+               <DropdownMenuContentWrapper align="center" className="w-48">
+                 <div className="px-3 py-2">
+                   <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+                     Zoom Level
+                   </div>
+                 </div>
+                 
+                 <DropdownMenuRadioGroup value={zoom.toString()} onValueChange={(val) => onZoomChange(Number(val))}>
+                   {ZOOM_LEVELS.map((z) => (
+                     <MenuRadioItem 
+                       key={z}
+                       value={z.toString()}
+                       className={cn(
+                         "flex items-center gap-2",
+                         zoom === z && "bg-primary/20 text-primary font-semibold"
+                       )}
+                     >
+                       <span className="flex-1 font-mono text-sm">{Math.round(z * 100)}%</span>
+                       {zoom === z && <Check size={14} className="ml-auto" />}
+                     </MenuRadioItem>
+                   ))}
+                 </DropdownMenuRadioGroup>
+               </DropdownMenuContentWrapper>
+             </DropdownMenuWrapper>
+
+             {/* Zoom In Button */}
+             <button
+               onClick={() => onZoomChange(clampZoom(zoom + 0.2))}
+               className="p-1 rounded-md hover:bg-primary/15 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+               title="Zoom in"
+               disabled={zoom >= 2.4}
+             >
+               <ZoomIn
+                 size={14}
+                 className="text-foreground/70 group-hover:text-primary transition-all"
+               />
+             </button>
+           </div>
 
           {/* Divider */}
           <div className="w-px h-5 bg-base-content/10 shrink-0"></div>
 
-          {/* Page Counter */}
-          <div 
-            className="flex items-center gap-1 px-2.5 py-1.5 bg-muted/40 rounded-lg border border-border shrink-0 cursor-pointer hover:border-base-content/20 transition-all"
-            onClick={() => setIsEditingPage(true)}
-            title="Click to jump to a page"
-          >
+           {/* Page Counter */}
+           <div 
+             className="flex items-center gap-1 h-7 px-1.5 py-0 bg-muted/40 rounded-lg border border-border shrink-0 cursor-pointer hover:border-border/60 transition-all"
+             onClick={() => setIsEditingPage(true)}
+             title="Click to jump to a page"
+           >
             {isEditingPage ? (
               <input
                 type="number"
@@ -322,18 +354,18 @@ export default function PreviewPane({
           )}
         </div>
 
-        {/* Right: Export Menu */}
-        <DropdownMenuWrapper>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-10 h-10"
-              title="Export options"
-            >
-              <span className="text-lg">⋮</span>
-            </Button>
-          </DropdownMenuTrigger>
+         {/* Right: Export Menu */}
+         <DropdownMenuWrapper>
+           <DropdownMenuTrigger asChild>
+             <Button
+               variant="ghost"
+               size="icon"
+               className="h-7 w-7"
+               title="Export options"
+             >
+               <MoreVertical size={16} className="text-muted-foreground" />
+             </Button>
+           </DropdownMenuTrigger>
           <DropdownMenuContentWrapper align="end" className="w-56">
             {isWails() ? (
               <>
