@@ -252,14 +252,18 @@ export default function Editor() {
 
   // ========== MODAL HANDLERS ==========
   const handleOpenModal = useCallback(
-    (next: ModalState) => {
-      openModal(next);
-      if (next.kind === "rename") setModalInput(next.path);
-      if (next.kind === "move") setModalInput(currentDir || "");
-      if (next.kind === "duplicate") setModalInput(next.path + " copy");
-    },
-    [openModal, setModalInput, currentDir],
-  );
+     (next: ModalState) => {
+       openModal(next);
+       if (next.kind === "rename") {
+         // Extract only the filename for rename (not the full path)
+         const filename = next.path.split("/").pop() || next.path;
+         setModalInput(filename);
+       }
+       if (next.kind === "move") setModalInput(currentDir || "");
+       if (next.kind === "duplicate") setModalInput(next.path + " copy");
+     },
+     [openModal, setModalInput, currentDir],
+   );
 
    // Menu event listeners
    useEffect(() => {
@@ -360,10 +364,15 @@ export default function Editor() {
         if (!modalInput.trim()) return;
         await createFile(joinPath(currentDir, modalInput.trim()), modal.type);
       }
-      if (modal.kind === "rename") {
-        if (!modalInput.trim()) return;
-        await renameFile(modal.path, modalInput.trim());
-      }
+       if (modal.kind === "rename") {
+         if (!modalInput.trim()) return;
+         // Extract parent directory from original path
+         const pathParts = modal.path.split("/");
+         const parentPath = pathParts.slice(0, -1).join("/");
+         // Construct new path with same parent directory
+         const newPath = parentPath ? `${parentPath}/${modalInput.trim()}` : modalInput.trim();
+         await renameFile(modal.path, newPath);
+       }
       if (modal.kind === "move") {
         if (!modalInput.trim()) return;
         await moveFile(modal.path, modalInput.trim());
@@ -518,18 +527,21 @@ export default function Editor() {
                      onCreateFile={() =>
                        handleOpenModal({ kind: "create", type: "file" })
                      }
-                     onCreateFolder={() =>
-                       handleOpenModal({ kind: "create", type: "dir" })
-                     }
-                     onFileMenu={(x, y, path, isDir) =>
-                       setContextMenu({ x, y, path, isDir })
-                     }
-                     gitStatus={gitStatus}
-                     gitError={gitError}
-                     onCommit={commit}
-                     onPush={push}
-                     onPull={pull}
-                   />
+                      onCreateFolder={() =>
+                        handleOpenModal({ kind: "create", type: "dir" })
+                      }
+                      onFileMenu={(x, y, path, isDir) =>
+                        setContextMenu({ x, y, path, isDir })
+                      }
+                      onEmptySpaceMenu={(x, y) =>
+                        setContextMenu({ x, y, path: "", isDir: true })
+                      }
+                      gitStatus={gitStatus}
+                      gitError={gitError}
+                      onCommit={commit}
+                      onPush={push}
+                      onPull={pull}
+                    />
                  </motion.div>
                  {(editor || preview) && (
                    <div

@@ -107,53 +107,55 @@ export default function ContextMenu({
             transformOrigin: "top left",
           }}
         >
-          {/* Filename Header */}
-          <div className="px-3 py-2 border-b border-border/50 bg-muted/30">
-            <p
-              className="text-xs text-muted-foreground truncate font-mono"
-              title={path}
-            >
-              {filename}
-            </p>
-          </div>
+           {/* Filename Header */}
+           <div className="px-3 py-2 border-b border-border/50 bg-muted/30">
+             <p
+               className="text-xs text-muted-foreground truncate font-mono"
+               title={path}
+             >
+               {filename || "Root"}
+             </p>
+           </div>
 
-          <div className="p-1">
-            {/* Edit Section */}
-            <div className="space-y-1">
-              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                Edit
-              </div>
-              
-              <MenuItem
-                onClick={() => {
-                  onRename();
-                  onClose();
-                }}
-                icon="rename"
-                label="Rename"
-                shortcut="⌘R"
-              />
-              
-              <MenuItem
-                onClick={() => {
-                  onDuplicate();
-                  onClose();
-                }}
-                icon="duplicate"
-                label="Duplicate"
-                shortcut="⌘D"
-              />
-              
-              <MenuItem
-                onClick={() => {
-                  onMove();
-                  onClose();
-                }}
-                icon="move"
-                label="Move"
-                shortcut="⌘M"
-              />
-            </div>
+           <div className="p-1">
+             {/* Edit Section - Only for non-root items */}
+             {path && (
+               <div className="space-y-1">
+                 <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                   Edit
+                 </div>
+                 
+                 <MenuItem
+                   onClick={() => {
+                     onRename();
+                     onClose();
+                   }}
+                   icon="rename"
+                   label="Rename"
+                   shortcut="⌘R"
+                 />
+                 
+                 <MenuItem
+                   onClick={() => {
+                     onDuplicate();
+                     onClose();
+                   }}
+                   icon="duplicate"
+                   label="Duplicate"
+                   shortcut="⌘D"
+                 />
+                 
+                 <MenuItem
+                   onClick={() => {
+                     onMove();
+                     onClose();
+                   }}
+                   icon="move"
+                   label="Move"
+                   shortcut="⌘M"
+                 />
+               </div>
+             )}
 
             {/* Create Section - Only for directories */}
             {isDir && (
@@ -187,20 +189,24 @@ export default function ContextMenu({
               </>
             )}
 
-            {/* Delete Section */}
-            <div className="my-1 h-px bg-border/50" />
-            <div className="space-y-1">
-              <MenuItem
-                onClick={() => {
-                  onDelete();
-                  onClose();
-                }}
-                icon="delete"
-                label="Delete"
-                shortcut="⌫"
-                destructive
-              />
-            </div>
+             {/* Delete Section - Only for non-root items */}
+             {path && (
+               <>
+                 <div className="my-1 h-px bg-border/50" />
+                 <div className="space-y-1">
+                   <MenuItem
+                     onClick={() => {
+                       onDelete();
+                       onClose();
+                     }}
+                     icon="delete"
+                     label="Delete"
+                     shortcut="⌫"
+                     destructive
+                   />
+                 </div>
+               </>
+             )}
           </div>
         </motion.div>
       )}

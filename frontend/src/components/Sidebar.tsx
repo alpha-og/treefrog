@@ -52,6 +52,7 @@ interface SidebarProps {
   onCreateFile: () => void;
   onCreateFolder: () => void;
   onFileMenu: (x: number, y: number, path: string, isDir: boolean) => void;
+  onEmptySpaceMenu?: (x: number, y: number) => void;
   gitStatus: string;
   gitError: boolean;
   onCommit: (msg: string) => Promise<void>;
@@ -69,6 +70,7 @@ export default function Sidebar({
   onCreateFile,
   onCreateFolder,
   onFileMenu,
+  onEmptySpaceMenu,
   gitStatus,
   gitError,
   onCommit,
@@ -421,7 +423,16 @@ export default function Sidebar({
         )}
 
          {/* Tree */}
-          <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-0.5 contain-paint will-change-scroll">
+           <div 
+             className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-0.5 contain-paint will-change-scroll"
+             onContextMenu={(e) => {
+               // Only show context menu if clicking on empty space (not on a node)
+               if (e.target === e.currentTarget && onEmptySpaceMenu) {
+                 e.preventDefault();
+                 onEmptySpaceMenu(e.clientX, e.clientY);
+               }
+             }}
+           >
            {loadError ? (
             <div className="text-center py-8 text-muted-foreground text-sm">
               <div className="mx-auto mb-2 opacity-30">
