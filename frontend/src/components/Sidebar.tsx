@@ -215,8 +215,8 @@ export default function Sidebar({
 
   const displayNodes = isSearching ? searchedNodes : treeNodes;
 
-  // Flatten for keyboard navigation
-  const flatPaths = useMemo(() => flattenTree(displayNodes), [displayNodes]);
+   // Flatten for keyboard navigation
+   const flatPaths = useMemo(() => flattenTree(displayNodes), [displayNodes]);
 
    // Toggle folder expansion
     const toggleFolder = useCallback((path: string) => {
@@ -310,11 +310,11 @@ export default function Sidebar({
     onCreateFolder,
   });
 
-  // Render tree recursively
-  const renderTree = useCallback(
-    (nodes: TreeNodeType[]) => {
-      return nodes.map((node) => {
-        const isExpanded = expandedFolders.has(node.path);
+   // Render tree recursively
+   const renderTree = useCallback(
+     (nodes: TreeNodeType[]) => {
+       return nodes.map((node) => {
+         const isExpanded = expandedFolders.has(node.path);
         const isActive = currentFile === node.path;
         const isSelected = selectedIds.has(node.path);
 
@@ -336,18 +336,18 @@ export default function Sidebar({
             {node.children && renderTree(node.children)}
           </TreeNode>
         );
-      });
-    },
-    [
-      expandedFolders,
-      currentFile,
-      selectedIds,
-      toggleFolder,
-      onOpenFile,
-      handleNodeSelect,
-      onFileMenu,
-    ]
-  );
+       });
+     },
+     [
+        expandedFolders,
+        currentFile,
+        selectedIds,
+        toggleFolder,
+        onOpenFile,
+        handleNodeSelect,
+        onFileMenu,
+      ]
+    );
 
   // Get project name
   const projectName = projectRoot.split("/").pop() || projectRoot;
@@ -421,8 +421,8 @@ export default function Sidebar({
         )}
 
          {/* Tree */}
-         <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-0.5 contain-paint will-change-scroll">
-          {loadError ? (
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-0.5 contain-paint will-change-scroll">
+           {loadError ? (
             <div className="text-center py-8 text-muted-foreground text-sm">
               <div className="mx-auto mb-2 opacity-30">
                 <span className="text-2xl">⚠️</span>

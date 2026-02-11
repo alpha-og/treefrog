@@ -63,25 +63,25 @@ export const TreeNode = memo(function TreeNode({
     onToggle();
   };
 
-  return (
-    <div>
-       <motion.div
-         className={cn(
-           "group relative flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-all duration-150",
-           isActive
-             ? "bg-primary/20 font-medium shadow-md ring-1 ring-primary/40"
-             : isSelected
-             ? "bg-primary/12 shadow-sm ring-1 ring-primary/30 text-primary font-medium"
-             : "hover:bg-accent/40"
-         )}
-         style={{ paddingLeft: `${0.5 + node.depth * 1}rem` }}
-         onClick={handleClick}
-         onContextMenu={onContextMenu}
-         initial={{ opacity: 0, x: -2 }}
-         animate={{ opacity: 1, x: 0, scale: isSelected ? 1.01 : 1 }}
-         transition={{ duration: 0.2, ease: "easeOut" }}
-         layout
-       >
+   return (
+     <div className={cn("overflow-visible", isSelected && "my-1")}>
+         <motion.div
+           className={cn(
+             "group relative flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all duration-150 mr-2 w-full tree-node-motion",
+             // Styling based on state
+             isActive
+               ? "bg-primary/25 font-semibold shadow-lg ring-1.5 ring-primary/60 text-primary hover:bg-primary/35"
+               : isSelected
+               ? "bg-primary/10 ring-1 ring-primary/25 text-foreground/95 hover:bg-primary/18 shadow-sm"
+               : "hover:bg-accent/50"
+           )}
+           style={{ paddingLeft: `${0.75 + node.depth * 1}rem` }}
+           onClick={handleClick}
+           onContextMenu={onContextMenu}
+           initial={{ opacity: 0, x: -2 }}
+           animate={{ opacity: 1, x: 0 }}
+           transition={{ duration: 0.2, ease: "easeOut" }}
+         >
         {/* Expand/collapse chevron for folders */}
         {node.isDir && (
           <button
@@ -100,26 +100,26 @@ export const TreeNode = memo(function TreeNode({
         )}
         {!node.isDir && <div className="w-5" />}
 
-        {/* File/Folder icon and name */}
-        <div className="flex-1 flex items-center gap-2 min-w-0">
-          <span className="shrink-0">
-            {node.isDir ? (
-              isExpanded ? (
-                <FolderOpen size={16} className="text-amber-500" />
-              ) : (
-                <Folder size={16} className="text-amber-500" />
-              )
-            ) : (
-              getFileIcon(node.name, false)
-            )}
-          </span>
-           <span
-             className={cn(
-               "truncate text-sm",
-               node.isDir ? "font-medium" : "",
-               isActive ? "text-foreground" : "text-foreground/90"
+         {/* File/Folder icon and name */}
+         <div className="flex-1 flex items-center gap-2 min-w-0">
+           <span className={cn("shrink-0", isActive && "text-primary")}>
+             {node.isDir ? (
+               isExpanded ? (
+                 <FolderOpen size={16} className="text-amber-500" />
+               ) : (
+                 <Folder size={16} className="text-amber-500" />
+               )
+             ) : (
+               getFileIcon(node.name, false)
              )}
-           >
+           </span>
+            <span
+              className={cn(
+                "truncate text-sm",
+                node.isDir ? "font-medium" : "",
+                isActive ? "text-primary font-semibold" : "text-foreground/90"
+              )}
+            >
             {node.name}
            </span>
          </div>
