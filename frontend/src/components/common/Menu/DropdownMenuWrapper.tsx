@@ -101,19 +101,45 @@ export function DropdownMenuContentWrapper({
   className,
   ...props
 }: DropdownMenuContentWrapperProps) {
+  const [isOpen, setIsOpen] = React.useState(false);
+
   return (
-    <DropdownMenuContent
-      className={cn(
-        "min-w-48 z-50",
-        "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2",
-        "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2",
-        "duration-150",
-        className
+    <AnimatePresence mode="wait">
+      {isOpen ? (
+        <motion.div
+          key="dropdown-content"
+          initial={{ opacity: 0, scale: 0.95, y: -8 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: -8 }}
+          transition={{
+            duration: 0.2,
+            ease: "easeOut",
+          }}
+        >
+          <DropdownMenuContent
+            className={cn(
+              "min-w-48 z-50",
+              className
+            )}
+            onOpenChange={setIsOpen}
+            {...props}
+          >
+            {children}
+          </DropdownMenuContent>
+        </motion.div>
+      ) : (
+        <DropdownMenuContent
+          className={cn(
+            "min-w-48 z-50",
+            className
+          )}
+          onOpenChange={setIsOpen}
+          {...props}
+        >
+          {children}
+        </DropdownMenuContent>
       )}
-      {...props}
-    >
-      {children}
-    </DropdownMenuContent>
+    </AnimatePresence>
   );
 }
 

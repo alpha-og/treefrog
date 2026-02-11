@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   ContextMenu,
   ContextMenuTrigger,
@@ -69,19 +70,45 @@ export function ContextMenuContentWrapper({
   className,
   ...props
 }: ContextMenuContentWrapperProps) {
+  const [isOpen, setIsOpen] = React.useState(false);
+
   return (
-    <ContextMenuContent
-      className={cn(
-        "min-w-48 z-50",
-        "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
-        "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
-        "duration-150",
-        className
+    <AnimatePresence mode="wait">
+      {isOpen ? (
+        <motion.div
+          key="context-content"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          transition={{
+            duration: 0.2,
+            ease: "easeOut",
+          }}
+        >
+          <ContextMenuContent
+            className={cn(
+              "min-w-48 z-50",
+              className
+            )}
+            onOpenChange={setIsOpen}
+            {...props}
+          >
+            {children}
+          </ContextMenuContent>
+        </motion.div>
+      ) : (
+        <ContextMenuContent
+          className={cn(
+            "min-w-48 z-50",
+            className
+          )}
+          onOpenChange={setIsOpen}
+          {...props}
+        >
+          {children}
+        </ContextMenuContent>
       )}
-      {...props}
-    >
-      {children}
-    </ContextMenuContent>
+    </AnimatePresence>
   );
 }
 
