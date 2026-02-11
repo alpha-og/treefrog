@@ -650,16 +650,18 @@ export default function Editor() {
             });
           setContextMenu(null);
         }}
-        onCreateFile={() => {
-          if (contextMenu) setCurrentDir(contextMenu.path);
-          handleOpenModal({ kind: "create", type: "file" });
-          setContextMenu(null);
-        }}
-        onCreateFolder={() => {
-          if (contextMenu) setCurrentDir(contextMenu.path);
-          handleOpenModal({ kind: "create", type: "dir" });
-          setContextMenu(null);
-        }}
+         onCreateFile={() => {
+           // Only change currentDir if it's not the root context
+           if (contextMenu && !contextMenu.isRoot) setCurrentDir(contextMenu.path);
+           handleOpenModal({ kind: "create", type: "file" });
+           setContextMenu(null);
+         }}
+         onCreateFolder={() => {
+           // Only change currentDir if it's not the root context
+           if (contextMenu && !contextMenu.isRoot) setCurrentDir(contextMenu.path);
+           handleOpenModal({ kind: "create", type: "dir" });
+           setContextMenu(null);
+         }}
       />
 
       {/* Project Picker Modal */}
