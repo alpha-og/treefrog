@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Document } from "react-pdf";
 import PDFPage from "./PDFPage";
 
@@ -22,11 +22,36 @@ export default function PDFPreview({
   const [error, setError] = useState("");
   // Track internal page count to handle the initial load correctly
   const [internalNumPages, setInternalNumPages] = useState<number>(0);
+  const [containerWidth, setContainerWidth] = useState<number>(0);
+  const [containerHeight, setContainerHeight] = useState<number>(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setError("");
     setInternalNumPages(0); // Reset when URL changes
   }, [url]);
+
+  // Track container dimensions with ResizeObserver
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Set initial dimensions
+    setContainerWidth(container.offsetWidth);
+    setContainerHeight(container.offsetHeight);
+
+    // Use ResizeObserver to track dimension changes
+    const resizeObserver = new ResizeObserver(() => {
+      setContainerWidth(container.offsetWidth);
+      setContainerHeight(container.offsetHeight);
+    });
+
+    resizeObserver.observe(container);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
 
   const handleLoadSuccess = (d: any) => {
     setInternalNumPages(d.numPages);
@@ -45,7 +70,7 @@ export default function PDFPreview({
   }
 
   return (
-    <div className="flex flex-col items-center gap-4 p-4">
+    <div ref={containerRef} className="flex flex-col items-center gap-4 p-4 h-full w-full">
       <Document
         file={url}
         onLoadSuccess={handleLoadSuccess}
@@ -64,6 +89,8 @@ export default function PDFPreview({
               zoom={zoom}
               pageProxyRef={pageProxyRef}
               registerPageRef={registerPageRef}
+              containerWidth={containerWidth}
+              containerHeight={containerHeight}
             />
           ))
         ) : null}

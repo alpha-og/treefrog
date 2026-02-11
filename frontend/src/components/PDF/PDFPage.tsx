@@ -6,6 +6,8 @@ interface PDFPageProps {
   zoom: number | string;
   pageProxyRef: React.MutableRefObject<Map<number, any>>;
   registerPageRef: (page: number, el: HTMLDivElement | null) => void;
+  containerWidth: number;
+  containerHeight: number;
 }
 
 export default function PDFPage({
@@ -13,29 +15,29 @@ export default function PDFPage({
   zoom,
   pageProxyRef,
   registerPageRef,
+  containerWidth,
+  containerHeight,
 }: PDFPageProps) {
-  const [containerWidth, setContainerWidth] = useState<number>(0);
   const [pageHeight, setPageHeight] = useState<number>(0);
+  const [pageWidth, setPageWidth] = useState<number>(0);
+  
   const containerRef = (el: HTMLDivElement | null) => {
     registerPageRef(pageNum, el);
-    if (el) {
-      setContainerWidth(el.offsetWidth);
-    }
   };
 
   // Calculate actual zoom value based on fit mode
   let actualZoom = typeof zoom === 'number' ? zoom : 1;
   
-  if (typeof zoom === 'string' && zoom === 'fit-width' && containerWidth > 0) {
-    // For fit-width, we need to account for PDF page width
-    // Standard A4 is 595.28 points wide at 72 DPI = 8.27 inches
-    // We'll use a reasonable estimate
-    const pdfPageWidth = 595; // Standard A4 width in points
-    actualZoom = (containerWidth - 32) / pdfPageWidth; // -32 for padding/margins
-  } else if (typeof zoom === 'string' && zoom === 'fit-height' && pageHeight > 0) {
-    // For fit-height, scale based on container height
-    const containerHeight = window.innerHeight - 300; // Rough estimate for header/toolbar
-    actualZoom = containerHeight / pageHeight;
+  if (typeof zoom === 'string' && zoom === 'fit-width' && containerWidth > 0 && pageWidth > 0) {
+    // Fit to available container width, accounting for padding
+    const availableWidth = containerWidth - 32; // -32 for p-4 padding on both sides
+    actualZoom = availableWidth / pageWidth;
+  } else if (typeof zoom === 'string' && zoom === 'fit-height' && containerHeight > 0 && pageHeight > 0) {
+    // Fit to available container height
+    // Note: containerHeight includes the header, so we use a reasonable estimate
+    // or rely on the actual page height if we have it
+    const availableHeight = containerHeight - 100; // -100 for header + padding + margins
+    actualZoom = availableHeight / pageHeight;
   }
 
   return (
@@ -48,10 +50,11 @@ export default function PDFPage({
         scale={actualZoom}
         onLoadSuccess={(p: any) => {
           pageProxyRef.current.set(pageNum, p);
-          // Get page dimensions for fit-height calculation
+          // Get page dimensions for fit calculations
           if (p.getViewport) {
             const viewport = p.getViewport({ scale: 1 });
             setPageHeight(viewport.height);
+            setPageWidth(viewport.width);
           }
         }}
         renderAnnotationLayer={false}

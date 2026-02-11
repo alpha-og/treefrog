@@ -212,7 +212,7 @@ export function MenuCheckboxItem({
  * Enhanced RadioItem with consistent styling
  */
 interface MenuRadioItemProps
-  extends React.ComponentProps<typeof DropdownMenuRadioItem> {
+   extends React.ComponentProps<typeof DropdownMenuRadioItem> {
   children: React.ReactNode;
 }
 
@@ -230,6 +230,7 @@ export function MenuRadioItem({
         "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset",
         "transition-colors duration-100",
+        "[&_span:first-child]:hidden", // Hide the radio indicator dot
         className
       )}
       {...props}

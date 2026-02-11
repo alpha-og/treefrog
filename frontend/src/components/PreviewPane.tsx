@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { motion } from "motion/react";
 import PDFPreview from "./PDF/PDFPreview";
 import { BuildStatus } from "../types";
 import { createLogger } from "../utils/logger";
@@ -63,14 +64,25 @@ export default function PreviewPane({
   pageProxyRef,
   registerPageRef,
 }: PreviewPaneProps) {
-  const clampZoom = (z: number) =>
-    Math.min(2.4, Math.max(0.6, Math.round(z * 10) / 10));
+   const clampZoom = (z: number) =>
+     Math.min(2.4, Math.max(0.6, Math.round(z * 10) / 10));
 
-  // Get PDF URL that works in both web and Wails modes
-  const { pdfUrl, loading: pdfLoading, error: pdfError } = usePDFUrl(apiUrl, pdfKey);
-  
-   // Log viewer state for desktop mode
-   const [showLog, setShowLog] = useState(false);
+   // Get PDF URL that works in both web and Wails modes
+   const { pdfUrl, loading: pdfLoading, error: pdfError } = usePDFUrl(apiUrl, pdfKey);
+   
+   // Zoom button text measurement
+   const [zoomTextWidth, setZoomTextWidth] = useState<number>(0);
+   const zoomMeasureRef = useRef<HTMLDivElement>(null);
+
+   // Update zoom text width when zoom changes
+   useEffect(() => {
+     if (zoomMeasureRef.current) {
+       setZoomTextWidth(zoomMeasureRef.current.offsetWidth);
+     }
+   }, [zoom]);
+   
+    // Log viewer state for desktop mode
+    const [showLog, setShowLog] = useState(false);
    const [logContent, setLogContent] = useState("");
    const [logLoading, setLogLoading] = useState(false);
    const [isEditingPage, setIsEditingPage] = useState(false);
@@ -239,19 +251,24 @@ export default function PreviewPane({
                />
              </button>
 
-              {/* Zoom Dropdown */}
-              <DropdownMenuWrapper>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    className="bg-transparent border-0 font-mono text-xs px-1.5 py-0.5 min-w-11 text-foreground/80 hover:bg-accent/20 transition-colors cursor-pointer rounded-md"
-                    title="Zoom options"
-                  >
-                    {typeof zoom === 'string' ? 
-                      (zoom === 'fit-width' ? 'Fit W' : zoom === 'fit-height' ? 'Fit H' : zoom) :
-                      `${Math.round(zoom * 100)}%`
-                    }
-                  </button>
-                </DropdownMenuTrigger>
+               {/* Zoom Dropdown */}
+               <DropdownMenuWrapper>
+                 <DropdownMenuTrigger asChild>
+                   <motion.button
+                     layout
+                     layoutId="zoom-button"
+                     layoutDependency={zoom}
+                     animate={{ width: Math.max(44, zoomTextWidth + 12) }}
+                     transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                     className="bg-transparent border-0 font-mono text-xs px-1.5 py-0.5 text-foreground/80 hover:bg-accent/20 transition-colors cursor-pointer rounded-md overflow-hidden flex items-center justify-center"
+                     title="Zoom options"
+                   >
+                     {typeof zoom === 'string' ? 
+                       (zoom === 'fit-width' ? 'Fit W' : zoom === 'fit-height' ? 'Fit H' : zoom) :
+                       `${Math.round(zoom * 100)}%`
+                     }
+                   </motion.button>
+                 </DropdownMenuTrigger>
                 <DropdownMenuContentWrapper align="center" className="w-48">
                   <div className="px-3 py-2">
                     <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
@@ -305,10 +322,21 @@ export default function PreviewPane({
                  size={14}
                  className="text-foreground/70 group-hover:text-primary transition-all"
                />
-             </button>
+              </button>
+            </div>
+
+           {/* Hidden measurement div for zoom button width */}
+           <div 
+             ref={zoomMeasureRef}
+             className="absolute invisible font-mono text-xs px-1.5 py-0.5 whitespace-nowrap"
+           >
+             {typeof zoom === 'string' ? 
+               (zoom === 'fit-width' ? 'Fit W' : zoom === 'fit-height' ? 'Fit H' : zoom) :
+               `${Math.round(zoom * 100)}%`
+             }
            </div>
 
-          {/* Divider */}
+           {/* Divider */}
           <div className="w-px h-5 bg-base-content/10 shrink-0"></div>
 
            {/* Page Counter */}
