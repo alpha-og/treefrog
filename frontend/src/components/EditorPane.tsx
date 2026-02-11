@@ -8,15 +8,16 @@ interface EditorPaneProps {
   fileContent: string;
   isBinary: boolean;
   currentFile: string;
+  projectRoot: string;
   onSave: (content: string) => Promise<void>;
 }
 
-export function EditorPane({ theme, fileContent, isBinary, currentFile, onSave }: EditorPaneProps) {
+export function EditorPane({ theme, fileContent, isBinary, currentFile, projectRoot, onSave }: EditorPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const hasFile = currentFile && currentFile.length > 0;
 
   // Always initialize editor, but hide it when no file or binary
-  useEditor(containerRef, theme, fileContent, isBinary, currentFile, onSave);
+  useEditor(containerRef, theme, fileContent, isBinary, currentFile, projectRoot, onSave);
 
   const showEditor = hasFile && !isBinary;
 

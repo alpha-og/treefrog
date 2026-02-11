@@ -544,6 +544,7 @@ export default function Editor() {
                       fileContent={fileContent}
                       isBinary={isBinary}
                       currentFile={currentFile}
+                      projectRoot={projectRoot}
                       onSave={handleSave}
                     />
                  </motion.div>

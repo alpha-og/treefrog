@@ -70,6 +70,7 @@ export function useEditor(
   fileContent: string,
   isBinary: boolean,
   currentFile: string,
+  projectRoot: string,
   onSave: (val: string) => void
 ) {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
@@ -84,7 +85,6 @@ export function useEditor(
 
   // Detect project changes and dispose editor
   useEffect(() => {
-    const projectRoot = currentFile?.split("/")[0] || "";
     if (lastProjectRef.current && projectRoot !== lastProjectRef.current) {
       // Project changed, dispose editor and reset content
       if (editorRef.current) {
@@ -93,9 +93,9 @@ export function useEditor(
       }
     }
     lastProjectRef.current = projectRoot;
-  }, [currentFile]);
+  }, [projectRoot]);
 
-   // Create editor on mount
+   // Create editor on mount or when project changes
   useEffect(() => {
     if (!containerRef.current || isBinary) return;
 
@@ -153,10 +153,8 @@ export function useEditor(
 
     return () => {
       resizeObserver.disconnect();
-      editorRef.current?.dispose();
-      editorRef.current = null;
     };
-  }, [isBinary, theme]);
+  }, [isBinary, theme, projectRoot]);
 
   // Update theme
   useEffect(() => {
