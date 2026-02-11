@@ -13,6 +13,7 @@ interface ContextMenuProps {
   y: number;
   path: string;
   isDir: boolean;
+  isRoot?: boolean;
   onClose: () => void;
   onRename: () => void;
   onDuplicate: () => void;
@@ -41,6 +42,7 @@ export default function ContextMenu({
   y,
   path,
   isDir,
+  isRoot = false,
   onClose,
   onRename,
   onDuplicate,
@@ -119,7 +121,7 @@ export default function ContextMenu({
 
            <div className="p-1">
              {/* Edit Section - Only for non-root items */}
-             {path && (
+             {!isRoot && (
                <div className="space-y-1">
                  <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
                    Edit
@@ -190,7 +192,7 @@ export default function ContextMenu({
             )}
 
              {/* Delete Section - Only for non-root items */}
-             {path && (
+             {!isRoot && (
                <>
                  <div className="my-1 h-px bg-border/50" />
                  <div className="space-y-1">

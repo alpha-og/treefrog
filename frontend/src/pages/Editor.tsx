@@ -124,12 +124,13 @@ export default function Editor() {
   const [pdfKey, setPdfKey] = useState<number>(Date.now());
 
   // ========== MODAL STATE ==========
-  const [contextMenu, setContextMenu] = useState<{
-    x: number;
-    y: number;
-    path: string;
-    isDir: boolean;
-  } | null>(null);
+   const [contextMenu, setContextMenu] = useState<{
+     x: number;
+     y: number;
+     path: string;
+     isDir: boolean;
+     isRoot?: boolean;
+   } | null>(null);
 
   // ========== RESIZE STATE ==========
   const [_isResizing, setIsResizing] = useState<
@@ -532,16 +533,17 @@ export default function Editor() {
                       }
                       onFileMenu={(x, y, path, isDir) =>
                         setContextMenu({ x, y, path, isDir })
-                      }
-                      onEmptySpaceMenu={(x, y) =>
-                        setContextMenu({ x, y, path: "", isDir: true })
-                      }
-                      gitStatus={gitStatus}
-                      gitError={gitError}
-                      onCommit={commit}
-                      onPush={push}
-                      onPull={pull}
-                    />
+                       }
+                        onEmptySpaceMenu={(x, y) => {
+                          const projectName = projectRoot.split("/").pop() || projectRoot;
+                          setContextMenu({ x, y, path: projectName, isDir: true, isRoot: true });
+                        }}
+                        gitStatus={gitStatus}
+                        gitError={gitError}
+                        onCommit={commit}
+                        onPush={push}
+                        onPull={pull}
+                      />
                  </motion.div>
                  {(editor || preview) && (
                    <div
@@ -616,13 +618,14 @@ export default function Editor() {
       </div>
 
       {/* Context Menu */}
-      <ContextMenu
-        visible={!!contextMenu}
-        x={contextMenu?.x || 0}
-        y={contextMenu?.y || 0}
-        path={contextMenu?.path || ""}
-        isDir={contextMenu?.isDir || false}
-        onClose={() => setContextMenu(null)}
+       <ContextMenu
+         visible={!!contextMenu}
+         x={contextMenu?.x || 0}
+         y={contextMenu?.y || 0}
+         path={contextMenu?.path || ""}
+         isDir={contextMenu?.isDir || false}
+         isRoot={contextMenu?.isRoot || false}
+         onClose={() => setContextMenu(null)}
         onRename={() => {
           if (contextMenu)
             handleOpenModal({ kind: "rename", path: contextMenu.path });
