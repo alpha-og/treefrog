@@ -1,9 +1,17 @@
-import { useState } from "react";
-import { Zap, ChevronDown } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { Zap } from "lucide-react";
 import { Button } from "@/components/common/Button";
 import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
+import {
+  DropdownMenuWrapper,
+  DropdownMenuTrigger,
+  DropdownMenuContentWrapper,
+  MenuItem,
+  DropdownMenuRadioGroup,
+  MenuRadioItem,
+  DropdownMenuSeparator,
+  MenuIcon,
+  MenuShortcut,
+} from "@/components/common/Menu";
 
 interface BuildButtonProps {
   onBuild: () => void;
@@ -13,6 +21,8 @@ interface BuildButtonProps {
   onShellChange: (shell: boolean) => void;
 }
 
+const ENGINES = ["pdflatex", "xelatex", "lualatex"];
+
 export default function BuildButton({
   onBuild,
   engine,
@@ -20,93 +30,73 @@ export default function BuildButton({
   shell,
   onShellChange,
 }: BuildButtonProps) {
-  const [showMenu, setShowMenu] = useState(false);
-
-  const engines = ["pdflatex", "xelatex", "lualatex"];
-
   return (
-    <div className="relative flex items-center" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
+    <div className="flex items-center gap-1" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
       {/* Main Build Button */}
       <Button
         onClick={onBuild}
-        className="rounded-r-none border-r-0"
-        title="Build document"
+        className="gap-2"
+        title="Build document (⌘B)"
       >
         <Zap size={16} />
         Build
       </Button>
 
-      {/* Dropdown Trigger */}
-      <Button
-        onClick={() => setShowMenu(!showMenu)}
-        className="rounded-l-none px-2"
-        title="Build settings"
-      >
-        <ChevronDown size={16} />
-      </Button>
+      {/* Build Options Dropdown */}
+      <DropdownMenuWrapper>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="w-10 h-10"
+            title="Build settings"
+          >
+            <span className="text-lg">⋮</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContentWrapper align="end" className="w-56">
+          {/* Engine Selection */}
+          <div className="px-3 py-2">
+            <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+              LaTeX Engine
+            </div>
+          </div>
 
-      {/* Dropdown Menu */}
-      <AnimatePresence>
-        {showMenu && (
-          <>
-            <motion.div
-              className="absolute right-0 top-full mt-2 w-64 bg-card border rounded-xl shadow-xl z-50 overflow-hidden"
-              initial={{ opacity: 0, y: -10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-            >
-              {/* Engine Selection */}
-              <div className="p-4 border-b">
-                <h3 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
-                  LaTeX Engine
-                </h3>
-                <div className="grid grid-cols-3 gap-2">
-                  {engines.map((eng) => (
-                    <motion.button
-                      key={eng}
-                      onClick={() => {
-                        onEngineChange(eng);
-                        setShowMenu(false);
-                      }}
-                      className={cn(
-                        "py-2 px-3 rounded-lg text-xs font-medium transition-all",
-                        engine === eng
-                          ? "bg-primary text-primary-foreground shadow-md"
-                          : "bg-muted text-muted-foreground hover:bg-accent"
-                      )}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      {eng}
-                    </motion.button>
-                  ))}
-                </div>
-              </div>
+          <DropdownMenuRadioGroup value={engine} onValueChange={onEngineChange}>
+            {ENGINES.map((eng) => (
+              <MenuRadioItem key={eng} value={eng}>
+                <MenuIcon name="engine" size={16} />
+                <span className="flex-1">{eng}</span>
+              </MenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
 
-              {/* Shell Escape Option */}
-              <div className="p-4">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <Switch
-                    checked={shell}
-                    onCheckedChange={onShellChange}
-                  />
-                  <span className="text-sm font-medium">Enable shell-escape</span>
-                </label>
-              </div>
-            </motion.div>
+          <DropdownMenuSeparator />
 
-            {/* Backdrop to close menu */}
-            <motion.div
-              className="fixed inset-0 z-40"
-              onClick={() => setShowMenu(false)}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            />
-          </>
-        )}
-      </AnimatePresence>
+          {/* Shell Escape Option */}
+          <MenuItem
+            onClick={() => onShellChange(!shell)}
+            className="flex items-center justify-between"
+          >
+            <div className="flex items-center gap-2">
+              <MenuIcon name="shell-escape" size={16} />
+              <span>Shell-escape</span>
+            </div>
+            <span className="text-xs">{shell ? "On" : "Off"}</span>
+          </MenuItem>
+
+          <DropdownMenuSeparator />
+
+          {/* Quick Build Action */}
+          <MenuItem
+            onClick={onBuild}
+          >
+            <MenuIcon name="build" size={16} />
+            <span className="flex-1">Build Now</span>
+            <MenuShortcut>⌘B</MenuShortcut>
+          </MenuItem>
+        </DropdownMenuContentWrapper>
+      </DropdownMenuWrapper>
     </div>
   );
 }

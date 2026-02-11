@@ -1,9 +1,18 @@
 import { useState } from "react";
-import { Home, FileText, Eye, Sidebar as SidebarIcon, Check } from "lucide-react";
+import { Home, Eye } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "motion/react";
 import BuildButton from "./BuildButton";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenuWrapper,
+  DropdownMenuTrigger,
+  DropdownMenuContentWrapper,
+  MenuItem,
+  DropdownMenuSeparator,
+  MenuShortcut,
+  MenuIcon,
+} from "@/components/common/Menu";
 
 interface ToolbarProps {
   projectRoot: string;
@@ -31,7 +40,6 @@ export default function Toolbar({
   configSynced,
 }: ToolbarProps) {
   const navigate = useNavigate();
-  const [showViewMenu, setShowViewMenu] = useState(false);
 
   return (
     <>
@@ -59,115 +67,73 @@ export default function Toolbar({
 
         {/* Right: Controls and Settings */}
         <div className="flex items-center gap-3 shrink-0" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
-          {/* View Settings */}
-          <div className="relative">
-            <motion.button
-              className={cn(
-                "p-2 rounded-lg transition-colors",
-                showViewMenu ? "bg-accent" : "hover:bg-accent"
-              )}
-              onClick={() => setShowViewMenu(!showViewMenu)}
-              title="View options"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Eye size={16} className="text-muted-foreground" />
-            </motion.button>
+          {/* View Dropdown Menu */}
+          <DropdownMenuWrapper>
+            <DropdownMenuTrigger asChild>
+              <motion.button
+                className="p-2 rounded-lg hover:bg-accent transition-colors"
+                title="View options"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Eye size={16} className="text-muted-foreground" />
+              </motion.button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContentWrapper align="end" className="w-56">
+              <MenuItem
+                onClick={() => onTogglePane("sidebar")}
+                className={cn(
+                  "flex items-center gap-2",
+                  panesVisible.sidebar && "bg-primary/20 text-primary"
+                )}
+              >
+                <MenuIcon name="sidebar" size={16} />
+                <span className="flex-1">Sidebar</span>
+                {panesVisible.sidebar && <span className="text-xs">✓</span>}
+              </MenuItem>
 
-            {/* View Menu Popover */}
-            <AnimatePresence>
-              {showViewMenu && (
-                <>
-                  <motion.div
-                    className="absolute right-0 mt-2 w-56 bg-card border rounded-xl shadow-xl z-50 overflow-hidden"
-                    initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <div className="p-4">
-                      <h3 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
-                        Panes
-                      </h3>
-                      <div className="space-y-2">
-                        {/* Sidebar Toggle */}
-                        <motion.button
-                          onClick={() => {
-                            onTogglePane("sidebar");
-                          }}
-                          className={cn(
-                            "w-full flex items-center gap-3 p-3 rounded-lg transition-all",
-                            panesVisible.sidebar
-                              ? "bg-primary/20 text-primary"
-                              : "bg-muted text-muted-foreground hover:bg-accent"
-                          )}
-                          whileHover={{ x: 2 }}
-                          whileTap={{ scale: 0.98 }}
-                        >
-                          <SidebarIcon size={16} />
-                          <span className="text-sm font-medium flex-1 text-left">Sidebar</span>
-                          {panesVisible.sidebar && (
-                            <Check size={14} />
-                          )}
-                        </motion.button>
+              <MenuItem
+                onClick={() => onTogglePane("editor")}
+                className={cn(
+                  "flex items-center gap-2",
+                  panesVisible.editor && "bg-primary/20 text-primary"
+                )}
+              >
+                <MenuIcon name="editor" size={16} />
+                <span className="flex-1">Editor</span>
+                {panesVisible.editor && <span className="text-xs">✓</span>}
+              </MenuItem>
 
-                        {/* Editor Toggle */}
-                        <motion.button
-                          onClick={() => {
-                            onTogglePane("editor");
-                          }}
-                          className={cn(
-                            "w-full flex items-center gap-3 p-3 rounded-lg transition-all",
-                            panesVisible.editor
-                              ? "bg-primary/20 text-primary"
-                              : "bg-muted text-muted-foreground hover:bg-accent"
-                          )}
-                          whileHover={{ x: 2 }}
-                          whileTap={{ scale: 0.98 }}
-                        >
-                          <FileText size={16} />
-                          <span className="text-sm font-medium flex-1 text-left">Editor</span>
-                          {panesVisible.editor && (
-                            <Check size={14} />
-                          )}
-                        </motion.button>
+              <MenuItem
+                onClick={() => onTogglePane("preview")}
+                className={cn(
+                  "flex items-center gap-2",
+                  panesVisible.preview && "bg-primary/20 text-primary"
+                )}
+              >
+                <MenuIcon name="preview" size={16} />
+                <span className="flex-1">Preview</span>
+                {panesVisible.preview && <span className="text-xs">✓</span>}
+              </MenuItem>
 
-                        {/* Preview Toggle */}
-                        <motion.button
-                          onClick={() => {
-                            onTogglePane("preview");
-                          }}
-                          className={cn(
-                            "w-full flex items-center gap-3 p-3 rounded-lg transition-all",
-                            panesVisible.preview
-                              ? "bg-primary/20 text-primary"
-                              : "bg-muted text-muted-foreground hover:bg-accent"
-                          )}
-                          whileHover={{ x: 2 }}
-                          whileTap={{ scale: 0.98 }}
-                        >
-                          <Eye size={16} />
-                          <span className="text-sm font-medium flex-1 text-left">Preview</span>
-                          {panesVisible.preview && (
-                            <Check size={14} />
-                          )}
-                        </motion.button>
-                      </div>
-                    </div>
-                  </motion.div>
-                  {/* Backdrop to close menu */}
-                  <motion.div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setShowViewMenu(false)}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                  />
-                </>
-              )}
-            </AnimatePresence>
-          </div>
+              <DropdownMenuSeparator />
 
+              <MenuItem
+                onClick={() => {
+                  // Reset layout - show all panes
+                  const allVisible = panesVisible.sidebar && panesVisible.editor && panesVisible.preview;
+                  if (!allVisible) {
+                    if (!panesVisible.sidebar) onTogglePane("sidebar");
+                    if (!panesVisible.editor) onTogglePane("editor");
+                    if (!panesVisible.preview) onTogglePane("preview");
+                  }
+                }}
+              >
+                <MenuIcon name="reset" size={16} />
+                <span>Reset Layout</span>
+              </MenuItem>
+            </DropdownMenuContentWrapper>
+          </DropdownMenuWrapper>
 
           {/* Build Button with Engine Dropdown */}
           <BuildButton

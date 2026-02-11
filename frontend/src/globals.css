@@ -270,3 +270,122 @@ body {
   transform: translateY(-2px);
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
 }
+
+/* Layout containment to prevent cascading reflows */
+.contain-layout {
+  contain: layout style paint;
+}
+
+.contain-paint {
+  contain: paint;
+}
+
+.will-change-auto {
+  will-change: auto;
+}
+
+.will-change-transform {
+  will-change: transform;
+}
+
+.will-change-scroll {
+  will-change: scroll-position;
+}
+
+/* ==========================================
+   MENU STYLES (Unified Design Language)
+   ========================================== */
+
+/* Dropdown Menu & Context Menu Base */
+[data-slot="dropdown-menu-content"],
+[data-slot="context-menu-content"] {
+  @apply bg-popover text-popover-foreground border border-border rounded-lg shadow-lg;
+  animation: menuIn 0.15s ease-out;
+}
+
+@keyframes menuIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Menu Items - consistent styling */
+[data-slot="dropdown-menu-item"],
+[data-slot="context-menu-item"],
+[data-slot="dropdown-menu-checkbox-item"],
+[data-slot="context-menu-checkbox-item"],
+[data-slot="dropdown-menu-radio-item"],
+[data-slot="context-menu-radio-item"] {
+  @apply flex items-center gap-2 px-3 py-2 rounded-md text-sm cursor-pointer;
+  @apply text-foreground transition-colors duration-100;
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset;
+}
+
+[data-slot="dropdown-menu-item"]:hover,
+[data-slot="context-menu-item"]:hover,
+[data-slot="dropdown-menu-checkbox-item"]:hover,
+[data-slot="context-menu-checkbox-item"]:hover,
+[data-slot="dropdown-menu-radio-item"]:hover,
+[data-slot="context-menu-radio-item"]:hover {
+  @apply bg-accent text-accent-foreground;
+}
+
+[data-slot="dropdown-menu-item"][data-highlighted],
+[data-slot="context-menu-item"][data-highlighted],
+[data-slot="dropdown-menu-checkbox-item"][data-highlighted],
+[data-slot="context-menu-checkbox-item"][data-highlighted],
+[data-slot="dropdown-menu-radio-item"][data-highlighted],
+[data-slot="context-menu-radio-item"][data-highlighted] {
+  @apply bg-accent text-accent-foreground;
+}
+
+/* Menu Labels */
+[data-slot="dropdown-menu-label"],
+[data-slot="context-menu-label"] {
+  @apply px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide;
+}
+
+/* Menu Separators */
+[data-slot="dropdown-menu-separator"],
+[data-slot="context-menu-separator"] {
+  @apply my-1 h-px bg-border/50;
+}
+
+/* Menu Icons - consistent sizing and color */
+[data-slot="menu-icon"] {
+  @apply w-4 h-4 flex-shrink-0;
+}
+
+/* Keyboard shortcuts in menus */
+[data-slot="menu-shortcut"] {
+  @apply ml-auto text-xs text-muted-foreground/70 transition-colors duration-100;
+}
+
+/* Floating Context Menu (custom) */
+.menu-floating {
+  @apply fixed z-50 min-w-52 rounded-lg border border-border bg-popover text-popover-foreground shadow-lg backdrop-blur-sm;
+}
+
+.menu-floating-header {
+  @apply px-3 py-2 border-b border-border/50 bg-muted/30;
+}
+
+.menu-floating-item {
+  @apply w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm;
+  @apply text-foreground hover:bg-accent hover:text-accent-foreground;
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset;
+  @apply transition-colors duration-100 cursor-pointer;
+}
+
+.menu-floating-item:hover [data-slot="menu-shortcut"] {
+  @apply text-muted-foreground;
+}
+
+.menu-floating-item.destructive {
+  @apply text-destructive hover:bg-destructive/10 hover:text-destructive;
+}

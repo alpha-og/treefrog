@@ -12,12 +12,20 @@ import {
   CheckCircle2,
   XCircle,
   Zap,
-  MoreVertical,
 } from "lucide-react";
 import { ZOOM_LEVELS } from "../constants";
 import { usePDFUrl } from "../hooks/usePDFUrl";
 import { isWails } from "../utils/env";
 import { getBuildLog, exportPDFFile, exportSourceFile } from "../services/buildService";
+import {
+  DropdownMenuWrapper,
+  DropdownMenuTrigger,
+  DropdownMenuContentWrapper,
+  MenuItem,
+  DropdownMenuSeparator,
+  MenuIcon,
+} from "@/components/common/Menu";
+import { Button } from "@/components/common/Button";
 
 const log = createLogger("PreviewPane");
 
@@ -60,27 +68,11 @@ export default function PreviewPane({
    const [showLog, setShowLog] = useState(false);
    const [logContent, setLogContent] = useState("");
    const [logLoading, setLogLoading] = useState(false);
-   const [showExportMenu, setShowExportMenu] = useState(false);
    const [isEditingPage, setIsEditingPage] = useState(false);
    const [pageInput, setPageInput] = useState(currentPage.toString());
    const [displayPage, setDisplayPage] = useState(currentPage);
-   const exportMenuRef = useRef<HTMLDivElement>(null);
    const pdfViewerRef = useRef<HTMLDivElement>(null);
    const currentPageRef = useRef(currentPage);
-
-   // Close export menu when clicking outside
-   useEffect(() => {
-     const handleClickOutside = (event: MouseEvent) => {
-       if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
-         setShowExportMenu(false);
-       }
-     };
-
-     if (showExportMenu) {
-       document.addEventListener("mousedown", handleClickOutside);
-       return () => document.removeEventListener("mousedown", handleClickOutside);
-     }
-   }, [showExportMenu]);
 
    // Keep currentPage ref and displayPage in sync
    useEffect(() => {
@@ -331,72 +323,55 @@ export default function PreviewPane({
         </div>
 
         {/* Right: Export Menu */}
-        <div className="relative shrink-0" ref={exportMenuRef}>
-          <button
-            onClick={() => setShowExportMenu(!showExportMenu)}
-            className="px-2.5 py-1.5 rounded-lg bg-muted/40 hover:bg-muted/60 border border-border hover:border-base-content/20 transition-all duration-200 flex items-center justify-center group"
-            title="Export options"
-          >
-            <MoreVertical size={14} className="text-foreground/70 group-hover:text-foreground transition-colors" />
-          </button>
-          
-          {/* Dropdown Menu */}
-          {showExportMenu && (
-             <div className="absolute right-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-50 overflow-hidden min-w-37.5">
-              {isWails() ? (
-                <>
-                  <button
-                    onClick={() => {
-                      handleExportPDF();
-                      setShowExportMenu(false);
-                    }}
-                    className="w-full px-4 py-2.5 text-left text-xs font-medium text-foreground hover:bg-primary/10 transition-colors flex items-center gap-2 border-b border-border last:border-b-0"
-                  >
-                    <Download size={14} className="text-primary" />
-                    Export PDF
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleExportSource();
-                      setShowExportMenu(false);
-                    }}
-                    className="w-full px-4 py-2.5 text-left text-xs font-medium text-foreground hover:bg-secondary/10 transition-colors flex items-center gap-2 border-b border-border last:border-b-0"
-                  >
-                    <FileArchive size={14} className="text-secondary" />
-                    Export Source
-                  </button>
-                </>
-              ) : (
-                <>
-                  <a
-                    href={`${apiUrl}/export/pdf`}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={() => setShowExportMenu(false)}
-                    className="block w-full px-4 py-2.5 text-left text-xs font-medium text-foreground hover:bg-primary/10 transition-colors border-b border-border"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Download size={14} className="text-primary" />
-                      Download PDF
-                    </div>
-                  </a>
-                  <a
-                    href={`${apiUrl}/export/source-zip`}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={() => setShowExportMenu(false)}
-                    className="block w-full px-4 py-2.5 text-left text-xs font-medium text-foreground hover:bg-secondary/10 transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <FileArchive size={14} className="text-secondary" />
-                      Download Source
-                    </div>
-                  </a>
-                </>
-              )}
-            </div>
-          )}
-        </div>
+        <DropdownMenuWrapper>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="w-10 h-10"
+              title="Export options"
+            >
+              <span className="text-lg">⋮</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContentWrapper align="end" className="w-56">
+            {isWails() ? (
+              <>
+                <MenuItem
+                  onClick={handleExportPDF}
+                >
+                  <MenuIcon name="export-pdf" size={16} />
+                  <span className="flex-1">Export PDF</span>
+                </MenuItem>
+                <MenuItem
+                  onClick={handleExportSource}
+                >
+                  <MenuIcon name="export-source" size={16} />
+                  <span className="flex-1">Export Source</span>
+                </MenuItem>
+              </>
+            ) : (
+              <>
+                <MenuItem
+                  onClick={() => {
+                    window.open(`${apiUrl}/export/pdf`, "_blank", "noreferrer");
+                  }}
+                >
+                  <MenuIcon name="export-pdf" size={16} />
+                  <span className="flex-1">Download PDF</span>
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    window.open(`${apiUrl}/export/source-zip`, "_blank", "noreferrer");
+                  }}
+                >
+                  <MenuIcon name="export-source" size={16} />
+                  <span className="flex-1">Download Source</span>
+                </MenuItem>
+              </>
+            )}
+          </DropdownMenuContentWrapper>
+        </DropdownMenuWrapper>
       </div>
 
       {/* Status Messages */}

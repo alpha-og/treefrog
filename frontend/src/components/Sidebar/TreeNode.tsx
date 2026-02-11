@@ -31,17 +31,26 @@ export const TreeNode = memo(function TreeNode({
   const handleClick = (e: React.MouseEvent) => {
     const isCtrl = e.ctrlKey || e.metaKey;
     const isShift = e.shiftKey;
+    const hasModifier = isCtrl || isShift;
     
-    // If it's a folder with modifier keys, select it
-    if (node.isDir && (isCtrl || isShift)) {
-      onSelect(e);
-    } else if (node.isDir) {
-      // Folder without modifiers: toggle expand
-      onToggle();
+    if (node.isDir) {
+      // Folder: toggle expand/collapse, or toggle select if modifier key
+      if (hasModifier) {
+        // Only toggle selection if clicking on the folder itself, not the chevron
+        const isChevronClick = (e.target as HTMLElement)?.closest('button');
+        if (!isChevronClick) {
+          onSelect(e);
+        }
+      } else {
+        onToggle();
+      }
     } else {
-      // File click: open and select
-      onSelect(e);
-      onOpen();
+      // File: open it, or toggle select if modifier key
+      if (hasModifier) {
+        onSelect(e);
+      } else {
+        onOpen();
+      }
     }
   };
 
@@ -52,7 +61,7 @@ export const TreeNode = memo(function TreeNode({
 
   return (
     <div>
-      <div
+      <motion.div
         className={cn(
           "group relative flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-colors duration-150",
           isActive
@@ -63,6 +72,10 @@ export const TreeNode = memo(function TreeNode({
         style={{ paddingLeft: `${0.5 + node.depth * 1}rem` }}
         onClick={handleClick}
         onContextMenu={onContextMenu}
+        initial={{ opacity: 0, x: -2 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+        layout
       >
         {/* Expand/collapse chevron for folders */}
         {node.isDir && (
@@ -103,23 +116,29 @@ export const TreeNode = memo(function TreeNode({
             )}
           >
             {node.name}
-          </span>
-        </div>
-      </div>
+           </span>
+         </div>
+       </motion.div>
 
-      {/* Children with smooth animation */}
-      <AnimatePresence>
-        {children && isExpanded && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            {children}
-          </motion.div>
-        )}
-      </AnimatePresence>
+       {/* Children with smooth container animation */}
+       <AnimatePresence mode="wait">
+         {children && isExpanded && (
+           <motion.div
+             key={`expanded-${node.path}`}
+             layoutId={`children-${node.path}`}
+             initial={{ opacity: 0, height: 0 }}
+             animate={{ opacity: 1, height: "auto" }}
+             exit={{ opacity: 0, height: 0 }}
+             transition={{ 
+               duration: 0.4,
+               ease: "easeInOut"
+             }}
+             className="overflow-hidden"
+           >
+             {children}
+           </motion.div>
+         )}
+       </AnimatePresence>
     </div>
   );
 });

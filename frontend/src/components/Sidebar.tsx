@@ -361,11 +361,11 @@ export default function Sidebar({
   }, [currentFile]);
 
    return (
-     <aside
-       className="sidebar h-full bg-muted/30 backdrop-blur-sm border-r flex flex-col overflow-hidden relative"
-       onKeyDown={handleKeyDown}
-       tabIndex={0}
-     >
+      <aside
+        className="sidebar h-full bg-muted/30 backdrop-blur-sm border-r flex flex-col overflow-hidden relative contain-layout"
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
+      >
        {/* External drop overlay */}
        <ExternalDropZone
          isActive={isExternalDragging}
@@ -420,8 +420,8 @@ export default function Sidebar({
           />
         )}
 
-        {/* Tree */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-0.5">
+         {/* Tree */}
+         <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-0.5 contain-paint will-change-scroll">
           {loadError ? (
             <div className="text-center py-8 text-muted-foreground text-sm">
               <div className="mx-auto mb-2 opacity-30">
@@ -476,16 +476,16 @@ export default function Sidebar({
           )}
         </div>
 
-        {/* Git Footer */}
-        <AnimatePresence>
-          {projectRoot && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="border-t bg-muted/30 backdrop-blur-sm"
-            >
+         {/* Git Footer */}
+         <AnimatePresence>
+           {projectRoot && (
+             <motion.div
+               initial={{ opacity: 0 }}
+               animate={{ opacity: 1 }}
+               exit={{ opacity: 0 }}
+               transition={{ duration: 0.2, ease: "easeOut" }}
+               className="border-t bg-muted/30 backdrop-blur-sm will-change-transform"
+             >
               {/* Git Header - Collapsible */}
               <button
                 onClick={() => setIsGitExpanded(!isGitExpanded)}
@@ -495,24 +495,25 @@ export default function Sidebar({
                   <GitBranch size={14} className="text-muted-foreground" />
                   <h3 className="font-semibold text-sm">Source Control</h3>
                 </div>
-                <motion.div
-                  animate={{ rotate: isGitExpanded ? 90 : 0 }}
-                  transition={{ duration: 0.2 }}
-                >
+                 <motion.div
+                   animate={{ rotate: isGitExpanded ? 90 : 0 }}
+                   transition={{ duration: 0.2, ease: "easeOut" }}
+                   className="will-change-transform"
+                 >
                   <ChevronRight size={14} className="text-muted-foreground" />
                 </motion.div>
               </button>
 
-              {/* Git Content - Expandable */}
-              <AnimatePresence>
-                {isGitExpanded && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
+                {/* Git Content - Expandable */}
+                <AnimatePresence mode="wait">
+                  {isGitExpanded && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.35, ease: "easeInOut" }}
+                      className="overflow-hidden will-change-transform"
+                    >
                     <div className="px-4 pb-4 space-y-3">
                       {/* Git Status */}
                       <div>
