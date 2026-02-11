@@ -16,6 +16,9 @@ import {
   Loader2,
   Shield,
   FileText,
+  Trash2,
+  HardDrive,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "./common/Button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./common/Card";
@@ -128,6 +131,10 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
    const [showCustomTabs, setShowCustomTabs] = useState<"registry" | "tar">("registry");
    const [isVerifyingImage, setIsVerifyingImage] = useState(false);
    const [imageVerificationStatus, setImageVerificationStatus] = useState<"idle" | "valid" | "invalid">("idle");
+   const [isCleaningUp, setIsCleaningUp] = useState(false);
+   const [diskSpaceAvailable, setDiskSpaceAvailable] = useState<number | null>(null);
+   const [error, setError] = useState("");
+   const [successMessage, setSuccessMessage] = useState("");
 
    useEffect(() => {
      const initializeSettings = async () => {
@@ -141,13 +148,40 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
      initializeSettings();
     }, []);
 
-    // Poll for log updates every 2 seconds
-    useEffect(() => {
-      const interval = setInterval(() => {
-        loadLogs();
-      }, 2000);
-      return () => clearInterval(interval);
-    }, []);
+     // Poll for log updates every 2 seconds
+     useEffect(() => {
+       const interval = setInterval(() => {
+         loadLogs();
+       }, 2000);
+       return () => clearInterval(interval);
+     }, []);
+
+     // Load disk space info periodically
+     useEffect(() => {
+       const loadDiskSpace = async () => {
+         try {
+           const space = await rendererService.checkDiskSpace();
+           setDiskSpaceAvailable(space);
+         } catch (err) {
+           console.warn("Failed to load disk space:", err);
+         }
+       };
+
+       loadDiskSpace();
+       const interval = setInterval(loadDiskSpace, 30000); // Every 30 seconds
+       return () => clearInterval(interval);
+     }, []);
+
+     // Auto-clear messages after 5 seconds
+     useEffect(() => {
+       if (successMessage || error) {
+         const timer = setTimeout(() => {
+           setSuccessMessage("");
+           setError("");
+         }, 5000);
+         return () => clearTimeout(timer);
+       }
+     }, [successMessage, error]);
 
     // Sync remote inputs when config loads
     useEffect(() => {
@@ -306,70 +340,116 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
     );
   };
 
-  const handleStart = async () => {
-    setIsLoading(true);
-    setRendererStatus("building");
+   const handleStart = async () => {
+     setIsLoading(true);
+     setSuccessMessage("");
+     setError("");
+     setRendererStatus("building");
 
     toast.info("Starting renderer... This may take a few minutes if pulling image for the first time.");
 
-    try {
-      await rendererService.startRenderer();
-      setRendererStatus("running");
+     try {
+       setRendererStatus("building");
+       toast.info("Starting renderer... This may take a few minutes if pulling image for the first time. Progress will be shown in logs.");
 
-      const status = await rendererService.getStatus();
-      if (status.port !== rendererPort) {
-        toast.warning(`Port ${rendererPort} was busy. Using port ${status.port} instead.`);
-        setRendererPort(status.port);
-        setPortInput(status.port.toString());
-      }
+       await rendererService.startRenderer();
+       setRendererStatus("running");
 
-      setSuccessMessage("Renderer started successfully");      await loadStatus();
-    } catch (err) {
-      setRendererStatus("error");
-      toast.error(`Failed to start renderer: ${err}`);
-      toast.error(`Failed to start renderer: ${err}`);
-    } finally {
-      setIsLoading(false);
-    }
+       const status = await rendererService.getStatus();
+       if (status.port !== rendererPort) {
+         toast.warning(`Port ${rendererPort} was busy. Using port ${status.port} instead.`);
+         setRendererPort(status.port);
+         setPortInput(status.port.toString());
+       }
+
+       setSuccessMessage("Renderer started successfully");
+       await loadStatus();
+     } catch (err) {
+       setRendererStatus("error");
+       const errMsg = err instanceof Error ? err.message : String(err);
+       toast.error(`Failed to start renderer: ${errMsg}`);
+     } finally {
+       setIsLoading(false);
+     }
   };
 
-  const handleStop = async () => {
-    setIsLoading(true);
-    try {
-      await rendererService.stopRenderer();
-      setRendererStatus("stopped");
-      setSuccessMessage("Renderer stopped successfully");    } catch (err) {
-      toast.error(`Failed to stop renderer: ${err}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+   const handleStop = async () => {
+     setIsLoading(true);
+     setSuccessMessage("");
+     setError("");
+     try {
+       await rendererService.stopRenderer();
+       setRendererStatus("stopped");
+       setSuccessMessage("Renderer stopped successfully");
+     } catch (err) {
+       const errMsg = err instanceof Error ? err.message : String(err);
+       toast.error(`Failed to stop renderer: ${errMsg}`);
+     } finally {
+       setIsLoading(false);
+     }
+   };
 
-  const handleRestart = async () => {
-    setIsLoading(true);
-    setRendererStatus("building");
+   const handleRestart = async () => {
+     setIsLoading(true);
+     setSuccessMessage("");
+     setError("");
+     setRendererStatus("building");
 
-    toast.info("Restarting renderer...");
+     toast.info("Restarting renderer...");
 
-    try {
-      await rendererService.restartRenderer();
-      setRendererStatus("running");
-      setSuccessMessage("Renderer restarted successfully");      await loadStatus();
-    } catch (err) {
-      setRendererStatus("error");
-      toast.error(`Failed to restart renderer: ${err}`);
-      toast.error(`Failed to restart renderer: ${err}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+     try {
+       await rendererService.restartRenderer();
+       setRendererStatus("running");
+       setSuccessMessage("Renderer restarted successfully");
+       await loadStatus();
+     } catch (err) {
+       setRendererStatus("error");
+       const errMsg = err instanceof Error ? err.message : String(err);
+       toast.error(`Failed to restart renderer: ${errMsg}`);
+     } finally {
+       setIsLoading(false);
+     }
+   };
 
-  const handleAutoStartToggle = async () => {
-    try {
-      await rendererService.setAutoStart(!rendererAutoStart);
-      setRendererAutoStart(!rendererAutoStart);
-      toast.success(`Auto-start ${!rendererAutoStart ? "enabled" : "disabled"}`);    } catch (err) {
-      toast.error(`Failed to update auto-start: ${err}`);
+   const handleAutoStartToggle = async () => {
+     setSuccessMessage("");
+     setError("");
+     try {
+       await rendererService.setAutoStart(!rendererAutoStart);
+       setRendererAutoStart(!rendererAutoStart);
+       toast.success(`Auto-start ${!rendererAutoStart ? "enabled" : "disabled"}`);
+     } catch (err) {
+       const errMsg = err instanceof Error ? err.message : String(err);
+       toast.error(`Failed to update auto-start: ${errMsg}`);
+     }
+   };
+
+   const handleCleanupDocker = async () => {
+     setSuccessMessage("");
+     setError("");
+     setIsCleaningUp(true);
+     try {
+       toast.info("Cleaning up unused Docker resources...");
+       await rendererService.cleanupDockerSystem();
+       setSuccessMessage("Docker cleanup completed successfully");
+     } catch (err) {
+       const errMsg = err instanceof Error ? err.message : String(err);
+       toast.error(`Failed to cleanup Docker: ${errMsg}`);
+     } finally {
+       setIsCleaningUp(false);
+     }
+   };
+
+   const formatDiskSpace = (bytes: number) => {
+     const GB = bytes / (1024 * 1024 * 1024);
+     const MB = bytes / (1024 * 1024);
+     
+     if (GB >= 1) {
+       return `${GB.toFixed(1)} GB`;
+     } else if (MB >= 1) {
+       return `${MB.toFixed(0)} MB`;
+     } else {
+       return `${bytes} bytes`;
      }
    };
 
@@ -499,15 +579,60 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
               <p className="text-xs text-muted-foreground mt-1">Valid range: 1024 - 65535</p>
             </div>
 
-           {/* Auto-Start Toggle */}
+            {/* Auto-Start Toggle */}
            <div className="pt-3 border-t border-border">
-             <Toggle
-               label="Auto-start on launch"
-               description="Start/stop with app"
-               checked={rendererAutoStart}
-               onChange={handleAutoStartToggle}
-               disabled={isLoading}
-             />
+              <Toggle
+                label="Auto-start on launch"
+                description="Start/stop with app"
+                checked={rendererAutoStart}
+                onChange={handleAutoStartToggle}
+                disabled={isLoading}
+              />
+           </div>
+
+           {/* Docker Management */}
+           <div className="pt-3 border-t border-border space-y-3">
+             <div className="flex items-center justify-between">
+               <div className="flex items-center gap-2">
+                 <HardDrive className="w-4 h-4 text-primary" />
+                 <span className="text-sm font-medium">Docker Management</span>
+               </div>
+               <div className="text-right">
+                 {diskSpaceAvailable !== null && (
+                   <div className="text-xs text-muted-foreground">
+                     <span className={diskSpaceAvailable < 1024*1024*1024 ? "text-warning" : ""}>
+                       {formatDiskSpace(diskSpaceAvailable)} available
+                     </span>
+                   </div>
+                 )}
+               </div>
+             </div>
+             
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+               <Button
+                 variant="outline"
+                 onClick={handleCleanupDocker}
+                 disabled={isCleaningUp || isLoading || isRunning}
+                 className="w-full"
+               >
+                 {isCleaningUp ? (
+                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                 ) : (
+                   <Trash2 className="w-4 h-4 mr-2" />
+                 )}
+                 Cleanup Resources
+               </Button>
+               
+               <Button
+                 variant="ghost"
+                 onClick={() => toast.info("Docker cleanup removes unused containers, images, and networks to free up disk space")}
+                 disabled={isLoading}
+                 className="w-full"
+               >
+                 <AlertTriangle className="w-4 h-4 mr-2" />
+                 What is this?
+               </Button>
+             </div>
            </div>
 
            {/* Image Source */}
@@ -648,12 +773,38 @@ export default forwardRef(function LatexCompilerSettings(_, ref) {
               </motion.div>
             )}
 
-            {/* Local Compiler Logs */}
-            <LogsDisplay
-              logs={rendererLogs}
-              title="Renderer Logs"
-              shouldAnimate={shouldAnimate}
-            />
+              {/* Success Message */}
+              {successMessage && (
+                <motion.div
+                  className="flex items-center gap-2 p-3 bg-success/10 border border-success/20 rounded text-success text-xs font-medium"
+                  initial={shouldAnimate ? { opacity: 0, scale: 0.95 } : undefined}
+                  animate={shouldAnimate ? { opacity: 1, scale: 1 } : undefined}
+                  transition={shouldAnimate ? { duration: ANIMATION_DURATIONS.fast } : undefined}
+                >
+                  <Check className="w-3 h-3" />
+                  {successMessage}
+                </motion.div>
+              )}
+
+              {/* Error Message */}
+              {error && (
+                <motion.div
+                  className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded text-destructive text-xs font-medium"
+                  initial={shouldAnimate ? { opacity: 0, scale: 0.95 } : undefined}
+                  animate={shouldAnimate ? { opacity: 1, scale: 1 } : undefined}
+                  transition={shouldAnimate ? { duration: ANIMATION_DURATIONS.fast } : undefined}
+                >
+                  <X className="w-3 h-3" />
+                  {error}
+                </motion.div>
+              )}
+
+              {/* Local Compiler Logs */}
+              <LogsDisplay
+                logs={rendererLogs}
+                title="Renderer Logs"
+                shouldAnimate={shouldAnimate}
+              />
           </CardContent>
         </Card>
 

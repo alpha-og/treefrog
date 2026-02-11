@@ -70,9 +70,9 @@ export default function Home({ onSelectProject, loading }: HomeProps) {
 
   return (
     <FramelessWindow title="Treefrog" subtitle="Home">
-      <div className="flex-1 bg-gradient-to-br from-muted via-background to-muted flex flex-col overflow-hidden" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
+      <div className="h-screen bg-gradient-to-br from-muted via-background to-muted flex flex-col" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
         {/* Header with Settings */}
-        <div className="flex items-center justify-between px-6 py-4 flex-shrink-0">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 flex-shrink-0">
           <div></div>
           <motion.button
             onClick={() => navigate({ to: "/settings" })}
@@ -85,10 +85,10 @@ export default function Home({ onSelectProject, loading }: HomeProps) {
           </motion.button>
         </div>
 
-        {/* Main Content - Scrollable */}
+        {/* Main Content */}
         <main className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl w-full mx-auto px-6 py-8 md:py-12">
-            <motion.div 
+          <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 pb-6">
+            <motion.div
               className="space-y-12"
               variants={staggerContainer}
               initial="initial"
@@ -96,33 +96,33 @@ export default function Home({ onSelectProject, loading }: HomeProps) {
             >
               {/* Section 1: Create/Open Project */}
               <motion.section variants={staggerItem}>
-                <div className="space-y-6">
-                  {/* Section Header */}
-                  <div>
-                    <h2 className="text-2xl md:text-3xl font-bold mb-2">Get Started</h2>
-                    <p className="text-muted-foreground text-sm md:text-base">
+                  <div className="space-y-4 sm:space-y-6">
+                    {/* Section Header */}
+                    <div>
+                      <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2">Get Started</h2>
+                      <p className="text-muted-foreground text-sm sm:text-base">
                       Create a new project or choose an existing one from your file system
                     </p>
                   </div>
 
                   {/* Primary Action Card */}
-                  <GlowCard>
-                    <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-6">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-lg md:text-xl font-bold mb-2">Open Your Project</h3>
-                        <p className="text-muted-foreground text-xs md:text-sm leading-relaxed">
+                   <GlowCard>
+                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+                       <div className="flex-1 min-w-0">
+                         <h3 className="text-base sm:text-lg md:text-xl font-bold mb-2">Open Your Project</h3>
+                         <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed">
                           Select your LaTeX project folder. Treefrog will detect your main.tex file and set up
                           everything automatically. Your project will be saved to your recent list for quick access.
                         </p>
                       </div>
-                      <Button
-                        onClick={handleOpenProjectDialog}
-                        loading={isSubmitting || loading}
-                        className="whitespace-nowrap flex-shrink-0 w-full md:w-auto"
-                      >
-                        <FolderPlus size={18} />
-                        Choose Folder
-                      </Button>
+                       <Button
+                         onClick={handleOpenProjectDialog}
+                         loading={isSubmitting || loading}
+                         className="whitespace-nowrap flex-shrink-0 w-full sm:w-auto"
+                       >
+                         <FolderPlus size={18} />
+                         Choose Folder
+                       </Button>
                     </div>
                   </GlowCard>
 
@@ -143,7 +143,7 @@ export default function Home({ onSelectProject, loading }: HomeProps) {
               </motion.section>
 
               {/* Divider */}
-              <motion.div 
+              <motion.div
                 className="flex items-center gap-4"
                 variants={staggerItem}
               >
@@ -156,27 +156,27 @@ export default function Home({ onSelectProject, loading }: HomeProps) {
               <motion.section variants={staggerItem}>
                 <div className="space-y-6">
                   {/* Section Header */}
-                  <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <Clock size={24} className="text-primary" />
-                      <h2 className="text-2xl md:text-3xl font-bold">Recent Projects</h2>
-                    </div>
-                    <p className="text-muted-foreground text-sm md:text-base">
+                   <div>
+                     <div className="flex items-center gap-3 mb-2">
+                       <Clock size={20} className="text-primary" />
+                       <h2 className="text-xl sm:text-2xl md:text-3xl font-bold">Recent Projects</h2>
+                     </div>
+                     <p className="text-muted-foreground text-sm sm:text-base">
                       {storeHydrated && projects.length > 0
-                        ? `You have ${projects.length} recent project${projects.length !== 1 ? "s" : ""}`
-                        : "No recent projects yet"}
+                        && `You have ${projects.length} recent project${projects.length !== 1 ? "s" : ""}`
+                      }
                     </p>
                   </div>
 
                    {/* Recent Projects Grid */}
                    {storeHydrated && projects && projects.length > 0 ? (
-                     <motion.div 
+                     <motion.div
                        key={`projects-grid-${projects.length}`}
-                       className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-                       variants={staggerContainer}
-                       initial="initial"
-                       animate="animate"
-                     >
+                       className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"
+                      variants={staggerContainer}
+                      initial="initial"
+                      animate="animate"
+                    >
                       {projects.map((project, index) => (
                         <motion.div
                           key={project.path}
@@ -205,21 +205,21 @@ export default function Home({ onSelectProject, loading }: HomeProps) {
                       ))}
                     </motion.div>
                   ) : (
-                    <motion.div 
-                      className="bg-gradient-to-br from-card/50 to-card/30 border border-border/50 rounded-2xl p-12 text-center"
+                     <motion.div
+                       className="bg-gradient-to-br from-card/50 to-card/30 border border-border/50 rounded-2xl p-6 sm:p-8 md:p-12 text-center"
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.5 }}
                     >
-                      <div className="flex justify-center mb-4">
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
-                          <Clock size={32} className="text-muted-foreground" />
-                        </div>
-                      </div>
-                      <h3 className="text-lg font-semibold text-foreground/80 mb-2">
-                        No recent projects yet
-                      </h3>
-                      <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                       <div className="flex justify-center mb-4">
+                         <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
+                           <Clock size={20} className="text-muted-foreground" />
+                         </div>
+                       </div>
+                       <h3 className="text-base sm:text-lg font-semibold text-foreground/80 mb-2">
+                         No recent projects yet
+                       </h3>
+                       <p className="text-xs sm:text-sm text-muted-foreground max-w-sm mx-auto">
                         When you open a project, it will appear here for quick access next time
                       </p>
                     </motion.div>

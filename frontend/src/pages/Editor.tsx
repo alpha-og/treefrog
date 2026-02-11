@@ -75,6 +75,8 @@ export default function Editor() {
     isBinary,
     fileContent,
     setCurrentDir,
+    setCurrentFile,
+    setFileContent,
   } = useFileStore();
   const { sidebar, editor, preview, toggle: togglePane } = usePaneStore();
   const { sidebarWidth, editorWidth, setSidebarWidth, setEditorWidth } =
@@ -195,10 +197,12 @@ export default function Editor() {
       refreshGit();
       // Auto-open main.tex if it exists
       openFile("main.tex").catch(() => {
-        // File doesn't exist, that's fine - show empty state
+        // File doesn't exist, clear editor to show empty state
+        setCurrentFile("");
+        setFileContent("");
       });
     }
-  }, [projectRoot, projectLoading, loadEntries, refreshGit, openFile]);
+  }, [projectRoot, projectLoading, loadEntries, refreshGit, openFile, setCurrentFile, setFileContent]);
 
   // Clamp page input when numPages changes
   useEffect(() => {
@@ -262,16 +266,26 @@ export default function Editor() {
      // @ts-ignore - Wails runtime
      if (!window.runtime?.EventsOn) return;
 
-     // File menu events
-     // @ts-ignore
-     window.runtime.EventsOn("menu-open-project", () => {
-       setShowPicker(true);
-     });
+      // File menu events
+      // @ts-ignore
+      window.runtime.EventsOn("menu-open-project", () => {
+        setShowPicker(true);
+      });
 
-     // @ts-ignore
-     window.runtime.EventsOn("menu-go-home", () => {
-       navigate({ to: "/" });
-     });
+      // @ts-ignore
+      window.runtime.EventsOn("menu-new-file", () => {
+        handleOpenModal({ kind: "create", type: "file" });
+      });
+
+      // @ts-ignore
+      window.runtime.EventsOn("menu-new-folder", () => {
+        handleOpenModal({ kind: "create", type: "dir" });
+      });
+
+      // @ts-ignore
+      window.runtime.EventsOn("menu-go-home", () => {
+        navigate({ to: "/" });
+      });
 
      // Build menu events
      // @ts-ignore
