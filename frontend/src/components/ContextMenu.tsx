@@ -4,19 +4,12 @@ import * as React from "react"
 import { Edit2, Copy, ArrowRight, File, Folder, Trash2, Plus } from "lucide-react"
 import {
   ContextMenu as ContextMenuPrimitive,
-  ContextMenuCheckboxItem,
   ContextMenuContent,
-  ContextMenuGroup,
   ContextMenuItem,
+  ContextMenuGroup,
   ContextMenuLabel,
-  ContextMenuRadioGroup,
-  ContextMenuRadioItem,
   ContextMenuSeparator,
   ContextMenuShortcut,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
-  ContextMenuTrigger,
 } from "@/components/ui/context-menu"
 import { cn } from "@/lib/utils"
 
@@ -55,23 +48,30 @@ export default function ContextMenu({
 
   return (
     <ContextMenuPrimitive>
-      <ContextMenuTrigger>
-        <ContextMenuContent className="min-w-48">
+      <ContextMenuContent className="min-w-48" style={{ top: y, left: x }}>
+        {/* Compact header with file path */}
+        <div className="px-3 py-2 border-b bg-muted/50">
+          <p className="text-xs text-muted-foreground truncate font-mono" title={path}>
+            {filename}
+          </p>
+        </div>
+
+        <div className="p-1 space-y-1">
           {/* Edit Section */}
           <ContextMenuGroup>
             <ContextMenuLabel>Edit</ContextMenuLabel>
             <ContextMenuItem onClick={onRename}>
-              <Edit2 size={16} className="text-primary opacity-80" />
+              <Edit2 size={16} className="opacity-80" />
               <span>Rename</span>
               <ContextMenuShortcut>⌘R</ContextMenuShortcut>
             </ContextMenuItem>
             <ContextMenuItem onClick={onDuplicate}>
-              <Copy size={16} className="text-primary opacity-80" />
+              <Copy size={16} className="opacity-80" />
               <span>Duplicate</span>
               <ContextMenuShortcut>⌘D</ContextMenuShortcut>
             </ContextMenuItem>
             <ContextMenuItem onClick={onMove}>
-              <ArrowRight size={16} className="text-primary opacity-80" />
+              <ArrowRight size={16} className="opacity-80" />
               <span>Move</span>
               <ContextMenuShortcut>⌘M</ContextMenuShortcut>
             </ContextMenuItem>
@@ -81,17 +81,17 @@ export default function ContextMenu({
           {isDir && (
             <>
               <ContextMenuSeparator />
+
               <ContextMenuGroup>
                 <ContextMenuLabel>Create</ContextMenuLabel>
                 <ContextMenuItem onClick={onCreateFile}>
-                  <Plus size={16} className="text-success opacity-80" />
-                  <File size={14} className="text-success opacity-80" />
+                  <Plus size={16} className="opacity-80" />
                   <span>New File</span>
                   <ContextMenuShortcut>⌘N</ContextMenuShortcut>
                 </ContextMenuItem>
+
                 <ContextMenuItem onClick={onCreateFolder}>
-                  <Plus size={16} className="text-success opacity-80" />
-                  <Folder size={14} className="text-success opacity-80" />
+                  <Plus size={16} className="opacity-80" />
                   <span>New Folder</span>
                   <ContextMenuShortcut>⇧⌘N</ContextMenuShortcut>
                 </ContextMenuItem>
@@ -101,13 +101,17 @@ export default function ContextMenu({
 
           {/* Delete Section */}
           <ContextMenuSeparator />
-          <ContextMenuItem onClick={onDelete} className="text-destructive hover:bg-destructive/10 active:bg-destructive/25">
+
+          <ContextMenuItem 
+            onClick={onDelete} 
+            className="text-destructive focus:bg-destructive/20"
+          >
             <Trash2 size={16} />
             <span>Delete</span>
             <ContextMenuShortcut>⌫⌫</ContextMenuShortcut>
           </ContextMenuItem>
-        </ContextMenuContent>
-      </ContextMenuTrigger>
+        </div>
+      </ContextMenuContent>
     </ContextMenuPrimitive>
   );
 }
