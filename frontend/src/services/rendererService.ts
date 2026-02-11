@@ -114,7 +114,16 @@ export const rendererService = {
       return await getApp().GetBuildLog();
     },
 
-    async getRendererLogs(): Promise<string> {
-      return await getApp().GetRendererLogs();
-    },
-};
+     async getRendererLogs(): Promise<string> {
+       return await getApp().GetRendererLogs();
+     },
+
+     async cleanupDockerSystem(): Promise<void> {
+       return await getApp().CleanupDockerSystem();
+     },
+
+     async checkDiskSpace(): Promise<number> {
+       const bytes = await getApp().CheckDockerDiskSpace();
+       return bytes;
+     },
+   };

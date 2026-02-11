@@ -52,6 +52,14 @@ export const fsMove = async (from: string, toDir: string) => {
   return POST("/fs/move", { from, toDir });
 };
 
+export const fsCopy = async (from: string, to: string) => {
+  if (isWails()) {
+    const app = getWailsApp();
+    return app?.CopyFile(from, to);
+  }
+  return POST("/fs/copy", { from, to });
+};
+
 export const fsDuplicate = async (from: string, to: string) => {
   if (isWails()) {
     const app = getWailsApp();
@@ -66,4 +74,37 @@ export const fsDelete = async (path: string, recursive: boolean) => {
     return app?.DeleteFile(path, recursive);
   }
   return POST("/fs/delete", { path, recursive });
+};
+
+/**
+ * Upload files from external drag-and-drop
+ * @param files - Array of File objects from drag event
+ * @param targetPath - Target directory path
+ */
+export const fsUploadFiles = async (
+  files: File[],
+  targetPath: string
+): Promise<void> => {
+  if (isWails()) {
+    // In Wails mode, we need to read file contents and write them
+    const app = getWailsApp();
+    if (!app) throw new Error("Wails app not available");
+
+    for (const file of files) {
+      const arrayBuffer = await file.arrayBuffer();
+      const content = Buffer.from(arrayBuffer).toString("base64");
+      const targetFilePath = targetPath
+        ? `${targetPath}/${file.name}`
+        : file.name;
+
+      await app.WriteFile(targetFilePath, content);
+    }
+  } else {
+    // In web mode, use FormData
+    const formData = new FormData();
+    files.forEach((file) => formData.append("files", file));
+    formData.append("targetPath", targetPath);
+
+    await POST("/fs/upload", formData);
+  }
 };
