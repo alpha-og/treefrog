@@ -22,7 +22,7 @@ export const usePaneStore = create<PaneState>((set) => ({
     set((state) => {
       const newState = { ...state, [pane]: !state[pane] };
       // Ensure at least sidebar is visible
-      const visibleCount = Object.values(newState).filter(Boolean).length;
+      const visibleCount = [newState.sidebar, newState.editor, newState.preview].filter(Boolean).length;
       if (visibleCount === 0) {
         return { ...newState, sidebar: true };
       }
