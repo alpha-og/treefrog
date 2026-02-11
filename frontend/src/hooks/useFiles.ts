@@ -119,7 +119,9 @@ export function useFiles() {
         if (newParent !== oldParent) {
           clearFolderCache(newParent || currentDir);
         }
-        await loadEntries(currentDir);
+        // Reload the parent directory where the file was renamed
+        const dirToReload = oldParent || currentDir;
+        await loadEntries(dirToReload);
         
         if (currentFile === from) {
           setCurrentFile(to);
@@ -141,7 +143,10 @@ export function useFiles() {
         const sourceParent = getParentDir(from);
         clearFolderCache(sourceParent || currentDir);
         clearFolderCache(toDir || currentDir);
-        await loadEntries(currentDir);
+        
+        // Reload source parent directory to reflect removal
+        const sourceDirToReload = sourceParent || currentDir;
+        await loadEntries(sourceDirToReload);
         
         const fileName = from.split("/").pop() || "";
         const newPath = toDir ? `${toDir}/${fileName}` : fileName;
@@ -164,7 +169,9 @@ export function useFiles() {
         // Clear cache for destination directory
         const destParent = getParentDir(to);
         clearFolderCache(destParent || currentDir);
-        await loadEntries(currentDir);
+        // Reload destination directory to show the copy
+        const destDirToReload = destParent || currentDir;
+        await loadEntries(destDirToReload);
         log.info("File copied successfully", { from, to });
       } catch (err) {
         log.error("Failed to copy file", { from, to, error: err });
@@ -181,7 +188,9 @@ export function useFiles() {
         // Clear cache for the directory containing the duplicate
         const destParent = getParentDir(to);
         clearFolderCache(destParent || currentDir);
-        await loadEntries(currentDir);
+        // Reload the directory to show the duplicate
+        const destDirToReload = destParent || currentDir;
+        await loadEntries(destDirToReload);
       } catch (err) {
         log.error("Failed to duplicate file", { from, to, error: err });
         throw err;
