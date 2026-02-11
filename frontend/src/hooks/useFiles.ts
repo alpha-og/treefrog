@@ -16,6 +16,13 @@ import { createLogger } from "../utils/logger";
 
 const log = createLogger("Files");
 
+// Helper function to get parent directory path
+const getParentDir = (path: string): string => {
+  const parts = path.split("/").filter(Boolean);
+  if (parts.length <= 1) return "";
+  return parts.slice(0, -1).join("/");
+};
+
 export function useFiles() {
   const {
     entries,
@@ -29,6 +36,7 @@ export function useFiles() {
     setIsBinary,
     setFileContent,
     cacheFolderContents,
+    clearFolderCache,
     clear,
   } = useFileStore();
 
@@ -81,20 +89,38 @@ export function useFiles() {
     async (path: string, type: "file" | "dir") => {
       try {
         await fsCreate(path, type);
-        await loadEntries(currentDir);
+        // Get parent directory and reload it to show the new file/folder
+        const parentDir = getParentDir(path);
+        const dirToReload = parentDir || currentDir;
+        clearFolderCache(dirToReload);
+        await loadEntries(dirToReload);
+        // Also reload current dir if we're in the directory where the file was created
+        if (currentDir !== dirToReload) {
+          clearFolderCache(currentDir);
+          await loadEntries(currentDir);
+        }
       } catch (err) {
         log.error("Failed to create file/dir", { path, type, error: err });
         throw err;
       }
     },
-    [currentDir, loadEntries]
+    [currentDir, loadEntries, clearFolderCache]
   );
 
   const renameFile = useCallback(
     async (from: string, to: string) => {
       try {
         await fsRename(from, to);
+        // Both old and new paths might be in different parent directories
+        const oldParent = getParentDir(from);
+        const newParent = getParentDir(to);
+        
+        clearFolderCache(oldParent || currentDir);
+        if (newParent !== oldParent) {
+          clearFolderCache(newParent || currentDir);
+        }
         await loadEntries(currentDir);
+        
         if (currentFile === from) {
           setCurrentFile(to);
           await openFile(to);
@@ -104,14 +130,19 @@ export function useFiles() {
         throw err;
       }
     },
-    [currentDir, currentFile, loadEntries, openFile, setCurrentFile]
+    [currentDir, currentFile, loadEntries, openFile, setCurrentFile, clearFolderCache]
   );
 
   const moveFile = useCallback(
     async (from: string, toDir: string) => {
       try {
         await fsMove(from, toDir);
+        // Clear cache for source and destination directories
+        const sourceParent = getParentDir(from);
+        clearFolderCache(sourceParent || currentDir);
+        clearFolderCache(toDir || currentDir);
         await loadEntries(currentDir);
+        
         const fileName = from.split("/").pop() || "";
         const newPath = toDir ? `${toDir}/${fileName}` : fileName;
         if (currentFile === from) {
@@ -123,13 +154,16 @@ export function useFiles() {
         throw err;
       }
     },
-    [currentDir, currentFile, loadEntries, openFile, setCurrentFile]
+    [currentDir, currentFile, loadEntries, openFile, setCurrentFile, clearFolderCache]
   );
 
   const copyFile = useCallback(
     async (from: string, to: string) => {
       try {
         await fsCopy(from, to);
+        // Clear cache for destination directory
+        const destParent = getParentDir(to);
+        clearFolderCache(destParent || currentDir);
         await loadEntries(currentDir);
         log.info("File copied successfully", { from, to });
       } catch (err) {
@@ -137,27 +171,37 @@ export function useFiles() {
         throw err;
       }
     },
-    [currentDir, loadEntries]
+    [currentDir, loadEntries, clearFolderCache]
   );
 
   const duplicateFile = useCallback(
     async (from: string, to: string) => {
       try {
         await fsDuplicate(from, to);
+        // Clear cache for the directory containing the duplicate
+        const destParent = getParentDir(to);
+        clearFolderCache(destParent || currentDir);
         await loadEntries(currentDir);
       } catch (err) {
         log.error("Failed to duplicate file", { from, to, error: err });
         throw err;
       }
     },
-    [currentDir, loadEntries]
+    [currentDir, loadEntries, clearFolderCache]
   );
 
   const deleteFile = useCallback(
     async (path: string, recursive: boolean) => {
       try {
         await fsDelete(path, recursive);
-        await loadEntries(currentDir);
+        // Get parent directory and invalidate its cache
+        const parentDir = getParentDir(path);
+        const dirToReload = parentDir || currentDir;
+        clearFolderCache(dirToReload);
+        // Also clear cache for the deleted path itself (in case it's a directory)
+        clearFolderCache(path);
+        await loadEntries(dirToReload);
+        
         if (currentFile === path) {
           setCurrentFile("");
           setFileContent("");
@@ -167,13 +211,15 @@ export function useFiles() {
         throw err;
       }
     },
-    [currentDir, currentFile, loadEntries, setCurrentFile, setFileContent]
+    [currentDir, currentFile, loadEntries, setCurrentFile, setFileContent, clearFolderCache]
   );
 
   const uploadFiles = useCallback(
     async (files: File[], targetPath: string) => {
       try {
         await fsUploadFiles(files, targetPath);
+        // Clear cache for the target directory
+        clearFolderCache(targetPath || currentDir);
         await loadEntries(currentDir);
         log.info("Files uploaded successfully", { 
           count: files.length, 
@@ -184,7 +230,7 @@ export function useFiles() {
         throw err;
       }
     },
-    [currentDir, loadEntries]
+    [currentDir, loadEntries, clearFolderCache]
   );
 
   const refresh = useCallback(async () => {
