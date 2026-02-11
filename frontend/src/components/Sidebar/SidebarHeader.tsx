@@ -55,26 +55,26 @@ export function SidebarHeader({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2, ease: "easeOut" }}
       >
-        {/* Project name - fixed height */}
-        <div className="flex items-center gap-2 min-w-0 flex-1 h-6">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.2, delay: 0.05 }}
-            className="shrink-0"
-          >
-            <Folder size={14} className="text-muted-foreground" />
-          </motion.div>
-          <motion.p
-            className="text-xs text-muted-foreground truncate font-medium"
-            title={projectRoot}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-          >
-            {projectName}
-          </motion.p>
-        </div>
+       {/* Project name - fixed height */}
+         <div className="flex items-center gap-2 min-w-0 flex-1 h-6">
+           <motion.div
+             initial={{ scale: 0.8, opacity: 0 }}
+             animate={{ scale: 1, opacity: 1 }}
+             transition={{ duration: 0.2, delay: 0.05 }}
+             className="shrink-0"
+           >
+             <Folder size={16} className="text-muted-foreground" />
+           </motion.div>
+           <motion.p
+             className="text-xs text-muted-foreground truncate font-medium"
+             title={projectRoot}
+             initial={{ opacity: 0 }}
+             animate={{ opacity: 1 }}
+             transition={{ duration: 0.3, delay: 0.1 }}
+           >
+             {projectName}
+           </motion.p>
+         </div>
 
         {/* Actions - fixed height, never moves */}
         <div className="shrink-0 h-6 flex items-center">

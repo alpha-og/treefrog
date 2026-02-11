@@ -37,17 +37,17 @@ export function SidebarActions({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsOpen(!isOpen)}
-          title="More actions"
-          className={cn("h-7 w-7", isOpen && "bg-accent")}
-        >
-          <MoreHorizontal size={14} className="text-muted-foreground" />
-        </Button>
-      </DropdownMenuTrigger>
+       <DropdownMenuTrigger asChild>
+         <Button
+           variant="ghost"
+           size="icon"
+           onClick={() => setIsOpen(!isOpen)}
+           title="More actions"
+           className={cn("h-7 w-7", isOpen && "bg-accent")}
+         >
+           <MoreHorizontal size={16} className="text-muted-foreground" />
+         </Button>
+       </DropdownMenuTrigger>
       
       <DropdownMenuContent align="end" className="min-w-44">
         <DropdownMenuItem 
