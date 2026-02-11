@@ -82,13 +82,13 @@ export const TreeNode = memo(function TreeNode({
            animate={{ opacity: 1, x: 0 }}
            transition={{ duration: 0.2, ease: "easeOut" }}
          >
-        {/* Expand/collapse chevron for folders */}
-        {node.isDir && (
-          <button
-            onClick={handleChevronClick}
-            className="shrink-0 p-0.5 rounded hover:bg-accent transition-colors"
-            style={{ touchAction: 'none' }}
-          >
+         {/* Expand/collapse chevron for folders */}
+         {node.isDir && (
+           <button
+             onClick={handleChevronClick}
+             className="shrink-0 p-0.5 rounded cursor-pointer"
+             style={{ touchAction: 'none' }}
+           >
             <ChevronRight
               size={14}
               className={cn(
