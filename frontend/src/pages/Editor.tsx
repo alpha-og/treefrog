@@ -540,37 +540,37 @@ export default function Editor() {
                </>
              )}
 
-             {/* Editor */}
-             {editor && (
-               <>
-                 <motion.div
-                   className="flex-1 min-w-0"
-                   style={{
-                     width: editorWidth > 0 ? `${editorWidth}px` : undefined,
-                     flex: editorWidth > 0 ? "none" : 1,
-                   }}
-                   initial={{ opacity: 0 }}
-                   animate={{ opacity: 1 }}
-                   transition={{ duration: 0.3 }}
-                  >
-                    <EditorPane
-                      theme={resolveTheme(theme)}
-                      fileContent={fileContent}
-                      isBinary={isBinary}
-                      currentFile={currentFile}
-                      projectRoot={projectRoot}
-                      onSave={handleSave}
+              {/* Editor */}
+              {editor && (
+                <>
+                  <motion.div
+                    className="min-w-0"
+                    style={{
+                      width: preview && editorWidth > 0 ? `${editorWidth}px` : undefined,
+                      flex: preview && editorWidth > 0 ? "none" : 1,
+                    }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.3 }}
+                   >
+                     <EditorPane
+                       theme={resolveTheme(theme)}
+                       fileContent={fileContent}
+                       isBinary={isBinary}
+                       currentFile={currentFile}
+                       projectRoot={projectRoot}
+                       onSave={handleSave}
+                     />
+                  </motion.div>
+                  {preview && (
+                    <div
+                      className="w-0.5 bg-gradient-to-b from-transparent via-border to-transparent hover:bg-primary/50 cursor-col-resize transition-all duration-200 hover:w-1"
+                      onMouseDown={(e) => handleResizeStart("editor-preview", e)}
+                      style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}
                     />
-                 </motion.div>
-                 {preview && (
-                   <div
-                     className="w-0.5 bg-gradient-to-b from-transparent via-border to-transparent hover:bg-primary/50 cursor-col-resize transition-all duration-200 hover:w-1"
-                     onMouseDown={(e) => handleResizeStart("editor-preview", e)}
-                     style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}
-                   />
-                 )}
-               </>
-             )}
+                  )}
+                </>
+              )}
 
              {/* Preview */}
              {preview && (

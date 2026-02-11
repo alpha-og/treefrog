@@ -292,6 +292,15 @@ body {
   will-change: scroll-position;
 }
 
+/* Prevent horizontal scaling during pane resize */
+.tree-node-motion {
+  will-change: auto;
+}
+
+.tree-node-motion * {
+  transition-property: background-color, color, box-shadow, border-color;
+}
+
 /* ==========================================
    MENU STYLES (Unified Design Language)
    ========================================== */
