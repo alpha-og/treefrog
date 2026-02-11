@@ -4,7 +4,7 @@ import PDFPage from "./PDFPage";
 
 interface PDFPreviewProps {
   url: string;
-  zoom: number;
+  zoom: number | string;
   numPages: number;
   onNumPagesChange: (numPages: number) => void;
   registerPageRef: (page: number, el: HTMLDivElement | null) => void;

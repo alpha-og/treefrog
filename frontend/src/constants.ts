@@ -1,6 +1,8 @@
 export const API_DEFAULT = "/api";
 
 export const ZOOM_LEVELS = [
+  "fit-width",
+  "fit-height",
   0.6,
   0.8,
   1,

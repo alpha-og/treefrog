@@ -220,61 +220,87 @@ export default function PreviewPane({
          <div className="flex items-center gap-1.5 justify-center overflow-auto">
             {/* Zoom Controls */}
             <div className="flex items-center gap-1 h-7 bg-muted/40 rounded-lg p-1 border border-border hover:border-primary/20 transition-all duration-200 shrink-0">
-             {/* Zoom Out Button */}
-             <button
-               onClick={() => onZoomChange(clampZoom(zoom - 0.2))}
-               className="p-1 rounded-md hover:bg-primary/15 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
-               title="Zoom out"
-               disabled={zoom <= 0.6}
-             >
+              {/* Zoom Out Button */}
+              <button
+                onClick={() => {
+                  if (typeof zoom === 'string') {
+                    onZoomChange(1.0); // Default to 100% when zooming from fit mode
+                  } else {
+                    onZoomChange(clampZoom(zoom - 0.2));
+                  }
+                }}
+                className="p-1 rounded-md hover:bg-primary/15 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Zoom out"
+                disabled={typeof zoom === 'number' && zoom <= 0.6}
+              >
                <ZoomOut
                  size={14}
                  className="text-foreground/70 group-hover:text-primary transition-all"
                />
              </button>
 
-             {/* Zoom Dropdown */}
-             <DropdownMenuWrapper>
-               <DropdownMenuTrigger asChild>
-                 <button
-                   className="bg-transparent border-0 font-mono text-xs px-1.5 py-0.5 min-w-11 text-foreground/80 hover:bg-accent/20 transition-colors cursor-pointer rounded-md"
-                   title="Zoom options"
-                 >
-                   {Math.round(zoom * 100)}%
-                 </button>
-               </DropdownMenuTrigger>
-               <DropdownMenuContentWrapper align="center" className="w-48">
-                 <div className="px-3 py-2">
-                   <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
-                     Zoom Level
-                   </div>
-                 </div>
-                 
-                 <DropdownMenuRadioGroup value={zoom.toString()} onValueChange={(val) => onZoomChange(Number(val))}>
-                   {ZOOM_LEVELS.map((z) => (
-                     <MenuRadioItem 
-                       key={z}
-                       value={z.toString()}
-                       className={cn(
-                         "flex items-center gap-2",
-                         zoom === z && "bg-primary/20 text-primary font-semibold"
-                       )}
-                     >
-                       <span className="flex-1 font-mono text-sm">{Math.round(z * 100)}%</span>
-                       {zoom === z && <Check size={14} className="ml-auto" />}
-                     </MenuRadioItem>
-                   ))}
-                 </DropdownMenuRadioGroup>
-               </DropdownMenuContentWrapper>
-             </DropdownMenuWrapper>
+              {/* Zoom Dropdown */}
+              <DropdownMenuWrapper>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="bg-transparent border-0 font-mono text-xs px-1.5 py-0.5 min-w-11 text-foreground/80 hover:bg-accent/20 transition-colors cursor-pointer rounded-md"
+                    title="Zoom options"
+                  >
+                    {typeof zoom === 'string' ? 
+                      (zoom === 'fit-width' ? 'Fit W' : zoom === 'fit-height' ? 'Fit H' : zoom) :
+                      `${Math.round(zoom * 100)}%`
+                    }
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContentWrapper align="center" className="w-48">
+                  <div className="px-3 py-2">
+                    <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+                      Zoom Level
+                    </div>
+                  </div>
+                  
+                  <DropdownMenuRadioGroup value={zoom.toString()} onValueChange={(val) => {
+                    if (val === 'fit-width' || val === 'fit-height') {
+                      onZoomChange(val as any);
+                    } else {
+                      onZoomChange(Number(val));
+                    }
+                  }}>
+                    {ZOOM_LEVELS.map((z) => (
+                      <MenuRadioItem 
+                        key={z}
+                        value={z.toString()}
+                        className={cn(
+                          "flex items-center gap-2",
+                          zoom === z && "bg-primary/20 text-primary font-semibold"
+                        )}
+                      >
+                        <span className="flex-1 font-mono text-sm">
+                          {typeof z === 'string' ? 
+                            (z === 'fit-width' ? 'Fit to Width' : z === 'fit-height' ? 'Fit to Height' : z) :
+                            `${Math.round(z * 100)}%`
+                          }
+                        </span>
+                        {zoom === z && <Check size={14} className="ml-auto" />}
+                      </MenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContentWrapper>
+              </DropdownMenuWrapper>
 
-             {/* Zoom In Button */}
-             <button
-               onClick={() => onZoomChange(clampZoom(zoom + 0.2))}
-               className="p-1 rounded-md hover:bg-primary/15 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
-               title="Zoom in"
-               disabled={zoom >= 2.4}
-             >
+              {/* Zoom In Button */}
+              <button
+                onClick={() => {
+                  if (typeof zoom === 'string') {
+                    onZoomChange(1.2); // Default to 120% when zooming from fit mode
+                  } else {
+                    onZoomChange(clampZoom(zoom + 0.2));
+                  }
+                }}
+                className="p-1 rounded-md hover:bg-primary/15 transition-all duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Zoom in"
+                disabled={typeof zoom === 'number' && zoom >= 2.4}
+              >
                <ZoomIn
                  size={14}
                  className="text-foreground/70 group-hover:text-primary transition-all"
