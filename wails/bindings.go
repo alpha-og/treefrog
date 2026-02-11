@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -1444,4 +1445,20 @@ func (a *App) IsRemoteCompilerHealthy() bool {
 		return false
 	}
 	return a.remoteMonitor.IsHealthy()
+}
+
+// CleanupDockerSystem performs cleanup of unused Docker resources
+func (a *App) CleanupDockerSystem() error {
+	if a.dockerMgr == nil {
+		return errors.New("docker manager not initialized")
+	}
+	return a.dockerMgr.CleanupDockerSystem(context.Background())
+}
+
+// CheckDockerDiskSpace checks available disk space for Docker operations
+func (a *App) CheckDockerDiskSpace() (int64, error) {
+	if a.dockerMgr == nil {
+		return 0, errors.New("docker manager not initialized")
+	}
+	return a.dockerMgr.CheckDiskSpace()
 }

@@ -23,6 +23,13 @@ func (a *App) menu() *menu.Menu {
 		runtime2.EventsEmit(a.ctx, "menu-open-project", nil)
 	})
 	FileMenu.AddSeparator()
+	FileMenu.AddText("New File", keys.CmdOrCtrl("n"), func(cd *menu.CallbackData) {
+		runtime2.EventsEmit(a.ctx, "menu-new-file", nil)
+	})
+	FileMenu.AddText("New Folder", keys.Combo("n", keys.CmdOrCtrlKey, keys.ShiftKey), func(cd *menu.CallbackData) {
+		runtime2.EventsEmit(a.ctx, "menu-new-folder", nil)
+	})
+	FileMenu.AddSeparator()
 	FileMenu.AddText("Go to Home", keys.CmdOrCtrl("h"), func(cd *menu.CallbackData) {
 		runtime2.EventsEmit(a.ctx, "menu-go-home", nil)
 	})

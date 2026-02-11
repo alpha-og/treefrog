@@ -79,9 +79,21 @@ func (im *ImageManager) isCacheValid() bool {
 func (im *ImageManager) pullFromGHCR(ctx context.Context) error {
 	im.logger.Info("Pulling image from GHCR...")
 
+	// Cleanup any partial downloads first
+	if err := im.cleanupPartialPulls(ctx); err != nil {
+		im.logger.WithError(err).Warn("Failed to cleanup partial pulls")
+	}
+
 	var lastErr error
-	for attempt := 0; attempt < 3; attempt++ {
-		cmd := exec.CommandContext(ctx, "docker", "pull", GHCRImageRef)
+	maxRetries := 3
+	baseDelay := time.Second
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		// Use longer timeout for large images
+		pullCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+		defer cancel()
+
+		cmd := exec.CommandContext(pullCtx, "docker", "pull", GHCRImageRef)
 		output, err := cmd.CombinedOutput()
 
 		if err == nil {
@@ -92,21 +104,36 @@ func (im *ImageManager) pullFromGHCR(ctx context.Context) error {
 				return fmt.Errorf("failed to tag image: %w", err)
 			}
 
+			// Verify image integrity
+			if err := im.verifyImageIntegrity(ctx); err != nil {
+				im.logger.WithError(err).Error("Image verification failed, cleaning up...")
+				im.removeImage(ctx, LocalImageName)
+				return fmt.Errorf("image verification failed: %w", err)
+			}
+
 			im.cache.LastPull = time.Now()
 			im.cache.PullSource = GHCRImageRef
-			im.logger.Info("Successfully pulled from GHCR")
+			im.logger.Info("Successfully pulled and verified from GHCR")
 			return nil
 		}
 
 		lastErr = fmt.Errorf("pull failed: %w\nOutput: %s", err, output)
 		im.logger.Warnf("Pull attempt %d failed: %v", attempt+1, err)
 
-		if attempt < 2 {
-			time.Sleep(time.Duration(attempt+1) * 2 * time.Second)
+		// Check if network error - use exponential backoff
+		if im.isNetworkError(err) {
+			// Progressive backoff: 5s, 15s, 30s
+			delay := time.Duration(attempt+1) * baseDelay * 5
+			im.logger.Infof("Network error detected, waiting %v before retry...", delay)
+			time.Sleep(delay)
+		} else {
+			// Non-network error - shorter backoff
+			delay := time.Duration(attempt+1) * 2 * time.Second
+			time.Sleep(delay)
 		}
 	}
 
-	return fmt.Errorf("failed after 3 attempts: %w", lastErr)
+	return fmt.Errorf("failed after %d attempts: %w", maxRetries, lastErr)
 }
 
 func (im *ImageManager) buildFromDockerfile(ctx context.Context) error {
@@ -172,7 +199,16 @@ func (im *ImageManager) pullCustom(ctx context.Context) error {
 
 	im.logger.Infof("Pulling from custom registry: %s", im.config.CustomRegistry)
 
-	cmd := exec.CommandContext(ctx, "docker", "pull", im.config.CustomRegistry)
+	// Cleanup any partial downloads first
+	if err := im.cleanupPartialPulls(ctx); err != nil {
+		im.logger.WithError(err).Warn("Failed to cleanup partial pulls")
+	}
+
+	// Use longer timeout for custom registry pulls
+	pullCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	defer cancel()
+
+	cmd := exec.CommandContext(pullCtx, "docker", "pull", im.config.CustomRegistry)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("pull failed: %w\nOutput: %s", err, output)
@@ -185,9 +221,16 @@ func (im *ImageManager) pullCustom(ctx context.Context) error {
 		return fmt.Errorf("failed to tag custom image: %w", err)
 	}
 
+	// Verify image integrity
+	if err := im.verifyImageIntegrity(ctx); err != nil {
+		im.logger.WithError(err).Error("Custom image verification failed, cleaning up...")
+		im.removeImage(ctx, LocalImageName)
+		return fmt.Errorf("custom image verification failed: %w", err)
+	}
+
 	im.cache.LastPull = time.Now()
 	im.cache.PullSource = im.config.CustomRegistry
-	im.logger.Info("Successfully pulled from custom registry")
+	im.logger.Info("Successfully pulled and verified from custom registry")
 	return nil
 }
 
@@ -235,6 +278,92 @@ func (im *ImageManager) getDockerfilePath() (string, error) {
 func (im *ImageManager) ImageExists(ctx context.Context) bool {
 	cmd := exec.CommandContext(ctx, "docker", "image", "inspect", LocalImageName)
 	return cmd.Run() == nil
+}
+
+// cleanupPartialPulls removes dangling images from failed pulls
+func (im *ImageManager) cleanupPartialPulls(ctx context.Context) error {
+	im.logger.Info("Cleaning up partial pulls...")
+	cmd := exec.CommandContext(ctx, "docker", "image", "prune", "-f")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		im.logger.WithError(err).WithField("output", output).Warn("Image prune had warnings")
+	}
+	im.logger.Info("Partial pulls cleaned up")
+	return nil
+}
+
+// verifyImageIntegrity checks if downloaded image is valid
+func (im *ImageManager) verifyImageIntegrity(ctx context.Context) error {
+	im.logger.Info("Verifying image integrity...")
+
+	// Check if image exists and get details
+	cmd := exec.CommandContext(ctx, "docker", "inspect", "--format={{.Id}}", LocalImageName)
+	output, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("image does not exist or is corrupted: %w", err)
+	}
+
+	imageID := strings.TrimSpace(string(output))
+	if imageID == "" {
+		return errors.New("image ID is empty - likely corrupted")
+	}
+
+	// Additional integrity check - try to get image size
+	sizeCmd := exec.CommandContext(ctx, "docker", "inspect", "--format={{.Size}}", LocalImageName)
+	sizeOutput, sizeErr := sizeCmd.Output()
+	if sizeErr != nil {
+		im.logger.WithError(sizeErr).Warn("Could not verify image size")
+	} else {
+		size := strings.TrimSpace(string(sizeOutput))
+		im.logger.WithField("size", size).Debug("Image size verified")
+	}
+
+	im.logger.WithField("image_id", imageID).Info("Image integrity verified")
+	return nil
+}
+
+// removeImage forcefully removes an image
+func (im *ImageManager) removeImage(ctx context.Context, imageName string) error {
+	im.logger.WithField("image", imageName).Info("Removing image...")
+	cmd := exec.CommandContext(ctx, "docker", "rmi", "-f", imageName)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to remove image: %w\nOutput: %s", err, output)
+	}
+	im.logger.WithField("image", imageName).Info("Image removed successfully")
+	return nil
+}
+
+// isNetworkError checks if error is network-related
+func (im *ImageManager) isNetworkError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errStr := err.Error()
+	networkIndicators := []string{
+		"connection refused",
+		"connection timeout",
+		"network is unreachable",
+		"no such host",
+		"timeout awaiting response",
+		"temporary failure in name resolution",
+		"connection reset",
+		"broken pipe",
+		" tls: ",
+		" x509: ",
+		"unknown authority",
+		"dial tcp: lookup",
+		"i/o timeout",
+	}
+
+	for _, indicator := range networkIndicators {
+		if strings.Contains(strings.ToLower(errStr), indicator) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (im *ImageManager) runCommand(cmd *exec.Cmd, description string) error {

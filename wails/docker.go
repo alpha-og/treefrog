@@ -132,8 +132,10 @@ func (dm *DockerManager) Start(ctx context.Context) error {
 		return err
 	}
 
-	// Stop any existing container
-	dm.stopContainer(ctx)
+	// Force remove any existing container (including zombie containers)
+	if err := dm.forceRemoveContainer(ctx); err != nil {
+		dm.logger.WithError(err).Warn("Failed to remove existing container")
+	}
 
 	// Start container with retry
 	if err := dm.startContainerWithRetry(ctx, port); err != nil {
@@ -273,6 +275,33 @@ func (dm *DockerManager) Stop(ctx context.Context) error {
 
 	dm.isRunning = false
 	dm.logger.Info("Container stopped")
+	return nil
+}
+
+func (dm *DockerManager) forceRemoveContainer(ctx context.Context) error {
+	dm.logger.Info("Force removing any existing container...")
+
+	// Try graceful stop first
+	dm.stopContainer(ctx)
+
+	// Force remove container
+	rmCmd := exec.CommandContext(ctx, "docker", "rm", "-f", "treefrog-renderer")
+	rmOutput, rmErr := rmCmd.CombinedOutput()
+	dm.logs.WriteString(string(rmOutput))
+
+	if rmErr != nil {
+		// Check if container exists
+		inspectCmd := exec.CommandContext(ctx, "docker", "inspect", "treefrog-renderer")
+		if inspectCmd.Run() != nil {
+			// Container doesn't exist, which is fine
+			dm.logger.Info("No existing container to remove")
+			return nil
+		}
+		dm.logger.WithError(rmErr).WithField("output", string(rmOutput)).Error("Failed to remove container")
+		return fmt.Errorf("failed to force remove container: %w", rmErr)
+	}
+
+	dm.logger.Info("Container force removed successfully")
 	return nil
 }
 
@@ -446,4 +475,81 @@ func isValidRemoteURL(urlStr string) bool {
 	}
 
 	return true
+}
+
+// CheckDiskSpace checks available disk space for Docker operations
+func (dm *DockerManager) CheckDiskSpace() (int64, error) {
+	cmd := exec.Command("df", "-h", "/var/lib/docker")
+	output, err := cmd.Output()
+	if err != nil {
+		// Try fallback to root partition
+		cmd = exec.Command("df", "/", "-h")
+		output, err = cmd.Output()
+		if err != nil {
+			return 0, fmt.Errorf("failed to check disk space: %w", err)
+		}
+	}
+
+	lines := strings.Split(string(output), "\n")
+	if len(lines) < 2 {
+		return 0, errors.New("failed to parse disk space output")
+	}
+
+	// Parse the second line (actual disk info)
+	fields := strings.Fields(lines[1])
+	if len(fields) < 4 {
+		return 0, errors.New("failed to parse disk space fields")
+	}
+
+	available := fields[3]
+	// Remove 'G', 'M', 'K' suffix and convert to bytes
+	var availableBytes int64
+	if strings.HasSuffix(available, "G") {
+		var gigabytes float64
+		fmt.Sscanf(available[:len(available)-1], "%f", &gigabytes)
+		availableBytes = int64(gigabytes * 1024 * 1024 * 1024)
+	} else if strings.HasSuffix(available, "M") {
+		var megabytes float64
+		fmt.Sscanf(available[:len(available)-1], "%f", &megabytes)
+		availableBytes = int64(megabytes * 1024 * 1024)
+	} else if strings.HasSuffix(available, "K") {
+		var kilobytes float64
+		fmt.Sscanf(available[:len(available)-1], "%f", &kilobytes)
+		availableBytes = int64(kilobytes * 1024)
+	} else {
+		// Assume bytes
+		fmt.Sscanf(available, "%d", &availableBytes)
+	}
+
+	dm.logger.WithField("available_bytes", availableBytes).Debug("Disk space check")
+	return availableBytes, nil
+}
+
+// CleanupDockerSystem performs cleanup of unused Docker resources
+func (dm *DockerManager) CleanupDockerSystem(ctx context.Context) error {
+	dm.logger.Info("Performing Docker system cleanup...")
+
+	// Cleanup stopped containers
+	containerCmd := exec.CommandContext(ctx, "docker", "container", "prune", "-f")
+	output, err := containerCmd.CombinedOutput()
+	if err != nil {
+		dm.logger.WithError(err).WithField("output", string(output)).Warn("Container prune had warnings")
+	}
+
+	// Cleanup unused images
+	imageCmd := exec.CommandContext(ctx, "docker", "image", "prune", "-f")
+	output, err = imageCmd.CombinedOutput()
+	if err != nil {
+		dm.logger.WithError(err).WithField("output", string(output)).Warn("Image prune had warnings")
+	}
+
+	// Cleanup unused networks (safe, won't affect active networks)
+	networkCmd := exec.CommandContext(ctx, "docker", "network", "prune", "-f")
+	output, err = networkCmd.CombinedOutput()
+	if err != nil {
+		dm.logger.WithError(err).WithField("output", string(output)).Warn("Network prune had warnings")
+	}
+
+	dm.logger.Info("Docker system cleanup completed")
+	return nil
 }
