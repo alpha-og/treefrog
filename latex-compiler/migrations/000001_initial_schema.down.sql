@@ -1,0 +1,10 @@
+DROP INDEX IF EXISTS idx_coupons_code;
+DROP TABLE IF EXISTS coupons;
+DROP INDEX IF EXISTS idx_builds_created;
+DROP INDEX IF EXISTS idx_builds_expires;
+DROP INDEX IF EXISTS idx_builds_status;
+DROP INDEX IF EXISTS idx_builds_user;
+DROP TABLE IF EXISTS builds;
+DROP INDEX IF EXISTS idx_users_razorpay_customer;
+DROP INDEX IF EXISTS idx_users_clerk_id;
+DROP TABLE IF EXISTS users;
