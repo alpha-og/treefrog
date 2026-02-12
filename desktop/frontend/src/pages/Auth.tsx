@@ -1,13 +1,12 @@
 import { useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { useAuth } from '@clerk/clerk-react'
+import { useAuth, useSignIn } from '@clerk/clerk-react'
 import { motion } from 'motion/react'
 import { LogIn } from 'lucide-react'
 import FramelessWindow from '@/components/FramelessWindow'
 import { Button } from '@/components/common'
 import { GlowCard } from '@/components/common'
 import { createLogger } from '@/utils/logger'
-import { isWails, getWailsApp } from '@/utils/env'
 import { useAuthStore } from '@/stores/authStore'
 
 const log = createLogger('Auth')
@@ -15,7 +14,8 @@ const log = createLogger('Auth')
 export default function AuthPage() {
   const navigate = useNavigate()
   const { isSignedIn } = useAuth()
-  const { setUser, setSessionToken } = useAuthStore()
+  const { signIn, isLoaded } = useSignIn()
+  const { setUser, setSessionToken, isFirstLaunch, markFirstLaunchComplete } = useAuthStore()
 
   useEffect(() => {
     if (isSignedIn) {
@@ -26,21 +26,36 @@ export default function AuthPage() {
     }
   }, [isSignedIn, navigate])
 
+  // On first launch, automatically trigger OAuth
+  useEffect(() => {
+    if (isFirstLaunch && isLoaded && signIn && !isSignedIn) {
+      log.debug('First launch detected - auto-triggering OAuth sign-in')
+      markFirstLaunchComplete()
+      
+      signIn.authenticateWithRedirect({
+        strategy: 'oauth_google',
+        redirectUrl: '/auth/callback',
+        redirectUrlComplete: '/'
+      }).catch(err => {
+        const message = err instanceof Error ? err.message : 'Failed to start sign in'
+        log.error('Auto sign-in error on first launch', { error: message })
+      })
+    }
+  }, [isFirstLaunch, isLoaded, signIn, isSignedIn, markFirstLaunchComplete])
+
   const handleSignIn = async () => {
+    if (!isLoaded || !signIn) {
+      log.warn('SignIn not loaded yet')
+      return
+    }
+
     try {
-      log.debug('Starting sign in flow with Clerk')
-      if (isWails()) {
-        const app = getWailsApp()
-        if (app?.OpenExternalURL) {
-          // Open Clerk login in external browser
-          const authUrl = `http://localhost:5173/auth/callback`
-          log.debug('Opening Clerk login in external browser', { authUrl })
-          await app.OpenExternalURL(authUrl)
-        }
-      } else {
-        // Web-only mode: redirect to Clerk login callback
-        window.location.href = '/auth/callback'
-      }
+      log.debug('User clicked sign-in, starting OAuth with Google')
+      await signIn.authenticateWithRedirect({
+        strategy: 'oauth_google',
+        redirectUrl: '/auth/callback',
+        redirectUrlComplete: '/'
+      })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to start sign in'
       log.error('Sign in error', { error: message })

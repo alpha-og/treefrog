@@ -18,8 +18,15 @@ const log = createLogger("Router");
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isSignedIn } = useClerkAuth();
-  const { isLoggedIn } = useAuthStore();
+  const { isLoggedIn, isFirstLaunch } = useAuthStore();
 
+  // If it's first launch and user is not signed in, redirect to auth
+  if (isFirstLaunch && !isSignedIn && !isLoggedIn) {
+    log.debug("First launch detected and user not authenticated, redirecting to auth");
+    return <Navigate to="/auth" />;
+  }
+
+  // If user is not authenticated at all, redirect to auth
   if (!isSignedIn && !isLoggedIn) {
     log.debug("User not authenticated, redirecting to auth");
     return <Navigate to="/auth" />;
