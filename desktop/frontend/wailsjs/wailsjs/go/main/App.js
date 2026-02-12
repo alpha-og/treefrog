@@ -34,6 +34,22 @@ export function ExportSource() {
   return window['go']['main']['App']['ExportSource']();
 }
 
+export function GetAuthSignInURL() {
+  return window['go']['main']['App']['GetAuthSignInURL']();
+}
+
+export function GetAuthSignUpURL() {
+  return window['go']['main']['App']['GetAuthSignUpURL']();
+}
+
+export function GetAuthState() {
+  return window['go']['main']['App']['GetAuthState']();
+}
+
+export function GetAuthUser() {
+  return window['go']['main']['App']['GetAuthUser']();
+}
+
 export function GetBuildLog() {
   return window['go']['main']['App']['GetBuildLog']();
 }
@@ -78,6 +94,10 @@ export function GetRendererStatus() {
   return window['go']['main']['App']['GetRendererStatus']();
 }
 
+export function GetSessionToken() {
+  return window['go']['main']['App']['GetSessionToken']();
+}
+
 export function GitCommit(arg1, arg2, arg3) {
   return window['go']['main']['App']['GitCommit'](arg1, arg2, arg3);
 }
@@ -94,6 +114,18 @@ export function GitStatus() {
   return window['go']['main']['App']['GitStatus']();
 }
 
+export function HandleAuthCallback(arg1) {
+  return window['go']['main']['App']['HandleAuthCallback'](arg1);
+}
+
+export function HandleAuthCallbackWithUser(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['HandleAuthCallbackWithUser'](arg1, arg2, arg3, arg4);
+}
+
+export function IsAuthenticated() {
+  return window['go']['main']['App']['IsAuthenticated']();
+}
+
 export function IsRemoteCompilerHealthy() {
   return window['go']['main']['App']['IsRemoteCompilerHealthy']();
 }
@@ -104,6 +136,10 @@ export function ListFiles(arg1) {
 
 export function MoveFile(arg1, arg2) {
   return window['go']['main']['App']['MoveFile'](arg1, arg2);
+}
+
+export function OpenAuthURL() {
+  return window['go']['main']['App']['OpenAuthURL']();
 }
 
 export function OpenProjectDialog() {
@@ -124,6 +160,10 @@ export function ResetCompilationMetrics() {
 
 export function RestartRenderer() {
   return window['go']['main']['App']['RestartRenderer']();
+}
+
+export function SetAuthUser(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SetAuthUser'](arg1, arg2, arg3);
 }
 
 export function SetCompilerConfig(arg1, arg2) {
@@ -156,6 +196,10 @@ export function SetRendererRemoteToken(arg1) {
 
 export function SetRendererRemoteURL(arg1) {
   return window['go']['main']['App']['SetRendererRemoteURL'](arg1);
+}
+
+export function SignOut() {
+  return window['go']['main']['App']['SignOut']();
 }
 
 export function StartRenderer() {

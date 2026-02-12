@@ -18,6 +18,14 @@ export function ExportPDF():Promise<string>;
 
 export function ExportSource():Promise<string>;
 
+export function GetAuthSignInURL():Promise<string>;
+
+export function GetAuthSignUpURL():Promise<string>;
+
+export function GetAuthState():Promise<main.AuthState>;
+
+export function GetAuthUser():Promise<main.AuthUser>;
+
 export function GetBuildLog():Promise<string>;
 
 export function GetBuildStatus():Promise<main.BuildStatus>;
@@ -40,6 +48,8 @@ export function GetRendererLogs():Promise<string>;
 
 export function GetRendererStatus():Promise<main.RendererStatus>;
 
+export function GetSessionToken():Promise<string>;
+
 export function GitCommit(arg1:string,arg2:Array<string>,arg3:boolean):Promise<void>;
 
 export function GitPull(arg1:string):Promise<void>;
@@ -48,11 +58,19 @@ export function GitPush(arg1:string):Promise<void>;
 
 export function GitStatus():Promise<main.GitStatus>;
 
+export function HandleAuthCallback(arg1:string):Promise<void>;
+
+export function HandleAuthCallbackWithUser(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
+
+export function IsAuthenticated():Promise<boolean>;
+
 export function IsRemoteCompilerHealthy():Promise<boolean>;
 
 export function ListFiles(arg1:string):Promise<Array<main.FileEntry>>;
 
 export function MoveFile(arg1:string,arg2:string):Promise<void>;
+
+export function OpenAuthURL():Promise<void>;
 
 export function OpenProjectDialog():Promise<main.ProjectInfo>;
 
@@ -63,6 +81,8 @@ export function RenameFile(arg1:string,arg2:string):Promise<void>;
 export function ResetCompilationMetrics():Promise<void>;
 
 export function RestartRenderer():Promise<void>;
+
+export function SetAuthUser(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function SetCompilerConfig(arg1:string,arg2:string):Promise<void>;
 
@@ -79,6 +99,8 @@ export function SetRendererPort(arg1:number):Promise<void>;
 export function SetRendererRemoteToken(arg1:string):Promise<void>;
 
 export function SetRendererRemoteURL(arg1:string):Promise<void>;
+
+export function SignOut():Promise<void>;
 
 export function StartRenderer():Promise<void>;
 

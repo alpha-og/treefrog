@@ -88,6 +88,8 @@ type App struct {
 	buildWg       sync.WaitGroup
 	metrics       *MetricsCollector
 	remoteMonitor *RemoteCompilerMonitor
+	authMu        sync.RWMutex
+	authConfig    *authConfig
 }
 
 // NewApp creates a new App application struct
@@ -102,6 +104,10 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.loadConfig()
+
+	// Initialize auth
+	a.initAuth()
+
 	if a.config.ProjectRoot != "" {
 		a.setRoot(a.config.ProjectRoot)
 	}
