@@ -16,6 +16,7 @@ export interface AuthState {
   isLoading: boolean
   error: string | null
   isFirstLaunch: boolean
+  _hasHydrated: boolean
 
   // Actions
   setUser: (user: AuthState['user']) => void
@@ -24,6 +25,7 @@ export interface AuthState {
   setError: (error: string | null) => void
   logout: () => void
   markFirstLaunchComplete: () => void
+  setHasHydrated: (state: boolean) => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -35,6 +37,7 @@ export const useAuthStore = create<AuthState>()(
       isLoading: false,
       error: null,
       isFirstLaunch: true,
+      _hasHydrated: false,
 
       setUser: (user) => {
         set({ user, isLoggedIn: !!user })
@@ -70,7 +73,9 @@ export const useAuthStore = create<AuthState>()(
       markFirstLaunchComplete: () => {
         set({ isFirstLaunch: false })
         log.debug('First launch completed')
-      }
+      },
+
+      setHasHydrated: (state) => set({ _hasHydrated: state })
     }),
     {
       name: 'treefrog-auth',
@@ -78,7 +83,11 @@ export const useAuthStore = create<AuthState>()(
         sessionToken: state.sessionToken,
         user: state.user,
         isFirstLaunch: state.isFirstLaunch
-      })
+      }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true)
+        log.debug('Auth store hydrated from localStorage')
+      }
     }
   )
 )

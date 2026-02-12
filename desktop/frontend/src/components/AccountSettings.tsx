@@ -12,7 +12,7 @@ export default function AccountSettings() {
   const { signIn, isLoaded } = useSignIn();
   const { markFirstLaunchComplete } = useAuthStore();
 
-  const handleSignIn = async () => {
+  const handleSignIn = () => {
     if (!isLoaded || !signIn) {
       log.warn('SignIn not loaded yet');
       return;
@@ -21,7 +21,7 @@ export default function AccountSettings() {
     try {
       log.debug('Starting OAuth sign-in from Account settings');
       markFirstLaunchComplete();
-      await signIn.authenticateWithRedirect({
+      signIn.authenticateWithRedirect({
         strategy: 'oauth_google',
         redirectUrl: '/auth/callback',
         redirectUrlComplete: '/'
