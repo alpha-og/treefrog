@@ -17,6 +17,11 @@ export default function AuthPage() {
   const { signIn, isLoaded } = useSignIn()
   const { setUser, setSessionToken, isFirstLaunch, markFirstLaunchComplete } = useAuthStore()
 
+  // Debug logging
+  useEffect(() => {
+    log.debug('Auth page state', { isLoaded, signInExists: !!signIn, isSignedIn, isFirstLaunch })
+  }, [isLoaded, signIn, isSignedIn, isFirstLaunch])
+
   useEffect(() => {
     if (isSignedIn) {
       // Already logged in, redirect to home
@@ -32,18 +37,20 @@ export default function AuthPage() {
       log.debug('First launch detected - auto-triggering OAuth sign-in')
       markFirstLaunchComplete()
       
-      signIn.authenticateWithRedirect({
-        strategy: 'oauth_google',
-        redirectUrl: '/auth/callback',
-        redirectUrlComplete: '/'
-      }).catch(err => {
+      try {
+        signIn.authenticateWithRedirect({
+          strategy: 'oauth_google',
+          redirectUrl: '/auth/callback',
+          redirectUrlComplete: '/'
+        })
+      } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to start sign in'
         log.error('Auto sign-in error on first launch', { error: message })
-      })
+      }
     }
   }, [isFirstLaunch, isLoaded, signIn, isSignedIn, markFirstLaunchComplete])
 
-  const handleSignIn = async () => {
+  const handleSignIn = () => {
     if (!isLoaded || !signIn) {
       log.warn('SignIn not loaded yet')
       return
@@ -51,7 +58,7 @@ export default function AuthPage() {
 
     try {
       log.debug('User clicked sign-in, starting OAuth with Google')
-      await signIn.authenticateWithRedirect({
+      signIn.authenticateWithRedirect({
         strategy: 'oauth_google',
         redirectUrl: '/auth/callback',
         redirectUrlComplete: '/'
