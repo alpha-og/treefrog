@@ -4,70 +4,58 @@ import { createLogger } from '@/utils/logger'
 
 const log = createLogger('AuthStore')
 
+export type AuthMode = 'clerk' | 'guest'
+
+export interface User {
+  id: string
+  email?: string
+  name?: string
+  imageUrl?: string
+}
+
 export interface AuthState {
-  user: {
-    id: string
-    email: string
-    name: string
-    profileImageUrl?: string
-  } | null
-  sessionToken: string | null
-  isLoggedIn: boolean
-  isLoading: boolean
-  error: string | null
+  mode: AuthMode
   isFirstLaunch: boolean
+  sessionToken: string | null
+  user: User | null
   _hasHydrated: boolean
 
-  // Actions
-  setUser: (user: AuthState['user']) => void
+  isGuest: () => boolean
+  isClerk: () => boolean
+  
+  setMode: (mode: AuthMode) => void
   setSessionToken: (token: string | null) => void
-  setLoading: (loading: boolean) => void
-  setError: (error: string | null) => void
-  logout: () => void
+  setUser: (user: User | null) => void
   markFirstLaunchComplete: () => void
   setHasHydrated: (state: boolean) => void
+  reset: () => void
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
-      user: null,
-      sessionToken: null,
-      isLoggedIn: false,
-      isLoading: false,
-      error: null,
+    (set, get) => ({
+      mode: 'guest',
       isFirstLaunch: true,
+      sessionToken: null,
+      user: null,
       _hasHydrated: false,
 
-      setUser: (user) => {
-        set({ user, isLoggedIn: !!user })
-        log.debug('User set', { userId: user?.id })
+      isGuest: () => get().mode === 'guest',
+      isClerk: () => get().mode === 'clerk',
+
+      setMode: (mode) => {
+        set({ mode })
+        log.debug('Auth mode set', { mode })
       },
 
       setSessionToken: (token) => {
         set({ sessionToken: token })
-        if (token) {
-          log.debug('Session token stored')
-        }
+        log.debug('Session token updated', { hasToken: !!token })
       },
 
-      setLoading: (loading) => set({ isLoading: loading }),
-
-      setError: (error) => {
-        set({ error })
-        if (error) {
-          log.error('Auth error', { error })
-        }
-      },
-
-      logout: () => {
-        set({
-          user: null,
-          sessionToken: null,
-          isLoggedIn: false,
-          error: null
-        })
-        log.debug('User logged out')
+      setUser: (user) => {
+        set({ user })
+        log.debug('User updated', { userId: user?.id })
       },
 
       markFirstLaunchComplete: () => {
@@ -75,19 +63,28 @@ export const useAuthStore = create<AuthState>()(
         log.debug('First launch completed')
       },
 
-      setHasHydrated: (state) => set({ _hasHydrated: state })
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
+
+      reset: () => {
+        set({
+          mode: 'guest',
+          isFirstLaunch: false,
+          sessionToken: null,
+          user: null,
+        })
+        log.debug('Auth store reset')
+      },
     }),
     {
       name: 'treefrog-auth',
       partialize: (state) => ({
-        sessionToken: state.sessionToken,
-        user: state.user,
-        isFirstLaunch: state.isFirstLaunch
+        mode: state.mode,
+        isFirstLaunch: state.isFirstLaunch,
       }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true)
         log.debug('Auth store hydrated from localStorage')
-      }
+      },
     }
   )
 )

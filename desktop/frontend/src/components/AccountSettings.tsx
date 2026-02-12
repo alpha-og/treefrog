@@ -1,36 +1,122 @@
-import { useAuth as useClerkAuth } from "@clerk/clerk-react";
 import { useNavigate } from "@tanstack/react-router";
-import { LogOut, LogIn } from "lucide-react";
+import { motion } from "motion/react";
+import { LogOut, Cloud, HardDrive, Check, ExternalLink, RefreshCw } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { Button } from "@/components/common";
-import { motion } from "motion/react";
 import { createLogger } from "@/utils/logger";
+import { toast } from "sonner";
+import { useState, useEffect } from "react";
 
 const log = createLogger('AccountSettings');
 
+declare global {
+  interface Window {
+    go?: {
+      main?: {
+        App?: {
+          OpenAuthURL: () => Promise<void>
+          SignOut: () => Promise<void>
+          GetAuthState: () => Promise<{
+            isAuthenticated: boolean
+            user?: { id: string; email: string; firstName: string }
+          }>
+        }
+      }
+    }
+    runtime?: {
+      EventsOn: (event: string, callback: (data: any) => void) => void
+    }
+  }
+}
+
 export default function AccountSettings() {
   const navigate = useNavigate();
-  const { user: clerkUser, signOut, isSignedIn } = useClerkAuth();
-  const { markFirstLaunchComplete } = useAuthStore();
+  const { mode, user, setMode, setUser } = useAuthStore();
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSignIn = () => {
-    log.debug('Navigating to auth page to sign in');
-    markFirstLaunchComplete();
-    navigate({ to: '/auth' });
+  useEffect(() => {
+    const EventsOn = window.runtime?.EventsOn;
+    if (EventsOn) {
+      const unsubscribe = EventsOn("auth:callback", (data: any) => {
+        log.info("Auth callback received", data);
+        if (data?.success) {
+          // If user info is provided in the callback, use it
+          if (data?.user) {
+            setMode('clerk');
+            setUser({
+              id: data.user.id || '',
+              email: data.user.email || '',
+              name: data.user.name || '',
+            });
+            toast.success("Signed in successfully");
+          } else {
+            // Otherwise refresh from backend
+            refreshAuthState();
+            toast.success("Signed in successfully");
+          }
+        } else if (data?.error) {
+          toast.error(`Sign in failed: ${data.error}`);
+        }
+      });
+      return () => {
+        if (typeof unsubscribe === 'function') unsubscribe();
+      };
+    }
+  }, [setMode, setUser]);
+
+  const refreshAuthState = async () => {
+    try {
+      const getAuthState = window.go?.main?.App?.GetAuthState;
+      if (getAuthState) {
+        const state = await getAuthState();
+        if (state?.isAuthenticated && state?.user) {
+          setMode('clerk');
+          setUser({
+            id: state.user.id,
+            email: state.user.email,
+            name: state.user.firstName,
+          });
+        }
+      }
+    } catch (error) {
+      log.warn("Could not refresh auth state", error);
+    }
+  };
+
+  const handleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      const openAuthURL = window.go?.main?.App?.OpenAuthURL;
+      if (openAuthURL) {
+        await openAuthURL();
+        toast.success("Browser opened for sign-in");
+      } else {
+        toast.error("Sign-in not available");
+      }
+    } catch (error) {
+      log.error('Failed to open auth URL', error);
+      toast.error("Could not open browser");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSignOut = async () => {
     try {
-      log.debug('Signing out');
-      await signOut();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to sign out';
-      log.error('Sign out error', { error: message });
+      const signOut = window.go?.main?.App?.SignOut;
+      if (signOut) {
+        await signOut();
+        setMode('guest');
+        setUser(null);
+        toast.success("Signed out");
+      }
+    } catch (error) {
+      log.error("Sign out error", error);
+      toast.error("Failed to sign out");
     }
   };
 
-  // If not logged in, show sign in UI
-  if (!isSignedIn) {
+  if (mode === 'guest') {
     return (
       <div className="space-y-6">
         <motion.div
@@ -40,89 +126,127 @@ export default function AccountSettings() {
           className="space-y-6"
         >
           <div className="text-center space-y-3 pb-6 border-b">
-            <h3 className="text-lg font-semibold">Sign In to Treefrog</h3>
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+              <HardDrive className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold">Local Mode</h3>
             <p className="text-sm text-muted-foreground">
-              Sign in to your account to access remote compiler features and sync your projects.
+              Sign in to access cloud features
             </p>
           </div>
 
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.1, duration: 0.4 }}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+              <div className="flex items-center gap-2 mb-2">
+                <HardDrive className="w-4 h-4 text-primary" />
+                <p className="text-xs font-semibold text-primary">Local</p>
+              </div>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li className="flex items-center gap-1">
+                  <Check className="w-3 h-3 text-primary" />
+                  Docker rendering
+                </li>
+                <li className="flex items-center gap-1">
+                  <Check className="w-3 h-3 text-primary" />
+                  Full LaTeX
+                </li>
+              </ul>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+              <div className="flex items-center gap-2 mb-2">
+                <Cloud className="w-4 h-4 text-muted-foreground" />
+                <p className="text-xs font-semibold">Cloud</p>
+              </div>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li className="flex items-center gap-1">
+                  <Check className="w-3 h-3" />
+                  Remote builds
+                </li>
+                <li className="flex items-center gap-1">
+                  <Check className="w-3 h-3" />
+                  History
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <Button
+            onClick={handleSignIn}
+            className="w-full py-3 flex items-center justify-center gap-2"
+            size="lg"
+            disabled={isLoading}
           >
-            <Button
-              onClick={handleSignIn}
-              className="w-full py-3 px-6 text-base font-semibold flex items-center justify-center gap-2 hover:shadow-lg transition-all"
-              size="lg"
-            >
-              <LogIn size={18} />
-              Sign In with Google
-            </Button>
-          </motion.div>
-
-          <div className="space-y-2 text-sm text-muted-foreground p-4 bg-muted/30 rounded-lg">
-            <p className="flex items-start gap-2">
-              <span className="text-primary font-bold mt-0.5">•</span>
-              <span>Sign in with your Google account</span>
-            </p>
-            <p className="flex items-start gap-2">
-              <span className="text-primary font-bold mt-0.5">•</span>
-              <span>Access remote compilation in the cloud</span>
-            </p>
-            <p className="flex items-start gap-2">
-              <span className="text-primary font-bold mt-0.5">•</span>
-              <span>No account creation needed - just sign in</span>
-            </p>
-          </div>
+            {isLoading ? (
+              <RefreshCw className="w-5 h-5 animate-spin" />
+            ) : (
+              <ExternalLink className="w-5 h-5" />
+            )}
+            Sign In for Cloud Features
+          </Button>
+          <p className="text-xs text-center text-muted-foreground">
+            Opens browser for secure authentication
+          </p>
         </motion.div>
       </div>
     );
   }
 
-  // If logged in, show account info and sign out option
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Account Information</h3>
-        <div className="space-y-4">
-          {clerkUser?.imageUrl && (
-            <div className="flex justify-center mb-4">
-              <img 
-                src={clerkUser.imageUrl} 
-                alt="Profile" 
-                className="w-16 h-16 rounded-full"
-              />
-            </div>
-          )}
-          <div>
-            <label className="text-sm font-medium text-muted-foreground block mb-1">Name</label>
-            <p className="text-foreground">{clerkUser?.fullName || "—"}</p>
+      <div className="text-center space-y-3 pb-6 border-b">
+        <div className="flex justify-center mb-4">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-xl font-semibold">
+            {user?.name?.charAt(0)?.toUpperCase() || <Cloud className="w-8 h-8" />}
           </div>
-          <div>
-            <label className="text-sm font-medium text-muted-foreground block mb-1">Email</label>
-            <p className="text-foreground">{clerkUser?.emailAddresses[0]?.emailAddress || "—"}</p>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-muted-foreground block mb-1">User ID</label>
-            <p className="text-foreground font-mono text-sm">{clerkUser?.id || "—"}</p>
-          </div>
+        </div>
+        <div className="flex items-center justify-center gap-2">
+          <h3 className="text-lg font-semibold">{user?.name || "User"}</h3>
+          <Cloud className="w-4 h-4 text-primary" />
+        </div>
+        <p className="text-sm text-muted-foreground">Cloud Mode Active</p>
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+          <span className="text-sm text-muted-foreground">Email</span>
+          <span className="text-sm font-medium">{user?.email || "—"}</span>
+        </div>
+        
+        <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+          <span className="text-sm text-muted-foreground">Status</span>
+          <span className="text-sm font-medium text-primary flex items-center gap-1">
+            <Check className="w-3 h-3" />
+            Authenticated
+          </span>
+        </div>
+
+        <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+          <ul className="text-xs text-muted-foreground space-y-1">
+            <li className="flex items-center gap-2">
+              <Check className="w-3 h-3 text-primary" />
+              Remote cloud compilation enabled
+            </li>
+            <li className="flex items-center gap-2">
+              <Check className="w-3 h-3 text-primary" />
+              Build history & analytics
+            </li>
+          </ul>
         </div>
       </div>
 
       <div className="border-t pt-6">
-        <h3 className="text-lg font-semibold mb-4">Session</h3>
         <Button
           onClick={handleSignOut}
           variant="outline"
           className="w-full flex items-center justify-center gap-2"
-          size="sm"
         >
           <LogOut size={16} />
           Sign Out
         </Button>
+        <p className="text-xs text-center text-muted-foreground mt-2">
+          You'll be switched to local mode
+        </p>
       </div>
     </div>
   );
 }
-
