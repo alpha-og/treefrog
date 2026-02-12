@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alpha-og/treefrog-latex-compiler/pkg/billing"
 	"github.com/alpha-og/treefrog-latex-compiler/pkg/build"
 	"github.com/alpha-og/treefrog-latex-compiler/pkg/user"
 	"github.com/sirupsen/logrus"
@@ -251,7 +252,7 @@ func (s *Service) cleanupStorageQuotas() {
 
 	for _, u := range users {
 		// Get user tier and storage limit
-		tierConfig, exists := user.Plans[u.Tier]
+		tierConfig, exists := billing.Plans[u.Tier]
 		if !exists {
 			continue
 		}

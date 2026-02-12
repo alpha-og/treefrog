@@ -316,7 +316,24 @@ func UploadDeltaSyncFilesHandler(db interface{}) http.HandlerFunc {
 			ProjectID:   metadata.ProjectID,
 			LastBuildID: buildID,
 			UpdatedAt:   time.Now().Format(time.RFC3339),
-			Files:       newFiles,
+			Files:       make(map[string]FileMetadata),
+		}
+
+		if data, err := os.ReadFile(cacheFile); err == nil {
+			json.Unmarshal(data, &projectCache.Files)
+		}
+
+		for path, meta := range newFiles {
+			projectCache.Files[path] = meta
+		}
+
+		for path, checksum := range metadata.CachedFiles {
+			if _, exists := projectCache.Files[path]; !exists {
+				projectCache.Files[path] = FileMetadata{
+					Checksum: checksum,
+					ModTime:  time.Now().Format(time.RFC3339),
+				}
+			}
 		}
 
 		if cacheData, err := json.MarshalIndent(projectCache, "", "  "); err == nil {
