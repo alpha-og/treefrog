@@ -194,3 +194,36 @@ func (s *Store) GetOrCreate(clerkID, email, name string) (*User, error) {
 
 	return user, nil
 }
+
+// GetAll retrieves all active users
+func (s *Store) GetAll() ([]*User, error) {
+	query := `
+	SELECT id, clerk_id, email, name, razorpay_customer_id, razorpay_subscription_id,
+	       tier, storage_used_bytes, subscription_canceled_at, subscription_paused,
+	       created_at, updated_at
+	FROM users
+	WHERE subscription_canceled_at IS NULL
+	ORDER BY created_at DESC
+	`
+
+	rows, err := s.db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("query failed: %w", err)
+	}
+	defer rows.Close()
+
+	var users []*User
+	for rows.Next() {
+		user := &User{}
+		err := rows.Scan(&user.ID, &user.ClerkID, &user.Email, &user.Name,
+			&user.RazorpayCustomerID, &user.RazorpaySubscriptionID, &user.Tier,
+			&user.StorageUsedBytes, &user.SubscriptionCanceledAt, &user.SubscriptionPaused,
+			&user.CreatedAt, &user.UpdatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("scan failed: %w", err)
+		}
+		users = append(users, user)
+	}
+
+	return users, rows.Err()
+}

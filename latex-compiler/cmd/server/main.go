@@ -17,6 +17,7 @@ import (
 	"github.com/alpha-og/treefrog-latex-compiler/pkg/db"
 	"github.com/alpha-og/treefrog-latex-compiler/pkg/log"
 	"github.com/alpha-og/treefrog-latex-compiler/pkg/rate"
+	"github.com/alpha-og/treefrog-latex-compiler/pkg/user"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -28,6 +29,7 @@ var (
 	logger        *logrus.Logger
 	auditLogger   *log.AuditLogger
 	buildQueue    *build.Queue
+	userStore     *user.Store
 	cleanupEngine *cleanup.Engine
 )
 
@@ -87,6 +89,14 @@ func main() {
 	buildQueue = build.NewQueue(numWorkers, nil, buildStore)
 	logger.WithField("workers", numWorkers).Info("Build queue initialized")
 
+	// Initialize user store
+	logger.Info("Initializing user store")
+	var err2 error
+	userStore, err2 = user.NewStore(dbInstance)
+	if err2 != nil {
+		logger.WithError(err2).Fatal("Failed to initialize user store")
+	}
+
 	// Initialize cleanup engine
 	logger.Info("Initializing cleanup engine")
 	cleanupConfig := cleanup.Config{
@@ -98,7 +108,7 @@ func main() {
 		DiskCritical:  90,
 		DiskEmergency: 95,
 	}
-	cleanupEngine = cleanup.NewEngine(cleanupConfig)
+	cleanupEngine = cleanup.NewEngine(cleanupConfig, buildStore, userStore, logger)
 	cleanupEngine.Start()
 
 	// Initialize rate limiter
@@ -142,6 +152,10 @@ func main() {
 		r.With(rateLimiter.Middleware("status")).Get("/build/{id}/status", GetStatusHandler())
 		r.With(rateLimiter.Middleware("default")).Get("/build/{id}/log", GetLogHandler())
 		r.With(rateLimiter.Middleware("default")).Delete("/build/{id}", DeleteBuildHandler())
+
+		// Delta-sync endpoints
+		r.With(rateLimiter.Middleware("build")).Post("/builds/init", InitDeltaSyncHandler(dbInstance))
+		r.With(rateLimiter.Middleware("build")).Post("/builds/{buildId}/upload", UploadDeltaSyncFilesHandler(dbInstance))
 
 		// PDF and artifact endpoints with download rate limit
 		r.With(rateLimiter.Middleware("default")).Get("/build/{id}/pdf/url", GetSignedPDFURLHandler())
@@ -195,6 +209,8 @@ func main() {
 	}
 
 	if cleanupEngine != nil {
+		logger.Info("Running final cleanup before shutdown")
+		cleanupEngine.ForceRun()
 		cleanupEngine.Stop()
 	}
 

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "treefrog",
+  "outputfilename": "treefrog",
+  "frontend:dir": "./frontend",
+  "go:dir": ".",
+  "frontend:install": "pnpm install",
+  "frontend:build": "pnpm build",
+  "frontend:dev:build": "pnpm build",
+  "frontend:dev:install": "pnpm install",
+  "frontend:dev:watcher": "pnpm dev",
+  "frontend:dev:serverUrl": "http://localhost:5173",
+  "wailsjsdir": "./frontend/wailsjs",
+  "author": {
+    "name": "Athul Anoop",
+    "email": "athulanoop2020@gmail.com"
+  }
+}
