@@ -4,6 +4,7 @@ const log = createLogger("TreePersistence");
 
 const STORAGE_KEYS = {
   EXPANDED_FOLDERS: "treefrog:sidebar:expanded",
+  EXPANDED_PROJECT: "treefrog:sidebar:expandedProject",
   SCROLL_POSITION: "treefrog:sidebar:scroll",
   FILTER_HIDDEN: "treefrog:sidebar:filterHidden",
   SORT_BY: "treefrog:sidebar:sortBy",
@@ -13,12 +14,15 @@ const STORAGE_KEYS = {
 /**
  * Persist expanded folders to localStorage
  */
-export function persistExpandedFolders(folders: Set<string>): void {
+export function persistExpandedFolders(folders: Set<string>, projectRoot?: string): void {
   try {
     localStorage.setItem(
       STORAGE_KEYS.EXPANDED_FOLDERS,
       JSON.stringify([...folders])
     );
+    if (projectRoot) {
+      localStorage.setItem(STORAGE_KEYS.EXPANDED_PROJECT, projectRoot);
+    }
   } catch (err) {
     log.error("Failed to persist expanded folders", err);
   }
@@ -26,9 +30,22 @@ export function persistExpandedFolders(folders: Set<string>): void {
 
 /**
  * Load expanded folders from localStorage
+ * Returns empty set if project root has changed
  */
-export function loadExpandedFolders(): Set<string> {
+export function loadExpandedFolders(projectRoot?: string): Set<string> {
   try {
+    // Check if project has changed - if so, clear stale expanded folders
+    const storedProject = localStorage.getItem(STORAGE_KEYS.EXPANDED_PROJECT);
+    if (projectRoot && storedProject && storedProject !== projectRoot) {
+      log.debug("Project changed, clearing stale expanded folders", { 
+        oldProject: storedProject, 
+        newProject: projectRoot 
+      });
+      localStorage.removeItem(STORAGE_KEYS.EXPANDED_FOLDERS);
+      localStorage.removeItem(STORAGE_KEYS.EXPANDED_PROJECT);
+      return new Set();
+    }
+    
     const data = localStorage.getItem(STORAGE_KEYS.EXPANDED_FOLDERS);
     if (data) {
       const parsed = JSON.parse(data);
@@ -119,5 +136,17 @@ export function clearSidebarState(): void {
     });
   } catch (err) {
     log.error("Failed to clear sidebar state", err);
+  }
+}
+
+/**
+ * Clear expanded folders for a specific project
+ */
+export function clearExpandedFolders(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.EXPANDED_FOLDERS);
+    localStorage.removeItem(STORAGE_KEYS.EXPANDED_PROJECT);
+  } catch (err) {
+    log.error("Failed to clear expanded folders", err);
   }
 }
