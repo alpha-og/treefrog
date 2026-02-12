@@ -202,17 +202,104 @@ func startCallbackServer() *callbackServer {
 		Logger.WithField("hasToken", token != "").Info("Processing callback")
 
 		if token != "" {
-			// Return success HTML
 			w.Header().Set("Content-Type", "text/html")
 			io.WriteString(w, `<!DOCTYPE html>
-<html>
-<head><title>Authentication Successful</title></head>
-<body style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:system-ui;background:#0f172a;color:#e2e8f0;">
-<div style="text-align:center;">
-<h1 style="color:#22c55e;margin-bottom:8px;">✓ Authentication Successful</h1>
-<p style="color:#94a3b8;">You can close this window and return to Treefrog.</p>
-<script>setTimeout(() => window.close(), 2000);</script>
-</div>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Treefrog - Authenticated</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #e2e8f0;
+    }
+    .container {
+      text-align: center;
+      padding: 3rem;
+      max-width: 400px;
+    }
+    .logo {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 1.5rem;
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 32px rgba(34, 197, 94, 0.3);
+    }
+    .logo svg {
+      width: 32px;
+      height: 32px;
+      fill: white;
+    }
+    .checkmark {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 1.5rem;
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 32px rgba(34, 197, 94, 0.3);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    .checkmark svg {
+      width: 40px;
+      height: 40px;
+      stroke: white;
+      stroke-width: 3;
+      fill: none;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #f8fafc;
+    }
+    p {
+      color: #94a3b8;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .footer {
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(148, 163, 184, 0.2);
+    }
+    .footer p {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="checkmark">
+      <svg viewBox="0 0 24 24">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    </div>
+    <h1>Authentication Successful</h1>
+    <p>You're now signed in to Treefrog.<br>You can close this window.</p>
+    <div class="footer">
+      <p>Treefrog LaTeX Editor</p>
+    </div>
+  </div>
+  <script>setTimeout(() => window.close(), 2000);</script>
 </body>
 </html>`)
 			select {
@@ -224,13 +311,98 @@ func startCallbackServer() *callbackServer {
 		} else {
 			w.Header().Set("Content-Type", "text/html")
 			io.WriteString(w, `<!DOCTYPE html>
-<html>
-<head><title>Authentication Failed</title></head>
-<body style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:system-ui;background:#0f172a;color:#e2e8f0;">
-<div style="text-align:center;">
-<h1 style="color:#ef4444;margin-bottom:8px;">✗ Authentication Failed</h1>
-<p style="color:#94a3b8;">No token received. Please try again.</p>
-</div>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Treefrog - Authentication Failed</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #e2e8f0;
+    }
+    .container {
+      text-align: center;
+      padding: 3rem;
+      max-width: 400px;
+    }
+    .error-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 1.5rem;
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 32px rgba(239, 68, 68, 0.3);
+    }
+    .error-icon svg {
+      width: 40px;
+      height: 40px;
+      stroke: white;
+      stroke-width: 3;
+      fill: none;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #f8fafc;
+    }
+    p {
+      color: #94a3b8;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .retry {
+      margin-top: 1.5rem;
+      padding: 0.75rem 1.5rem;
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .retry:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+    }
+    .footer {
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(148, 163, 184, 0.2);
+    }
+    .footer p {
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="error-icon">
+      <svg viewBox="0 0 24 24">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </div>
+    <h1>Authentication Failed</h1>
+    <p>No authentication token received.<br>Please try again.</p>
+    <button class="retry" onclick="window.close()">Close</button>
+    <div class="footer">
+      <p>Treefrog LaTeX Editor</p>
+    </div>
+  </div>
 </body>
 </html>`)
 			select {
