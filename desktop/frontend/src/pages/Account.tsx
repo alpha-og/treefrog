@@ -2,7 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowLeft, Eye, EyeOff, Copy, Check } from "lucide-react";
 import { motion } from "motion/react";
-import { useAuth as useClerkAuth } from "@clerk/clerk-react";
+import { useAuthStore } from "@/stores/authStore";
 import { Button } from "@/components/common";
 import { Input } from "@/components/common";
 import { StorageUsageWidget } from "@/components/StorageUsageWidget";
@@ -10,7 +10,7 @@ import { fadeInUp, staggerContainer, staggerItem } from "@/utils/animations";
 
 export default function Account() {
   const navigate = useNavigate();
-  const { user: clerkUser } = useClerkAuth();
+  const { user, isGuest } = useAuthStore();
   const [showApiToken, setShowApiToken] = useState(false);
   const [apiTokenCopied, setApiTokenCopied] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -18,10 +18,8 @@ export default function Account() {
   const mockApiToken =
     "sk_live_51234567890abcdefghijklmnopqrstuvwxyz";
 
-  const userEmail =
-    clerkUser?.emailAddresses[0]?.emailAddress || "user@example.com";
-  const userName = clerkUser?.firstName || "User";
-  const userPhone = clerkUser?.phoneNumbers[0]?.phoneNumber || "Not provided";
+  const userEmail = user?.email || "user@example.com";
+  const userName = user?.name || "User";
 
   const copyApiToken = () => {
     navigator.clipboard.writeText(mockApiToken);
@@ -99,8 +97,20 @@ export default function Account() {
                 className="bg-[var(--muted)] cursor-not-allowed"
               />
               <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                Managed by Clerk
+                Manage in account settings
               </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[var(--foreground)] mb-2">
+                Phone
+              </label>
+              <Input
+                type="tel"
+                value="Not available"
+                readOnly
+                className="bg-[var(--muted)] cursor-not-allowed"
+              />
             </div>
 
             <div>
@@ -133,9 +143,9 @@ export default function Account() {
             <div className="pt-4 border-t border-[var(--border)]">
               <Button
                 variant="outline"
-                onClick={() => alert("Edit profile in Clerk dashboard")}
+                onClick={() => navigate({ to: "/settings" })}
               >
-                Edit Profile
+                Account Settings
               </Button>
             </div>
           </div>

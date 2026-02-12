@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useAuth as useClerkAuth, SignOutButton } from "@clerk/clerk-react";
+import { useAuthStore } from "@/stores/authStore";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,23 +8,48 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui";
 import { Button } from "@/components/common";
-import { useAuthStore } from "@/stores/authStore";
 import {
   User,
   BarChart3,
   CreditCard,
   LogOut,
   Settings,
+  Cloud,
+  HardDrive,
 } from "lucide-react";
+import { toast } from "sonner";
+
+declare global {
+  interface Window {
+    go?: {
+      main?: {
+        App?: {
+          SignOut: () => Promise<void>
+        }
+      }
+    }
+  }
+}
 
 export function UserMenu() {
   const navigate = useNavigate();
-  const { user: clerkUser } = useClerkAuth();
-  const { user: storedUser } = useAuthStore();
+  const { mode, user } = useAuthStore();
+  const isGuest = mode === 'guest';
 
-  // Get email from Clerk or stored auth
-  const userEmail = clerkUser?.emailAddresses[0]?.emailAddress || storedUser?.email || "User";
-  const userName = clerkUser?.firstName || "Account";
+  const userName = isGuest ? "Guest" : (user?.name || "User");
+  const userEmail = isGuest ? "Local Mode" : (user?.email || "");
+
+  const handleSignOut = async () => {
+    try {
+      const signOut = window.go?.main?.App?.SignOut;
+      if (signOut) {
+        await signOut();
+        toast.success("Signed out");
+      }
+    } catch (error) {
+      toast.error("Failed to sign out");
+    }
+  };
 
   return (
     <DropdownMenu>
@@ -37,32 +62,57 @@ export function UserMenu() {
           {userName.charAt(0).toUpperCase()}
         </div>
         <span className="hidden sm:inline text-sm">{userName}</span>
+        {isGuest && (
+          <span className="text-xs text-muted-foreground">(Guest)</span>
+        )}
       </Button>
 
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium">{userName}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium">{userName}</p>
+              {isGuest ? (
+                <HardDrive className="w-3 h-3 text-muted-foreground" />
+              ) : (
+                <Cloud className="w-3 h-3 text-primary" />
+              )}
+            </div>
             <p className="text-xs text-muted-foreground">{userEmail}</p>
+            <p className="text-xs text-muted-foreground">
+              {isGuest ? "Local Mode" : "Cloud Mode"}
+            </p>
           </div>
         </DropdownMenuLabel>
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem
-          onClick={() => navigate({ to: "/dashboard" })}
-          className="cursor-pointer"
-        >
-          <BarChart3 className="mr-2 h-4 w-4" />
-          <span>Build History</span>
-        </DropdownMenuItem>
+        {!isGuest && (
+          <>
+            <DropdownMenuItem
+              onClick={() => navigate({ to: "/dashboard" })}
+              className="cursor-pointer"
+            >
+              <BarChart3 className="mr-2 h-4 w-4" />
+              Build History
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              onClick={() => navigate({ to: "/billing" })}
+              className="cursor-pointer"
+            >
+              <CreditCard className="mr-2 h-4 w-4" />
+              Billing
+            </DropdownMenuItem>
+          </>
+        )}
 
         <DropdownMenuItem
-          onClick={() => navigate({ to: "/billing" })}
+          onClick={() => navigate({ to: "/settings" })}
           className="cursor-pointer"
         >
-          <CreditCard className="mr-2 h-4 w-4" />
-          <span>Billing</span>
+          <Settings className="mr-2 h-4 w-4" />
+          Settings
         </DropdownMenuItem>
 
         <DropdownMenuItem
@@ -70,17 +120,25 @@ export function UserMenu() {
           className="cursor-pointer"
         >
           <User className="mr-2 h-4 w-4" />
-          <span>Account Settings</span>
+          Account
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem asChild>
-          <SignOutButton redirectUrl="/auth">
+        {isGuest ? (
+          <DropdownMenuItem 
+            onClick={() => navigate({ to: "/account" })} 
+            className="cursor-pointer"
+          >
             <LogOut className="mr-2 h-4 w-4" />
-            <span>Logout</span>
-          </SignOutButton>
-        </DropdownMenuItem>
+            Sign In
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
+            <LogOut className="mr-2 h-4 w-4" />
+            Sign Out
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -1,8 +1,7 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { ClerkProvider } from "@clerk/clerk-react";
 import { RouterProvider } from "@tanstack/react-router";
-import { Toaster } from "sonner";
+import { Toaster, toast } from "sonner";
 import { router } from "./router";
 import { createLogger } from "./utils/logger";
 import { AnimationProvider } from "./utils/animation-context";
@@ -11,64 +10,44 @@ import "./globals.css";
 
 const log = createLogger("Main");
 
-// Get Clerk publishable key from environment
-const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-
-if (!clerkPubKey) {
-  log.warn("VITE_CLERK_PUBLISHABLE_KEY is not set. Authentication may not work properly.");
-}
-
-// Initialize auth store first-launch flag on app startup
 const initializeFirstLaunch = () => {
-  // Check if this is truly the first launch (no auth store in localStorage)
   const authStoreExists = localStorage.getItem('treefrog-auth');
   if (!authStoreExists) {
-    // This is first launch, isFirstLaunch is already true by default
     log.debug('First app launch detected');
   } else {
-    // App has been launched before, check the stored value
     try {
       const parsed = JSON.parse(authStoreExists);
       if (parsed.state?.isFirstLaunch === undefined) {
-        // Old store format without isFirstLaunch, set it to false (not first launch anymore)
         const store = useAuthStore.getState();
         store.markFirstLaunchComplete();
-        log.debug('Migrated old auth store format, marked first launch as complete');
+        log.debug('Migrated old auth store format');
       }
-    } catch (e) {
-      log.debug('Could not parse auth store for first launch check');
+    } catch {
+      log.debug('Could not parse auth store');
     }
   }
 };
 
 initializeFirstLaunch();
 
-// Initialize theme on app startup to prevent flash
 const initializeTheme = () => {
   const storedTheme = localStorage.getItem("treefrog-app");
-  let theme = "dark"; // Default to dark
+  let theme = "dark";
   
   if (storedTheme) {
     try {
       const parsed = JSON.parse(storedTheme);
       theme = parsed.state?.theme || "dark";
-    } catch (e) {
-      // Fallback to default
-    }
+    } catch {}
   }
   
-  // Apply theme to DOM
   if (theme === "dark") {
     document.documentElement.classList.add("dark");
   } else if (theme === "light") {
     document.documentElement.classList.remove("dark");
   } else if (theme === "system") {
     const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    document.documentElement.classList.toggle("dark", isDark);
   }
 };
 
@@ -90,16 +69,99 @@ self.MonacoEnvironment = {
   },
 };
 
+function isWailsEnvironment(): boolean {
+  return typeof window !== 'undefined' && 
+    (window.location.protocol === 'wails:' || 
+     (window as any).go !== undefined);
+}
+
+function AppContent() {
+  const { setMode, setSessionToken, setUser, mode } = useAuthStore();
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    const isWails = isWailsEnvironment();
+    
+    if (isWails) {
+      log.info("Wails environment detected - using browser-based auth");
+      
+      // Check if user is already authenticated via Go backend
+      const checkAuth = async () => {
+        try {
+          const { GetAuthState } = (window as any).go?.main?.App || {};
+          if (GetAuthState) {
+            const state = await GetAuthState();
+            if (state?.isAuthenticated && state?.user) {
+              setMode('clerk');
+              setUser({
+                id: state.user.id,
+                email: state.user.email,
+                name: state.user.firstName,
+              });
+              log.info("Restored authenticated session from Go backend");
+            } else {
+              setMode('guest');
+            }
+          } else {
+            setMode('guest');
+          }
+        } catch (error) {
+          log.warn("Could not check auth state:", error);
+          setMode('guest');
+        }
+        setIsReady(true);
+      };
+      
+      checkAuth();
+      
+      // Listen for auth callbacks from Go backend
+      const { EventsOn } = (window as any).runtime || {};
+      if (EventsOn) {
+        EventsOn("auth:callback", (data: any) => {
+          log.info("Auth callback received", data);
+          if (data?.success) {
+            setMode('clerk');
+            toast.success("Signed in successfully");
+            // Refresh auth state
+            checkAuth();
+          }
+        });
+        
+        EventsOn("auth:signout", () => {
+          log.info("Sign out event received");
+          setMode('guest');
+          setSessionToken(null);
+          setUser(null);
+        });
+      }
+    } else {
+      // Web environment - could use Clerk SDK here later
+      setMode('guest');
+      setIsReady(true);
+    }
+  }, [setMode, setSessionToken, setUser]);
+
+  if (!isReady) {
+    return (
+      <div className="w-full h-screen flex items-center justify-center bg-background">
+        <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <AnimationProvider>
+      <RouterProvider router={router} />
+      <Toaster position="top-right" richColors closeButton />
+    </AnimationProvider>
+  );
+}
+
 const root = document.getElementById("root");
 if (root) {
   createRoot(root).render(
     <React.StrictMode>
-      <ClerkProvider publishableKey={clerkPubKey}>
-        <AnimationProvider>
-          <RouterProvider router={router} />
-          <Toaster position="top-right" richColors closeButton />
-        </AnimationProvider>
-      </ClerkProvider>
+      <AppContent />
     </React.StrictMode>
   );
 }

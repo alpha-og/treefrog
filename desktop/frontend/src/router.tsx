@@ -1,11 +1,9 @@
 import { RootRoute, Router, Route, Navigate } from "@tanstack/react-router";
-import { useAuth as useClerkAuth } from "@clerk/clerk-react";
 import RootLayout from "./pages/RootLayout";
 import HomePageWrapper from "./pages/HomePageWrapper";
 import EditorPage from "./pages/Editor";
 import SettingsPage from "./pages/Settings";
 import AuthPage from "./pages/Auth";
-import AuthCallbackPage from "./pages/AuthCallback";
 import DashboardPage from "./pages/Dashboard";
 import BuildPage from "./pages/Build";
 import BillingPage from "./pages/Billing";
@@ -15,21 +13,23 @@ import { createLogger } from "./utils/logger";
 
 const log = createLogger("Router");
 
-// Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isSignedIn } = useClerkAuth();
-  const { isLoggedIn, isFirstLaunch } = useAuthStore();
+  const { isFirstLaunch } = useAuthStore();
 
-  // If it's first launch and user is not signed in, redirect to auth
-  if (isFirstLaunch && !isSignedIn && !isLoggedIn) {
-    log.debug("First launch detected and user not authenticated, redirecting to auth");
+  if (isFirstLaunch) {
+    log.debug("First launch, redirecting to auth");
     return <Navigate to="/auth" />;
   }
 
-  // If user is not authenticated at all, redirect to auth
-  if (!isSignedIn && !isLoggedIn) {
-    log.debug("User not authenticated, redirecting to auth");
-    return <Navigate to="/auth" />;
+  return <>{children}</>;
+}
+
+function SignedInRoute({ children }: { children: React.ReactNode }) {
+  const { mode } = useAuthStore();
+
+  if (mode !== 'clerk') {
+    log.debug("Not signed in, redirecting to account");
+    return <Navigate to="/account" />;
   }
 
   return <>{children}</>;
@@ -37,32 +37,22 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 const rootRoute = new RootRoute({
   component: RootLayout,
-  notFoundComponent: () => {
-    return (
-      <div className="w-full h-full flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Page Not Found</h1>
-          <p className="text-gray-500">The requested page could not be found.</p>
-        </div>
+  notFoundComponent: () => (
+    <div className="w-full h-full flex items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold">Page Not Found</h1>
+        <p className="text-gray-500">The requested page could not be found.</p>
       </div>
-    );
-  },
+    </div>
+  ),
 });
 
-// Auth Routes (public)
 const authRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/auth",
   component: AuthPage,
 });
 
-const authCallbackRoute = new Route({
-  getParentRoute: () => rootRoute,
-  path: "/auth/callback",
-  component: AuthCallbackPage,
-});
-
-// Protected Routes
 const homeRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/",
@@ -97,9 +87,9 @@ const dashboardRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/dashboard",
   component: () => (
-    <ProtectedRoute>
+    <SignedInRoute>
       <DashboardPage />
-    </ProtectedRoute>
+    </SignedInRoute>
   ),
 });
 
@@ -117,9 +107,9 @@ const billingRoute = new Route({
   getParentRoute: () => rootRoute,
   path: "/billing",
   component: () => (
-    <ProtectedRoute>
+    <SignedInRoute>
       <BillingPage />
-    </ProtectedRoute>
+    </SignedInRoute>
   ),
 });
 
@@ -135,7 +125,6 @@ const accountRoute = new Route({
 
 const routeTree = rootRoute.addChildren([
   authRoute,
-  authCallbackRoute,
   homeRoute,
   editorRoute,
   settingsRoute,
