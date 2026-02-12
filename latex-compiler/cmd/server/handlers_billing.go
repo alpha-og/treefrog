@@ -9,10 +9,12 @@ import (
 	"github.com/alpha-og/treefrog-latex-compiler/pkg/auth"
 	"github.com/alpha-og/treefrog-latex-compiler/pkg/billing"
 	"github.com/alpha-og/treefrog-latex-compiler/pkg/user"
+	"github.com/sirupsen/logrus"
 )
 
+var billingLog = logrus.WithField("component", "handlers/billing")
+
 // CreateSubscriptionHandler creates a subscription for a user
-// Returns an http.HandlerFunc that handles POST /api/subscription/create
 func CreateSubscriptionHandler(db interface{}) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserID(r)
@@ -22,7 +24,7 @@ func CreateSubscriptionHandler(db interface{}) http.HandlerFunc {
 		}
 
 		var req struct {
-			PlanID string `json:"plan_id"` // "free", "pro", "enterprise"
+			PlanID string `json:"plan_id"`
 		}
 
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -36,8 +38,13 @@ func CreateSubscriptionHandler(db interface{}) http.HandlerFunc {
 			return
 		}
 
-		// Get user from database
-		userStore, _ := user.NewStore(dbInstance)
+		userStore, err := user.NewStore(dbInstance)
+		if err != nil {
+			billingLog.WithError(err).Error("Failed to create user store")
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+
 		userRec, err := userStore.GetByClerkID(userID)
 		if err != nil {
 			http.Error(w, "User not found", http.StatusNotFound)
@@ -49,30 +56,30 @@ func CreateSubscriptionHandler(db interface{}) http.HandlerFunc {
 			os.Getenv("RAZORPAY_KEY_SECRET"),
 		)
 
-		// Create Razorpay customer if not exists
 		customerID := userRec.RazorpayCustomerID
 		if customerID == "" {
-			customerID, err := razorpayService.CreateCustomer(
-				userRec.Email,
-				userRec.Name,
-			)
+			customerID, err := razorpayService.CreateCustomer(userRec.Email, userRec.Name)
 			if err != nil {
 				http.Error(w, "Failed to create customer", http.StatusInternalServerError)
 				return
 			}
 			userRec.RazorpayCustomerID = customerID
-			userStore.Update(userRec)
+			if err := userStore.Update(userRec); err != nil {
+				billingLog.WithError(err).Error("Failed to update user with customer ID")
+			}
 		}
 
-		// Create subscription
-		checkoutURL, err := razorpayService.CreateSubscriptionLink(
-			plan.ID,
-			customerID,
-		)
+		checkoutURL, err := razorpayService.CreateSubscriptionLink(plan.ID, customerID)
 		if err != nil {
 			http.Error(w, "Failed to create subscription", http.StatusInternalServerError)
 			return
 		}
+
+		billingLog.WithFields(logrus.Fields{
+			"user_id":   userID,
+			"plan_id":   req.PlanID,
+			"plan_name": plan.ID,
+		}).Info("Subscription created")
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
@@ -83,7 +90,6 @@ func CreateSubscriptionHandler(db interface{}) http.HandlerFunc {
 }
 
 // CancelSubscriptionHandler cancels a user's subscription
-// Returns an http.HandlerFunc that handles POST /api/subscription/cancel
 func CancelSubscriptionHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserID(r)
@@ -92,7 +98,13 @@ func CancelSubscriptionHandler() http.HandlerFunc {
 			return
 		}
 
-		userStore, _ := user.NewStore(dbInstance)
+		userStore, err := user.NewStore(dbInstance)
+		if err != nil {
+			billingLog.WithError(err).Error("Failed to create user store")
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+
 		userRec, err := userStore.GetByClerkID(userID)
 		if err != nil {
 			http.Error(w, "User not found", http.StatusNotFound)
@@ -114,6 +126,8 @@ func CancelSubscriptionHandler() http.HandlerFunc {
 			return
 		}
 
+		billingLog.WithField("user_id", userID).Info("Subscription cancelled")
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
 			"status":  "canceled",
@@ -123,7 +137,6 @@ func CancelSubscriptionHandler() http.HandlerFunc {
 }
 
 // GetSubscriptionStatusHandler retrieves subscription status
-// Returns an http.HandlerFunc that handles GET /api/subscription/status
 func GetSubscriptionStatusHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserID(r)
@@ -132,7 +145,13 @@ func GetSubscriptionStatusHandler() http.HandlerFunc {
 			return
 		}
 
-		userStore, _ := user.NewStore(dbInstance)
+		userStore, err := user.NewStore(dbInstance)
+		if err != nil {
+			billingLog.WithError(err).Error("Failed to create user store")
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+
 		userRec, err := userStore.GetByClerkID(userID)
 		if err != nil {
 			http.Error(w, "User not found", http.StatusNotFound)
@@ -174,7 +193,6 @@ func GetSubscriptionStatusHandler() http.HandlerFunc {
 }
 
 // RedeemCouponHandler redeems a coupon for subscription
-// Returns an http.HandlerFunc that handles POST /api/coupon/redeem
 func RedeemCouponHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserID(r)
@@ -193,7 +211,6 @@ func RedeemCouponHandler() http.HandlerFunc {
 			return
 		}
 
-		// Validate inputs
 		if req.CouponCode == "" || req.PlanID == "" {
 			http.Error(w, "coupon_code and plan_id required", http.StatusBadRequest)
 			return
@@ -205,23 +222,32 @@ func RedeemCouponHandler() http.HandlerFunc {
 			return
 		}
 
-		// Get user
-		userStore, _ := user.NewStore(dbInstance)
+		userStore, err := user.NewStore(dbInstance)
+		if err != nil {
+			billingLog.WithError(err).Error("Failed to create user store")
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+
 		userRec, err := userStore.GetByClerkID(userID)
 		if err != nil {
 			http.Error(w, "User not found", http.StatusNotFound)
 			return
 		}
 
-		// Validate coupon
-		couponStore, _ := user.NewCouponStore(dbInstance)
+		couponStore, err := user.NewCouponStore(dbInstance)
+		if err != nil {
+			billingLog.WithError(err).Error("Failed to create coupon store")
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+
 		coupon, err := user.ValidateCoupon(couponStore, req.CouponCode, req.PlanID)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Invalid coupon: %v", err), http.StatusBadRequest)
 			return
 		}
 
-		// Create Razorpay customer if needed
 		razorpayService := billing.NewRazorpayService(
 			os.Getenv("RAZORPAY_KEY_ID"),
 			os.Getenv("RAZORPAY_KEY_SECRET"),
@@ -229,31 +255,32 @@ func RedeemCouponHandler() http.HandlerFunc {
 
 		customerID := userRec.RazorpayCustomerID
 		if customerID == "" {
-			customerID, err := razorpayService.CreateCustomer(
-				userRec.Email,
-				userRec.Name,
-			)
+			customerID, err = razorpayService.CreateCustomer(userRec.Email, userRec.Name)
 			if err != nil {
 				http.Error(w, "Failed to create customer", http.StatusInternalServerError)
 				return
 			}
 			userRec.RazorpayCustomerID = customerID
-			userStore.Update(userRec)
+			if err := userStore.Update(userRec); err != nil {
+				billingLog.WithError(err).Error("Failed to update user with customer ID")
+			}
 		}
 
-		// Create subscription with coupon
-		checkoutURL, err := razorpayService.CreateSubscriptionWithCoupon(
-			plan.ID,
-			customerID,
-			req.CouponCode,
-		)
+		checkoutURL, err := razorpayService.CreateSubscriptionWithCoupon(plan.ID, customerID, req.CouponCode)
 		if err != nil {
 			http.Error(w, "Failed to create subscription", http.StatusInternalServerError)
 			return
 		}
 
-		// Increment coupon usage
-		couponStore.IncrementUsage(coupon.ID)
+		if err := couponStore.IncrementUsage(coupon.ID); err != nil {
+			billingLog.WithError(err).WithField("coupon_id", coupon.ID).Warn("Failed to increment coupon usage")
+		}
+
+		billingLog.WithFields(logrus.Fields{
+			"user_id":      userID,
+			"coupon_code":  req.CouponCode,
+			"discount_pct": coupon.DiscountPct,
+		}).Info("Coupon redeemed")
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -265,10 +292,15 @@ func RedeemCouponHandler() http.HandlerFunc {
 }
 
 // RazorpayWebhookHandler processes Razorpay webhook events
-// Returns an http.HandlerFunc that handles POST /webhooks/razorpay
 func RazorpayWebhookHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userStore, _ := user.NewStore(dbInstance)
+		userStore, err := user.NewStore(dbInstance)
+		if err != nil {
+			billingLog.WithError(err).Error("Failed to create user store")
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+
 		razorpayService := billing.NewRazorpayService(
 			os.Getenv("RAZORPAY_KEY_ID"),
 			os.Getenv("RAZORPAY_KEY_SECRET"),
