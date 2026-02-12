@@ -1,4 +1,5 @@
-import { useAuth as useClerkAuth, useSignIn } from "@clerk/clerk-react";
+import { useAuth as useClerkAuth } from "@clerk/clerk-react";
+import { useNavigate } from "@tanstack/react-router";
 import { LogOut, LogIn } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { Button } from "@/components/common";
@@ -8,28 +9,14 @@ import { createLogger } from "@/utils/logger";
 const log = createLogger('AccountSettings');
 
 export default function AccountSettings() {
+  const navigate = useNavigate();
   const { user: clerkUser, signOut, isSignedIn } = useClerkAuth();
-  const { signIn, isLoaded } = useSignIn();
   const { markFirstLaunchComplete } = useAuthStore();
 
   const handleSignIn = () => {
-    if (!isLoaded || !signIn) {
-      log.warn('SignIn not loaded yet');
-      return;
-    }
-
-    try {
-      log.debug('Starting OAuth sign-in from Account settings');
-      markFirstLaunchComplete();
-      signIn.authenticateWithRedirect({
-        strategy: 'oauth_google',
-        redirectUrl: '/auth/callback',
-        redirectUrlComplete: '/'
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to start sign in';
-      log.error('Sign in error', { error: message });
-    }
+    log.debug('Navigating to auth page to sign in');
+    markFirstLaunchComplete();
+    navigate({ to: '/auth' });
   };
 
   const handleSignOut = async () => {
