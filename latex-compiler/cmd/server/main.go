@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -61,9 +62,12 @@ func main() {
 
 	// Initialize Clerk
 	logger.Info("Initializing Clerk authentication")
-	if err := auth.InitClerk(os.Getenv("CLERK_SECRET_KEY")); err != nil {
+	if err := auth.InitClerk(os.Getenv("CLERK_SECRET_KEY"), dbInstance); err != nil {
 		logger.WithError(err).Fatal("Failed to initialize Clerk")
 	}
+
+	// Initialize plan tier mapping from environment
+	billing.InitPlanTierMapping()
 
 	// Initialize Razorpay
 	logger.Info("Initializing Razorpay billing")
@@ -130,11 +134,19 @@ func main() {
 	r.Use(middleware.Recoverer)
 
 	// CORS configuration
+	allowedOrigins := []string{"*"}
+	if origins := os.Getenv("ALLOWED_ORIGINS"); origins != "" {
+		allowedOrigins = splitAndTrim(origins, ",")
+	}
+	logger.WithField("origins", allowedOrigins).Info("CORS configuration")
+
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins: []string{"*"},
-		AllowedMethods: []string{"GET", "POST", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"Accept", "Authorization", "Content-Type", "X-Compiler-Token"},
-		MaxAge:         300,
+		AllowedOrigins:   allowedOrigins,
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Compiler-Token", "X-Request-ID"},
+		ExposedHeaders:   []string{"X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"},
+		AllowCredentials: true,
+		MaxAge:           300,
 	}))
 
 	// Public routes
@@ -287,6 +299,19 @@ func readyHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(`{"status":"ready"}`))
+}
+
+// splitAndTrim splits a string and trims whitespace from each element
+func splitAndTrim(s, sep string) []string {
+	parts := strings.Split(s, sep)
+	result := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			result = append(result, p)
+		}
+	}
+	return result
 }
 
 // Build endpoints (implemented in handlers_build.go)
