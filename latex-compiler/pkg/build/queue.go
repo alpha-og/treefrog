@@ -436,3 +436,161 @@ func (s *Store) GetTotalStorage(userID string) (int64, error) {
 	err := s.db.QueryRow(query, userID, StatusDeleted).Scan(&total)
 	return total, err
 }
+
+// FindExpiredBefore finds builds that expired before the given time
+func (s *Store) FindExpiredBefore(before time.Time) ([]*Build, error) {
+	query := `
+	SELECT id, user_id, status, engine, main_file, dir_path, pdf_path, 
+	       synctex_path, build_log, error_message, shell_escape, 
+	       created_at, updated_at, expires_at, last_accessed_at, storage_bytes
+	FROM builds
+	WHERE expires_at < ? AND status NOT IN (?, ?)
+	ORDER BY created_at ASC
+	`
+
+	rows, err := s.db.Query(query, before, StatusDeleted, StatusExpired)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var builds []*Build
+	for rows.Next() {
+		b := &Build{}
+		err := rows.Scan(&b.ID, &b.UserID, &b.Status, &b.Engine, &b.MainFile,
+			&b.DirPath, &b.PDFPath, &b.SyncTeXPath, &b.BuildLog, &b.ErrorMessage,
+			&b.ShellEscape, &b.CreatedAt, &b.UpdatedAt, &b.ExpiresAt,
+			&b.LastAccessedAt, &b.StorageBytes)
+		if err != nil {
+			return nil, err
+		}
+		builds = append(builds, b)
+	}
+
+	return builds, rows.Err()
+}
+
+// FindOldest finds the oldest N builds by creation time
+func (s *Store) FindOldest(limit int) ([]*Build, error) {
+	query := `
+	SELECT id, user_id, status, engine, main_file, dir_path, pdf_path, 
+	       synctex_path, build_log, error_message, shell_escape, 
+	       created_at, updated_at, expires_at, last_accessed_at, storage_bytes
+	FROM builds
+	WHERE status NOT IN (?, ?)
+	ORDER BY created_at ASC
+	LIMIT ?
+	`
+
+	rows, err := s.db.Query(query, StatusDeleted, StatusExpired, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var builds []*Build
+	for rows.Next() {
+		b := &Build{}
+		err := rows.Scan(&b.ID, &b.UserID, &b.Status, &b.Engine, &b.MainFile,
+			&b.DirPath, &b.PDFPath, &b.SyncTeXPath, &b.BuildLog, &b.ErrorMessage,
+			&b.ShellEscape, &b.CreatedAt, &b.UpdatedAt, &b.ExpiresAt,
+			&b.LastAccessedAt, &b.StorageBytes)
+		if err != nil {
+			return nil, err
+		}
+		builds = append(builds, b)
+	}
+
+	return builds, rows.Err()
+}
+
+// FindExpiringIn finds builds expiring within the given duration
+func (s *Store) FindExpiringIn(duration time.Duration) ([]*Build, error) {
+	expireBefore := time.Now().Add(duration)
+
+	query := `
+	SELECT id, user_id, status, engine, main_file, dir_path, pdf_path, 
+	       synctex_path, build_log, error_message, shell_escape, 
+	       created_at, updated_at, expires_at, last_accessed_at, storage_bytes
+	FROM builds
+	WHERE expires_at < ? AND expires_at > ? AND status NOT IN (?, ?)
+	ORDER BY expires_at ASC
+	`
+
+	rows, err := s.db.Query(query, expireBefore, time.Now(), StatusDeleted, StatusExpired)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var builds []*Build
+	for rows.Next() {
+		b := &Build{}
+		err := rows.Scan(&b.ID, &b.UserID, &b.Status, &b.Engine, &b.MainFile,
+			&b.DirPath, &b.PDFPath, &b.SyncTeXPath, &b.BuildLog, &b.ErrorMessage,
+			&b.ShellEscape, &b.CreatedAt, &b.UpdatedAt, &b.ExpiresAt,
+			&b.LastAccessedAt, &b.StorageBytes)
+		if err != nil {
+			return nil, err
+		}
+		builds = append(builds, b)
+	}
+
+	return builds, rows.Err()
+}
+
+// FindOldestByUser finds the oldest N builds for a specific user
+func (s *Store) FindOldestByUser(userID string, limit int) ([]*Build, error) {
+	query := `
+	SELECT id, user_id, status, engine, main_file, dir_path, pdf_path, 
+	       synctex_path, build_log, error_message, shell_escape, 
+	       created_at, updated_at, expires_at, last_accessed_at, storage_bytes
+	FROM builds
+	WHERE user_id = ? AND status NOT IN (?, ?)
+	ORDER BY created_at ASC
+	LIMIT ?
+	`
+
+	rows, err := s.db.Query(query, userID, StatusDeleted, StatusExpired, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var builds []*Build
+	for rows.Next() {
+		b := &Build{}
+		err := rows.Scan(&b.ID, &b.UserID, &b.Status, &b.Engine, &b.MainFile,
+			&b.DirPath, &b.PDFPath, &b.SyncTeXPath, &b.BuildLog, &b.ErrorMessage,
+			&b.ShellEscape, &b.CreatedAt, &b.UpdatedAt, &b.ExpiresAt,
+			&b.LastAccessedAt, &b.StorageBytes)
+		if err != nil {
+			return nil, err
+		}
+		builds = append(builds, b)
+	}
+
+	return builds, rows.Err()
+}
+
+// GetAllIDs retrieves all build IDs from the database
+func (s *Store) GetAllIDs() ([]string, error) {
+	query := `SELECT id FROM builds WHERE status NOT IN (?, ?)`
+
+	rows, err := s.db.Query(query, StatusDeleted, StatusExpired)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+
+	return ids, rows.Err()
+}

@@ -8,6 +8,37 @@ import (
 	"github.com/google/uuid"
 )
 
+// PlanConfig defines plan limits
+type PlanConfig struct {
+	ID            string
+	Name          string
+	MonthlyBuilds int
+	Concurrent    int
+	StorageGB     int
+}
+
+// Plans defines the available plans with storage quotas
+var Plans = map[string]PlanConfig{
+	"free": {
+		Name:          "Free",
+		MonthlyBuilds: 50,
+		Concurrent:    2,
+		StorageGB:     1,
+	},
+	"pro": {
+		Name:          "Pro",
+		MonthlyBuilds: 500,
+		Concurrent:    10,
+		StorageGB:     10,
+	},
+	"enterprise": {
+		Name:          "Enterprise",
+		MonthlyBuilds: -1, // unlimited
+		Concurrent:    50,
+		StorageGB:     100,
+	},
+}
+
 type Coupon struct {
 	ID          string    `json:"id"`
 	Code        string    `json:"code"`

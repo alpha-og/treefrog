@@ -1,4 +1,4 @@
-name: Build and Release
+name: Build and Release Desktop App
 
 on:
   push:
@@ -88,7 +88,7 @@ jobs:
       # Generate Wails bindings FIRST (before frontend build)
       - name: Generate Wails bindings
         run: |
-          cd wails
+          cd desktop
           BUILD_FLAGS=""
           if [[ "$DISTRO" == "24.04" && "${{ runner.os }}" == "Linux" ]]; then
             BUILD_FLAGS="-tags webkit2_41"
@@ -96,23 +96,22 @@ jobs:
           wails build -s $BUILD_FLAGS
         shell: bash
 
-      # Now build frontend (bindings exist at wails/wailsjs/)
+      # Now build frontend (bindings exist at desktop/wailsjs/)
       - name: Build frontend
         run: |
-          cd frontend
+          cd desktop/frontend
           pnpm install
           pnpm build
 
       - name: Copy frontend dist
         run: |
-          mkdir -p wails/frontend/dist
-          cp -r frontend/dist/* wails/frontend/dist/
+          mkdir -p desktop/frontend/dist
         shell: bash
 
       # Build Treefrog for platform
       - name: Build Treefrog for ${{ matrix.platform }}
         run: |
-          cd wails
+          cd desktop
           BUILD_FLAGS=""
           if [[ "$DISTRO" == "24.04" && "${{ runner.os }}" == "Linux" ]]; then
             BUILD_FLAGS="-tags webkit2_41"
@@ -124,7 +123,7 @@ jobs:
       - name: Create macOS DMG (Universal)
         if: matrix.platform == 'darwin/universal'
         run: |
-          cd wails/build/bin
+          cd desktop/build/bin
           mkdir -p Treefrog.dmg-source
           cp -r Treefrog.app Treefrog.dmg-source/
           hdiutil create -srcfolder Treefrog.dmg-source -volname Treefrog -ov -format UDZO -o treefrog-macos-universal.dmg
@@ -134,14 +133,14 @@ jobs:
       - name: Create Linux tarball
         if: runner.os == 'linux'
         run: |
-          cd wails/build/bin
+          cd desktop/build/bin
           tar -czf treefrog-linux-x86_64.tar.gz treefrog
           mv treefrog-linux-x86_64.tar.gz ../../../treefrog-linux-x86_64.tar.gz
 
       - name: Create Windows ZIP
         if: runner.os == 'windows'
         run: |
-          cd wails\build\bin
+          cd desktop\build\bin
           7z a treefrog-windows-x64.zip treefrog.exe
           move treefrog-windows-x64.zip ..\..\..
         shell: powershell

@@ -1,0 +1,25 @@
+{
+  "name": "@treefrog/hooks",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@treefrog/types": "workspace:*",
+    "@treefrog/services": "workspace:*",
+    "react": "^18.3.1",
+    "zustand": "^5.0.11"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "typescript": "^5.5.4"
+  }
+}

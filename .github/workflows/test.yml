@@ -1,0 +1,112 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test-backend:
+    name: Backend Tests (Go)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Run Backend Tests
+        run: |
+          cd latex-compiler
+          go test ./... -v -race -coverprofile=coverage.out
+
+      - name: Upload Coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./latex-compiler/coverage.out
+          flags: backend
+          fail_ci_if_error: false
+
+  test-frontend:
+    name: Frontend Tests (TypeScript/React)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
+      - name: Install Dependencies
+        run: pnpm install
+
+      - name: Run Frontend Tests
+        run: |
+          cd desktop/frontend
+          pnpm test
+
+      - name: Upload Coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./desktop/frontend/coverage
+          flags: frontend
+          fail_ci_if_error: false
+
+  lint-backend:
+    name: Lint Backend
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+          working-directory: ./latex-compiler
+          args: --timeout=5m
+
+  lint-frontend:
+    name: Lint Frontend
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
+      - name: Install Dependencies
+        run: pnpm install
+
+      - name: Run ESLint
+        run: |
+          cd desktop/frontend
+          pnpm lint
