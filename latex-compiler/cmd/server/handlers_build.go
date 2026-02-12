@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -15,10 +14,12 @@ import (
 	"github.com/alpha-og/treefrog-latex-compiler/pkg/build"
 	"github.com/alpha-og/treefrog-latex-compiler/pkg/user"
 	"github.com/go-chi/chi/v5"
+	"github.com/sirupsen/logrus"
 )
 
+var buildLog = logrus.WithField("component", "handlers/build")
+
 // CreateBuildHandler creates a new build from uploaded files
-// Returns an http.HandlerFunc that handles POST /api/build
 func CreateBuildHandler(db interface{}) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserID(r)
@@ -27,13 +28,11 @@ func CreateBuildHandler(db interface{}) http.HandlerFunc {
 			return
 		}
 
-		// Issue #9 - input validation on file size
 		if err := r.ParseMultipartForm(build.MaxFileSize); err != nil {
 			http.Error(w, fmt.Sprintf("File too large (max %dMB)", build.MaxFileSize/(1024*1024)), http.StatusBadRequest)
 			return
 		}
 
-		// Get build options
 		engine := build.Engine(r.FormValue("engine"))
 		mainFile := r.FormValue("main_file")
 		shellEscape := r.FormValue("shell_escape") == "true"
@@ -45,7 +44,6 @@ func CreateBuildHandler(db interface{}) http.HandlerFunc {
 			mainFile = "main.tex"
 		}
 
-		// Validate input (Issue #9)
 		if !build.ValidEngines[string(engine)] {
 			http.Error(w, "Invalid engine", http.StatusBadRequest)
 			return
@@ -56,14 +54,18 @@ func CreateBuildHandler(db interface{}) http.HandlerFunc {
 			return
 		}
 
-		// Check limits
 		buildStore := build.NewStoreWithDB(dbInstance)
-		userStore, _ := user.NewStore(dbInstance)
+		userStore, err := user.NewStore(dbInstance)
+		if err != nil {
+			buildLog.WithError(err).Error("Failed to create user store")
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
 		limitService := build.NewLimitService(buildStore, userStore)
 
 		limitCheck, err := limitService.CanCreateBuild(userID)
 		if err != nil {
-			log.Printf("Limit check failed: %v", err)
+			buildLog.WithError(err).WithField("user_id", userID).Error("Limit check failed")
 			http.Error(w, "Failed to check limits", http.StatusInternalServerError)
 			return
 		}
@@ -75,10 +77,8 @@ func CreateBuildHandler(db interface{}) http.HandlerFunc {
 			return
 		}
 
-		// Generate build ID
 		buildID := fmt.Sprintf("bld_%d", time.Now().UnixNano())
 
-		// Create build directory
 		workDir := os.Getenv("COMPILER_WORKDIR")
 		if workDir == "" {
 			workDir = "/tmp/treefrog-builds"
@@ -86,21 +86,19 @@ func CreateBuildHandler(db interface{}) http.HandlerFunc {
 		buildDir := filepath.Join(workDir, userID, buildID)
 
 		if err := os.MkdirAll(buildDir, 0755); err != nil {
-			log.Printf("Failed to create build directory: %v", err)
+			buildLog.WithError(err).WithField("path", buildDir).Error("Failed to create build directory")
 			http.Error(w, "Failed to create build directory", http.StatusInternalServerError)
 			return
 		}
 
-		// Save uploaded file
 		file, fileHeader, err := r.FormFile("file")
 		if err != nil {
-			log.Printf("Failed to get file: %v", err)
+			buildLog.WithError(err).Error("Failed to get uploaded file")
 			http.Error(w, "No file uploaded", http.StatusBadRequest)
 			return
 		}
 		defer file.Close()
 
-		// Validate file size (Issue #9)
 		if fileHeader.Size > build.MaxFileSize {
 			http.Error(w, fmt.Sprintf("File too large (max %dMB)", build.MaxFileSize/(1024*1024)), http.StatusBadRequest)
 			return
@@ -109,19 +107,18 @@ func CreateBuildHandler(db interface{}) http.HandlerFunc {
 		zipPath := filepath.Join(buildDir, "source.zip")
 		dst, err := os.Create(zipPath)
 		if err != nil {
-			log.Printf("Failed to create zip file: %v", err)
+			buildLog.WithError(err).WithField("path", zipPath).Error("Failed to create zip file")
 			http.Error(w, "Failed to save file", http.StatusInternalServerError)
 			return
 		}
 		defer dst.Close()
 
 		if _, err := io.Copy(dst, file); err != nil {
-			log.Printf("Failed to save zip: %v", err)
+			buildLog.WithError(err).Error("Failed to save zip file")
 			http.Error(w, "Failed to save file", http.StatusInternalServerError)
 			return
 		}
 
-		// Create build record
 		buildRec := &build.Build{
 			ID:             buildID,
 			UserID:         userID,
@@ -129,7 +126,7 @@ func CreateBuildHandler(db interface{}) http.HandlerFunc {
 			Engine:         engine,
 			MainFile:       mainFile,
 			DirPath:        buildDir,
-			ShellEscape:    shellEscape && false, // Disable shell escape by default for security
+			ShellEscape:    shellEscape && false,
 			CreatedAt:      time.Now(),
 			UpdatedAt:      time.Now(),
 			ExpiresAt:      time.Now().Add(24 * time.Hour),
@@ -137,20 +134,24 @@ func CreateBuildHandler(db interface{}) http.HandlerFunc {
 			StorageBytes:   0,
 		}
 
-		// Validate build (Issue #9)
 		if err := buildRec.Validate(); err != nil {
 			http.Error(w, fmt.Sprintf("Invalid build: %v", err), http.StatusBadRequest)
 			return
 		}
 
 		if err := buildStore.Create(buildRec); err != nil {
-			log.Printf("Failed to create build record: %v", err)
+			buildLog.WithError(err).Error("Failed to create build record")
 			http.Error(w, "Failed to create build", http.StatusInternalServerError)
 			return
 		}
 
-		// Queue build for compilation (Issue #8 - job queue)
 		buildQueue.Enqueue(buildRec)
+
+		buildLog.WithFields(logrus.Fields{
+			"build_id": buildID,
+			"user_id":  userID,
+			"engine":   engine,
+		}).Info("Build created")
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(build.BuildResponse{
