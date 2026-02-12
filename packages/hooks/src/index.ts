@@ -1,2 +1,3 @@
-export { useAuth, useAuthStore } from './useAuth';
-export { useBuildCache, useCacheStore } from './useBuildCache';
+// This package is deprecated. Use stores directly from desktop/frontend/src/stores/
+// Kept for backwards compatibility during migration.
+export {};
