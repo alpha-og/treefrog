@@ -106,7 +106,7 @@ export default function Sidebar({
 
   // Local state
    const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
-     () => loadExpandedFolders()
+     () => loadExpandedFolders(projectRoot)
    );
    const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -150,8 +150,8 @@ export default function Sidebar({
 
   // Persist expanded folders
   useEffect(() => {
-    persistExpandedFolders(expandedFolders);
-  }, [expandedFolders]);
+    persistExpandedFolders(expandedFolders, projectRoot);
+  }, [expandedFolders, projectRoot]);
 
   // Persist filter settings
   useEffect(() => {

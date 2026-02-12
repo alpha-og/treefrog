@@ -3,7 +3,6 @@ import { ArrowLeft, Eye, Sidebar as SidebarIcon, Code, Eye as PreviewIcon } from
 import { useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "motion/react";
 import BuildButton from "./BuildButton";
-import { UserMenu } from "./UserMenu";
 import { cn } from "@/lib/utils";
 
 interface ToolbarProps {
@@ -158,11 +157,6 @@ export default function Toolbar({
             shell={shell}
             onShellChange={onShellChange}
           />
-
-          {/* User Menu */}
-          <div className="border-l border-border/50 pl-3 ml-1">
-            <UserMenu />
-          </div>
         </div>
       </header>
 
