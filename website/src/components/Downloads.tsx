@@ -6,21 +6,21 @@ const downloads = [
     platform: 'macOS',
     icon: Apple,
     version: 'Apple Silicon & Intel',
-    size: 'v0.0.3',
+    size: 'v0.0.4',
     link: 'https://github.com/alpha-og/treefrog/releases/latest/download/treefrog-macos-universal.dmg'
   },
   {
     platform: 'Windows',
     icon: Monitor,
     version: 'Windows 10+',
-    size: 'v0.0.3',
+    size: 'v0.0.4',
     link: 'https://github.com/alpha-og/treefrog/releases/latest/download/treefrog-windows-x64.zip '
   },
   {
     platform: 'Linux',
     icon: Monitor,
     version: 'AppImage',
-    size: 'v0.0.3',
+    size: 'v0.0.4',
     link: 'https://github.com/alpha-og/treefrog/releases/latest/download/treefrog-linux-x86_64.tar.gz '
   }
 ]
