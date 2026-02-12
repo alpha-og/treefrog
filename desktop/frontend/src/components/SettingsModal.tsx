@@ -1,11 +1,11 @@
 import { X, Lock, Globe, AlertCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Button } from "@treefrog/ui";
-import { Input } from "@treefrog/ui";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@treefrog/ui";
-import { Alert } from "@treefrog/ui";
-import { backdropFade, modalSlideUp } from "@treefrog/ui";
+import { Button } from "@/components/common/Button";
+import { Input } from "@/components/common/Input";
+import { Dialog, DialogHeader, DialogTitle, DialogDescription } from "@/components/common/Dialog";
+import { Alert } from "@/components/common/Alert";
+import { backdropFade, modalSlideUp } from "@/utils/animations";
 
 interface SettingsModalProps {
   isOpen: boolean;

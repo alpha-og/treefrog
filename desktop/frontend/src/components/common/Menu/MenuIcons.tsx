@@ -1,4 +1,3 @@
-"use client";
 import React from "react";
 import {
   FileIcon,
@@ -21,7 +20,7 @@ import {
   ExternalLink,
   LucideIcon,
 } from "lucide-react";
-import { cn } from "../utils";
+import { cn } from "@/lib/utils";
 
 interface MenuIconProps {
   name: string;

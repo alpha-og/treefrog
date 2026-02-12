@@ -31,8 +31,8 @@ import { FileEntry } from "@/types";
 import { cn } from "@/lib/utils";
 
 // Components
-import { Button } from "@treefrog/ui";
-import { Input } from "@treefrog/ui";
+import { Button } from "@/components/common";
+import { Input } from "@/components/common";
 import { SidebarHeader } from "./Sidebar/SidebarHeader";
 import { SidebarSearch } from "./Sidebar/SidebarSearch";
 import { FilterBar } from "./Sidebar/FilterBar";

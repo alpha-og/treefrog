@@ -6,7 +6,7 @@ import {
   Search,
   Filter,
 } from "lucide-react";
-import { Button } from "@treefrog/ui";
+import { Button } from "@/components/common";
 import { cn } from "../../lib/utils";
 import {
   DropdownMenu,
@@ -14,7 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@treefrog/ui";
+} from "@/components/ui";
 
 interface SidebarActionsProps {
   onSearchToggle: () => void;

@@ -18,7 +18,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@treefrog/ui";
+} from "@/components/ui";
 
 interface FilterBarProps {
   filterHidden: boolean;

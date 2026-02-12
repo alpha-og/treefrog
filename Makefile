@@ -10,6 +10,8 @@ VITE_LOG_LEVEL ?= debug
 # Development
 dev:
 	@echo "Running Treefrog desktop app in development mode..."
+	@echo "Building frontend..."
+	@cd desktop/frontend && pnpm install && pnpm build
 	@echo "Generating Wails bindings..."
 	@cd desktop && wails build -s
 	@echo "Wails dev server:"

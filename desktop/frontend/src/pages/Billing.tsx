@@ -2,11 +2,11 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowLeft, Zap, Gift } from "lucide-react";
 import { motion } from "motion/react";
-import { Button } from "@treefrog/ui";
+import { Button } from "@/components/common";
 import { PlanComparisonTable, type Plan } from "@/components/PlanComparisonTable";
 import { SubscriptionStatusCard } from "@/components/SubscriptionStatusCard";
-import { Input } from "@treefrog/ui";
-import { fadeInUp, staggerContainer, staggerItem } from "@treefrog/ui";
+import { Input } from "@/components/common";
+import { fadeInUp, staggerContainer, staggerItem } from "@/utils/animations";
 
 const plans: Plan[] = [
   {

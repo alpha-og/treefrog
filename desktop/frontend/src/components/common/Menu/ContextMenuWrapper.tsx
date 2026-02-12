@@ -3,120 +3,89 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuCheckboxItem,
-  DropdownMenuRadioItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuGroup,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-  DropdownMenuRadioGroup,
-} from "../dropdown-menu";
-import { cn } from "../utils";
-
-interface DropdownMenuWrapperContextType {
-  animationDelay: number;
-  showShortcuts: boolean;
-}
-
-const DropdownMenuWrapperContext = React.createContext<
-  DropdownMenuWrapperContextType
->({
-  animationDelay: 0,
-  showShortcuts: true,
-});
-
-export function useDropdownMenuWrapper() {
-  return React.useContext(DropdownMenuWrapperContext);
-}
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuCheckboxItem,
+  ContextMenuRadioItem,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+  ContextMenuShortcut,
+  ContextMenuGroup,
+  ContextMenuSub,
+  ContextMenuSubTrigger,
+  ContextMenuSubContent,
+  ContextMenuRadioGroup,
+} from "@/components/ui/context-menu";
+import { cn } from "@/lib/utils";
 
 /**
- * DropdownMenuWrapper - Enhanced dropdown menu with animations and consistent styling
+ * ContextMenuWrapper - Enhanced context menu with consistent styling and animations
  * 
  * Features:
- * - Slide + fade animations on open/close
- * - Consistent hover/focus states
+ * - Radix-based context menu with full Radix capabilities
+ * - Consistent hover/focus states across all items
  * - Icon support on items
  * - Keyboard shortcut display with subtlety
- * - Staggered item animations
+ * - Groups and separators for organization
  * 
  * @example
  * ```tsx
- * <DropdownMenuWrapper>
- *   <DropdownMenuTrigger asChild>
- *     <Button>Actions</Button>
- *   </DropdownMenuTrigger>
- *   <DropdownMenuContent>
- *     <DropdownMenuItem>
+ * <ContextMenuWrapper>
+ *   <ContextMenuTrigger>
+ *     <div>Right-click me</div>
+ *   </ContextMenuTrigger>
+ *   <ContextMenuContent>
+ *     <MenuItem onClick={handleRename}>
  *       <Edit2 size={16} />
  *       <span>Rename</span>
- *       <MenuShortcut>⌘R</MenuShortcut>
- *     </DropdownMenuItem>
- *   </DropdownMenuContent>
- * </DropdownMenuWrapper>
+ *     </MenuItem>
+ *   </ContextMenuContent>
+ * </ContextMenuWrapper>
  * ```
  */
-interface DropdownMenuWrapperProps {
+interface ContextMenuWrapperProps {
   children: React.ReactNode;
-  animationDelay?: number;
-  showShortcuts?: boolean;
 }
 
-export function DropdownMenuWrapper({
-  children,
-  animationDelay = 0,
-  showShortcuts = true,
-}: DropdownMenuWrapperProps) {
+export function ContextMenuWrapper({ children }: ContextMenuWrapperProps) {
   return (
-    <DropdownMenuWrapperContext.Provider
-      value={{
-        animationDelay,
-        showShortcuts,
-      }}
-    >
-      <DropdownMenu>
-        {children}
-      </DropdownMenu>
-    </DropdownMenuWrapperContext.Provider>
+    <ContextMenu>
+      {children}
+    </ContextMenu>
   );
 }
 
 /**
- * Enhanced DropdownMenuContent with animations
- * Wraps the shadcn component with motion animations
+ * Enhanced ContextMenuContent with consistent styling
  */
-interface DropdownMenuContentWrapperProps
-  extends React.ComponentProps<typeof DropdownMenuContent> {
+interface ContextMenuContentWrapperProps
+  extends React.ComponentProps<typeof ContextMenuContent> {
   children: React.ReactNode;
 }
 
-export function DropdownMenuContentWrapper({
+export function ContextMenuContentWrapper({
   children,
   className,
   ...props
-}: DropdownMenuContentWrapperProps) {
+}: ContextMenuContentWrapperProps) {
   const [isOpen, setIsOpen] = React.useState(false);
 
   return (
     <AnimatePresence mode="wait">
       {isOpen ? (
         <motion.div
-          key="dropdown-content"
-          initial={{ opacity: 0, scale: 0.95, y: -8 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: -8 }}
+          key="context-content"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
           transition={{
             duration: 0.2,
             ease: "easeOut",
           }}
         >
-          <DropdownMenuContent
+          <ContextMenuContent
             className={cn(
               "min-w-48 z-50",
               className
@@ -125,10 +94,10 @@ export function DropdownMenuContentWrapper({
             {...props}
           >
             {children}
-          </DropdownMenuContent>
+          </ContextMenuContent>
         </motion.div>
       ) : (
-        <DropdownMenuContent
+        <ContextMenuContent
           className={cn(
             "min-w-48 z-50",
             className
@@ -137,16 +106,16 @@ export function DropdownMenuContentWrapper({
           {...props}
         >
           {children}
-        </DropdownMenuContent>
+        </ContextMenuContent>
       )}
     </AnimatePresence>
   );
 }
 
 /**
- * Enhanced MenuItem with consistent styling and animations
+ * Enhanced MenuItem with consistent styling
  */
-interface MenuItemProps extends React.ComponentProps<typeof DropdownMenuItem> {
+interface MenuItemProps extends React.ComponentProps<typeof ContextMenuItem> {
   children: React.ReactNode;
   destructive?: boolean;
 }
@@ -158,7 +127,7 @@ export function MenuItem({
   ...props
 }: MenuItemProps) {
   return (
-    <DropdownMenuItem
+    <ContextMenuItem
       className={cn(
         "group",
         "flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer",
@@ -173,7 +142,7 @@ export function MenuItem({
       {...props}
     >
       {children}
-    </DropdownMenuItem>
+    </ContextMenuItem>
   );
 }
 
@@ -181,7 +150,7 @@ export function MenuItem({
  * Enhanced CheckboxItem with consistent styling
  */
 interface MenuCheckboxItemProps
-  extends React.ComponentProps<typeof DropdownMenuCheckboxItem> {
+  extends React.ComponentProps<typeof ContextMenuCheckboxItem> {
   children: React.ReactNode;
 }
 
@@ -191,7 +160,7 @@ export function MenuCheckboxItem({
   ...props
 }: MenuCheckboxItemProps) {
   return (
-    <DropdownMenuCheckboxItem
+    <ContextMenuCheckboxItem
       className={cn(
         "group",
         "flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer",
@@ -204,7 +173,7 @@ export function MenuCheckboxItem({
       {...props}
     >
       {children}
-    </DropdownMenuCheckboxItem>
+    </ContextMenuCheckboxItem>
   );
 }
 
@@ -212,7 +181,7 @@ export function MenuCheckboxItem({
  * Enhanced RadioItem with consistent styling
  */
 interface MenuRadioItemProps
-   extends React.ComponentProps<typeof DropdownMenuRadioItem> {
+  extends React.ComponentProps<typeof ContextMenuRadioItem> {
   children: React.ReactNode;
 }
 
@@ -222,7 +191,7 @@ export function MenuRadioItem({
   ...props
 }: MenuRadioItemProps) {
   return (
-    <DropdownMenuRadioItem
+    <ContextMenuRadioItem
       className={cn(
         "group",
         "flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer",
@@ -230,25 +199,24 @@ export function MenuRadioItem({
         "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset",
         "transition-colors duration-100",
-        "[&_span:first-child]:hidden", // Hide the radio indicator dot
         className
       )}
       {...props}
     >
       {children}
-    </DropdownMenuRadioItem>
+    </ContextMenuRadioItem>
   );
 }
 
 // Re-export shadcn primitives for convenience
 export {
-  DropdownMenuTrigger,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuGroup,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-  DropdownMenuRadioGroup,
+  ContextMenuTrigger,
+  ContextMenuLabel,
+  ContextMenuSeparator,
+  ContextMenuShortcut,
+  ContextMenuGroup,
+  ContextMenuSub,
+  ContextMenuSubTrigger,
+  ContextMenuSubContent,
+  ContextMenuRadioGroup,
 };

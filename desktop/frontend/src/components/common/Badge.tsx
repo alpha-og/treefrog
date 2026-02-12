@@ -1,10 +1,9 @@
-"use client";
 import * as React from "react";
 import { motion } from "motion/react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "./utils";
-import { scaleIn, subtlePulse, ANIMATION_DURATIONS } from "@treefrog/ui";
-import { useAnimation, useReducedMotion } from "@treefrog/ui";
+import { cn } from "@/lib/utils";
+import { scaleIn, subtlePulse, ANIMATION_DURATIONS } from "@/utils/animations";
+import { useAnimation, useReducedMotion } from "@/utils/animation-context";
 
 const badgeVariants = cva(
   "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",

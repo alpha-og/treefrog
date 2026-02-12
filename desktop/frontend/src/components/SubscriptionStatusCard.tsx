@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { Check, Crown, Zap } from "lucide-react";
-import { Button } from "@treefrog/ui";
+import { Button } from "@/components/common";
 import { cn } from "@/lib/utils";
 
 interface SubscriptionStatusCardProps {
