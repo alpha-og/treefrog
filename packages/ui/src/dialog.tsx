@@ -58,7 +58,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
         <motion.div
           ref={ref}
           className={cn(
-            "relative z-50 w-full max-w-lg rounded-2xl bg-card p-6 shadow-xl border",
+            "relative z-50 w-full max-w-[calc(100%-2rem)] sm:max-w-lg rounded-2xl bg-card p-6 shadow-xl border",
             className
           )}
           initial={shouldAnimate ? "initial" : undefined}
