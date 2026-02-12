@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
+import { useAuth as useClerkAuth } from "@clerk/clerk-react";
 import { useAppStore } from "../stores/appStore";
 import { useAuthStore } from "../stores/authStore";
 import { rendererService, type RendererMode, type ImageSource } from "../services/rendererService";
@@ -216,7 +217,8 @@ export default forwardRef(function LatexCompilerSettings(
   const prefersReducedMotion = useReducedMotion();
   const shouldAnimate = animationsEnabled && !prefersReducedMotion;
 
-  const { isLoggedIn, markFirstLaunchComplete } = useAuthStore();
+  const { isSignedIn } = useClerkAuth();
+  const { markFirstLaunchComplete } = useAuthStore();
 
   const {
     rendererMode,
@@ -580,7 +582,7 @@ export default forwardRef(function LatexCompilerSettings(
               <ChevronDown size={16} />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContentWrapper align="start" className="w-56">
+          <DropdownMenuContentWrapper align="start" className="w-[var(--radix-dropdown-menu-trigger-width)]">
             <DropdownMenuRadioGroup value={rendererMode} onValueChange={(value) => handleModeChange(value as RendererMode)}>
               <MenuRadioItem 
                 value="auto"
@@ -740,7 +742,7 @@ export default forwardRef(function LatexCompilerSettings(
                         <ChevronDown size={16} />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContentWrapper align="start" className="w-56">
+                    <DropdownMenuContentWrapper align="start" className="w-[var(--radix-dropdown-menu-trigger-width)]">
                       <DropdownMenuRadioGroup value={rendererImageSource} onValueChange={(value) => handleImageSourceChange(value as ImageSource)}>
                         <MenuRadioItem 
                           value="ghcr"
@@ -797,7 +799,7 @@ export default forwardRef(function LatexCompilerSettings(
                             <ChevronDown size={16} />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContentWrapper align="start" className="w-56">
+                        <DropdownMenuContentWrapper align="start" className="w-[var(--radix-dropdown-menu-trigger-width)]">
                           <DropdownMenuRadioGroup value={showCustomTabs} onValueChange={(value) => setShowCustomTabs(value as "registry" | "tar")}>
                             <MenuRadioItem 
                               value="registry"
@@ -1001,7 +1003,7 @@ export default forwardRef(function LatexCompilerSettings(
                   <Globe className="w-5 h-5 text-primary" />
                   <h3 className="text-lg font-semibold">Remote Compiler</h3>
                 </div>
-                {!isLoggedIn ? (
+                {!isSignedIn ? (
                   <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-200 border-amber-500/20">
                     <Lock size={14} className="mr-1" />
                     Auth Required
@@ -1017,7 +1019,7 @@ export default forwardRef(function LatexCompilerSettings(
             </div>
 
             {/* Content */}
-            {!isLoggedIn ? (
+            {!isSignedIn ? (
               <AuthenticationBanner onNavigateToAccount={handleNavigateToAccount} />
             ) : (
               <>
