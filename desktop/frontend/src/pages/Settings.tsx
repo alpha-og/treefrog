@@ -1,17 +1,18 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
-import { ArrowLeft, Zap, Palette, Check, Moon, Sun, Monitor } from "lucide-react";
+import { ArrowLeft, Zap, Palette, Check, Moon, Sun, Monitor, User } from "lucide-react";
 import { motion } from "motion/react";
 import { useAppStore } from "@/stores/appStore";
 import LatexCompilerSettings from "@/components/LatexCompilerSettings";
+import AccountSettings from "@/components/AccountSettings";
 import FramelessWindow from "@/components/FramelessWindow";
-import { Button } from "@treefrog/ui";
-import { GlowCard } from "@treefrog/ui";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@treefrog/ui";
+import { Button } from "@/components/common";
+import { GlowCard } from "@/components/common";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { fadeInUp, staggerContainer, staggerItem } from "@treefrog/ui";
+import { fadeInUp, staggerContainer, staggerItem } from "@/utils/animations";
 
-type SettingsTab = "compiler" | "appearance";
+type SettingsTab = "compiler" | "appearance" | "account";
 type ThemeMode = "dark" | "light" | "system";
 
 export default function Settings() {
@@ -54,7 +55,12 @@ export default function Settings() {
   const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
     { id: "compiler", label: "LaTeX Compiler", icon: <Zap size={16} /> },
     { id: "appearance", label: "Appearance", icon: <Palette size={16} /> },
+    { id: "account", label: "Account", icon: <User size={16} /> },
   ];
+
+   const handleNavigateToAccount = () => {
+     setActiveTab("account");
+   };
 
    const handleSave = async () => {
      setIsSaving(true);
@@ -142,56 +148,71 @@ export default function Settings() {
               initial="initial"
               animate="animate"
             >
-               {/* LaTeX Compiler Tab */}
-               {activeTab === "compiler" && (
-                 <motion.div 
-                   className="space-y-6"
-                   variants={staggerItem}
-                 >
-                   {/* Settings Card */}
-                   <GlowCard>
-                     <LatexCompilerSettings ref={latexCompilerSettingsRef} />
-                   </GlowCard>
-                 </motion.div>
-               )}
+                {/* LaTeX Compiler Tab */}
+                {activeTab === "compiler" && (
+                  <motion.div 
+                    className="space-y-6"
+                    variants={staggerItem}
+                  >
+                    {/* Settings Card */}
+                    <GlowCard>
+                      <LatexCompilerSettings 
+                        ref={latexCompilerSettingsRef}
+                        onNavigateToAccount={handleNavigateToAccount}
+                      />
+                    </GlowCard>
+                  </motion.div>
+                )}
 
-               {/* Appearance Tab */}
-               {activeTab === "appearance" && (
-                 <motion.div 
-                   className="space-y-6"
-                   variants={staggerItem}
-                 >
-                   {/* Theme Selection Card */}
-                   <GlowCard>
-                     <div>
-                       <label className="block text-sm font-semibold mb-4">Theme</label>
-                       <div className="grid grid-cols-3 gap-3">
-                         {[
-                           { mode: "light" as ThemeMode, icon: Sun, label: "Light" },
-                           { mode: "system" as ThemeMode, icon: Monitor, label: "System" },
-                           { mode: "dark" as ThemeMode, icon: Moon, label: "Dark" },
-                         ].map(({ mode, icon: Icon, label }) => (
-                           <motion.button
-                             key={mode}
-                             className={cn(
-                               "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
-                               themeMode === mode
-                                 ? "border-primary bg-primary/5 text-primary"
-                                 : "border-border bg-card text-muted-foreground hover:border-primary/50"
-                             )}
-                             onClick={() => setThemeMode(mode)}
-                             whileHover={{ scale: 1.02 }}
-                             whileTap={{ scale: 0.98 }}
-                           >
-                             <Icon size={20} />
-                             <span className="text-sm font-medium">{label}</span>
-                           </motion.button>
-                         ))}
-                       </div>
-                     </div>
-                   </GlowCard>
-                 </motion.div>
-               )}
+                {/* Appearance Tab */}
+                {activeTab === "appearance" && (
+                  <motion.div 
+                    className="space-y-6"
+                    variants={staggerItem}
+                  >
+                    {/* Theme Selection Card */}
+                    <GlowCard>
+                      <div>
+                        <label className="block text-sm font-semibold mb-4">Theme</label>
+                        <div className="grid grid-cols-3 gap-3">
+                          {[
+                            { mode: "light" as ThemeMode, icon: Sun, label: "Light" },
+                            { mode: "system" as ThemeMode, icon: Monitor, label: "System" },
+                            { mode: "dark" as ThemeMode, icon: Moon, label: "Dark" },
+                          ].map(({ mode, icon: Icon, label }) => (
+                            <motion.button
+                              key={mode}
+                              className={cn(
+                                "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all",
+                                themeMode === mode
+                                  ? "border-primary bg-primary/5 text-primary"
+                                  : "border-border bg-card text-muted-foreground hover:border-primary/50"
+                              )}
+                              onClick={() => setThemeMode(mode)}
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                            >
+                              <Icon size={20} />
+                              <span className="text-sm font-medium">{label}</span>
+                            </motion.button>
+                          ))}
+                        </div>
+                      </div>
+                    </GlowCard>
+                  </motion.div>
+                )}
+
+                {/* Account Tab */}
+                {activeTab === "account" && (
+                  <motion.div 
+                    className="space-y-6"
+                    variants={staggerItem}
+                  >
+                    <GlowCard>
+                      <AccountSettings />
+                    </GlowCard>
+                  </motion.div>
+                )}
             </motion.div>
           </div>
         </main>

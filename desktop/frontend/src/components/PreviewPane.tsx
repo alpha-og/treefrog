@@ -30,8 +30,8 @@ import {
   DropdownMenuRadioGroup,
   MenuRadioItem,
   MenuIcon,
-} from "@treefrog/ui";
-import { Button } from "@treefrog/ui";
+} from "@/components/common/Menu";
+import { Button } from "@/components/common";
 
 const log = createLogger("PreviewPane");
 

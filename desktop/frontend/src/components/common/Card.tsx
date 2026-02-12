@@ -1,7 +1,6 @@
-"use client";
 import * as React from "react";
 import { motion } from "motion/react";
-import { cn } from "./utils";
+import { cn } from "@/lib/utils";
 import {
   cardHover,
   cardHoverGlow,
@@ -9,8 +8,8 @@ import {
   tightStaggerContainer,
   tightStaggerItem,
   ANIMATION_DURATIONS,
-} from "@treefrog/ui";
-import { useAnimation, useReducedMotion } from "@treefrog/ui";
+} from "@/utils/animations";
+import { useAnimation, useReducedMotion } from "@/utils/animation-context";
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   glow?: boolean;

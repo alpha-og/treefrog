@@ -1,15 +1,14 @@
-"use client";
 import * as React from "react";
 import { motion } from "motion/react";
-import { cn } from "./utils";
+import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
 import {
   errorShake,
   fadeInUp,
   ANIMATION_DURATIONS,
-} from "@treefrog/ui";
+} from "@/utils/animations";
 import { LoadingSpinner } from "./LoadingSpinner";
-import { useAnimation, useReducedMotion } from "@treefrog/ui";
+import { useAnimation, useReducedMotion } from "@/utils/animation-context";
 
 export interface InputProps
   extends React.InputHTMLAttributes<HTMLInputElement> {

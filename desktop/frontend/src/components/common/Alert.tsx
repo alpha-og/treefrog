@@ -1,4 +1,3 @@
-"use client";
 import * as React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -8,9 +7,9 @@ import {
   Info,
   X,
 } from "lucide-react";
-import { cn } from "./utils";
-import { fadeInUp, slideInRight, ANIMATION_DURATIONS } from "@treefrog/ui";
-import { useAnimation, useReducedMotion } from "@treefrog/ui";
+import { cn } from "@/lib/utils";
+import { fadeInUp, slideInRight, ANIMATION_DURATIONS } from "@/utils/animations";
+import { useAnimation, useReducedMotion } from "@/utils/animation-context";
 
 type AlertVariant = "info" | "success" | "warning" | "error";
 

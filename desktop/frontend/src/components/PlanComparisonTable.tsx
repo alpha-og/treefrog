@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { Check, X } from "lucide-react";
-import { Button } from "@treefrog/ui";
+import { Button } from "@/components/common";
 import { cn } from "@/lib/utils";
 
 export interface Plan {

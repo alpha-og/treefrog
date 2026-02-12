@@ -1,8 +1,7 @@
-"use client";
 import * as React from "react";
 import { motion } from "motion/react";
-import { cn } from "./utils";
-import { spinner } from "@treefrog/ui";
+import { cn } from "@/lib/utils";
+import { spinner } from "@/utils/animations";
 
 interface LoadingSpinnerProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Size of the spinner */

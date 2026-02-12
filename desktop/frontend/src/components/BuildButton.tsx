@@ -10,7 +10,7 @@ import {
   MenuRadioItem,
   DropdownMenuSeparator,
   MenuIcon,
-} from "@treefrog/ui";
+} from "@/components/common/Menu";
 
 interface BuildButtonProps {
   onBuild: () => void;

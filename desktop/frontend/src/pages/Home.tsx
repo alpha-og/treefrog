@@ -7,10 +7,10 @@ import { useAppStore } from "@/stores/appStore";
 import { openProjectDialog } from "@/services/projectService";
 import ProjectCard from "@/components/ProjectCard";
 import FramelessWindow from "@/components/FramelessWindow";
-import { Button } from "@treefrog/ui";
-import { GlowCard } from "@treefrog/ui";
-import { Alert } from "@treefrog/ui";
-import { fadeInUp, staggerContainer, staggerItem } from "@treefrog/ui";
+import { Button } from "@/components/common";
+import { GlowCard } from "@/components/common";
+import { Alert } from "@/components/common";
+import { fadeInUp, staggerContainer, staggerItem } from "@/utils/animations";
 
 interface HomeProps {
   onSelectProject?: (path: string) => Promise<void>;

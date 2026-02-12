@@ -1,7 +1,7 @@
 import { Trash2, FolderOpen, Calendar } from "lucide-react";
 import { motion } from "motion/react";
 import { RecentProject } from "@/stores/recentProjectsStore";
-import { Card, CardContent } from "@treefrog/ui";
+import { Card, CardContent } from "@/components/common";
 import { cn } from "@/lib/utils";
 
 interface ProjectCardProps {

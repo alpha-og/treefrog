@@ -8,20 +8,6 @@ export default defineConfig({
   plugins: [
     tailwindcss(),
     react(),
-    {
-      name: "wailsjs-fallback",
-      resolveId(id) {
-        // Handle all wailsjs imports with a virtual empty module
-        if (id.startsWith("wailsjs")) {
-          return "\0wailsjs-empty:" + id;
-        }
-      },
-      load(id) {
-        if (id.startsWith("\0wailsjs-empty:")) {
-          return "export {};";
-        }
-      },
-    },
   ],
   resolve: {
     alias: {
@@ -29,7 +15,7 @@ export default defineConfig({
       "@treefrog/types": path.resolve(__dirname, "../../packages/types/src"),
       "@treefrog/services": path.resolve(__dirname, "../../packages/services/src"),
       "@treefrog/hooks": path.resolve(__dirname, "../../packages/hooks/src"),
-      "@treefrog/ui": path.resolve(__dirname, "../../packages/ui/src"),
+      "wailsjs": path.resolve(__dirname, "./wailsjs/wailsjs"),
     },
   },
 });

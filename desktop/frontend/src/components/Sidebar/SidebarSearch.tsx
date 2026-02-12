@@ -1,6 +1,6 @@
 import React from "react";
 import { Search, X } from "lucide-react";
-import { Input } from "@treefrog/ui";
+import { Input } from "@/components/common";
 
 interface SidebarSearchProps {
   query: string;

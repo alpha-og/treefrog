@@ -1,9 +1,8 @@
-"use client";
 import * as React from "react";
 import { motion } from "motion/react";
-import { cn } from "./utils";
-import { ANIMATION_DURATIONS } from "@treefrog/ui";
-import { useAnimation, useReducedMotion } from "@treefrog/ui";
+import { cn } from "@/lib/utils";
+import { ANIMATION_DURATIONS } from "@/utils/animations";
+import { useAnimation, useReducedMotion } from "@/utils/animation-context";
 
 export interface ToggleProps
   extends React.InputHTMLAttributes<HTMLInputElement> {

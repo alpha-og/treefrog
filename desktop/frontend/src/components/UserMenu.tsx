@@ -6,8 +6,8 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuLabel,
-} from "@treefrog/ui";
-import { Button } from "@treefrog/ui";
+} from "@/components/ui";
+import { Button } from "@/components/common";
 import { useAuthStore } from "@/stores/authStore";
 import {
   User,

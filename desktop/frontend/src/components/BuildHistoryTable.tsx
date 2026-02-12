@@ -8,7 +8,7 @@ import {
   Download,
   ExternalLink,
 } from "lucide-react";
-import { Button } from "@treefrog/ui";
+import { Button } from "@/components/common";
 import { downloadArtifact } from "@/services/buildService";
 import { cn } from "@/lib/utils";
 

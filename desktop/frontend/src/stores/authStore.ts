@@ -15,6 +15,7 @@ export interface AuthState {
   isLoggedIn: boolean
   isLoading: boolean
   error: string | null
+  isFirstLaunch: boolean
 
   // Actions
   setUser: (user: AuthState['user']) => void
@@ -22,6 +23,7 @@ export interface AuthState {
   setLoading: (loading: boolean) => void
   setError: (error: string | null) => void
   logout: () => void
+  markFirstLaunchComplete: () => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -32,6 +34,7 @@ export const useAuthStore = create<AuthState>()(
       isLoggedIn: false,
       isLoading: false,
       error: null,
+      isFirstLaunch: true,
 
       setUser: (user) => {
         set({ user, isLoggedIn: !!user })
@@ -62,13 +65,19 @@ export const useAuthStore = create<AuthState>()(
           error: null
         })
         log.debug('User logged out')
+      },
+
+      markFirstLaunchComplete: () => {
+        set({ isFirstLaunch: false })
+        log.debug('First launch completed')
       }
     }),
     {
       name: 'treefrog-auth',
       partialize: (state) => ({
         sessionToken: state.sessionToken,
-        user: state.user
+        user: state.user,
+        isFirstLaunch: state.isFirstLaunch
       })
     }
   )

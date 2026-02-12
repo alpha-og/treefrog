@@ -3,10 +3,10 @@ import { useState } from "react";
 import { ArrowLeft, Eye, EyeOff, Copy, Check } from "lucide-react";
 import { motion } from "motion/react";
 import { useAuth as useClerkAuth } from "@clerk/clerk-react";
-import { Button } from "@treefrog/ui";
-import { Input } from "@treefrog/ui";
+import { Button } from "@/components/common";
+import { Input } from "@/components/common";
 import { StorageUsageWidget } from "@/components/StorageUsageWidget";
-import { fadeInUp, staggerContainer, staggerItem } from "@treefrog/ui";
+import { fadeInUp, staggerContainer, staggerItem } from "@/utils/animations";
 
 export default function Account() {
   const navigate = useNavigate();

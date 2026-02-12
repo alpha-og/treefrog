@@ -6,8 +6,8 @@ import {
   Home,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { Button } from "@treefrog/ui";
-import { Input } from "@treefrog/ui";
+import { Button } from "@/components/common";
+import { Input } from "@/components/common";
 import { SidebarActions } from "./SidebarActions";
 import { cn } from "../../lib/utils";
 

@@ -1,10 +1,9 @@
-"use client";
 import * as React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
-import { cn } from "./utils";
-import { backdropFade, modalSlideUp } from "@treefrog/ui";
-import { useAnimation, useReducedMotion } from "@treefrog/ui";
+import { cn } from "@/lib/utils";
+import { backdropFade, modalSlideUp } from "@/utils/animations";
+import { useAnimation, useReducedMotion } from "@/utils/animation-context";
 
 interface DialogProps {
   open: boolean;
@@ -58,7 +57,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
         <motion.div
           ref={ref}
           className={cn(
-            "relative z-50 w-full max-w-[calc(100%-2rem)] sm:max-w-lg rounded-2xl bg-card p-6 shadow-xl border",
+            "relative z-50 w-full max-w-lg rounded-2xl bg-card p-6 shadow-xl border",
             className
           )}
           initial={shouldAnimate ? "initial" : undefined}

@@ -2,9 +2,9 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { ArrowLeft, Download, Copy, CheckCircle, AlertCircle, Clock, FileText } from "lucide-react";
 import { motion } from "motion/react";
-import { Button } from "@treefrog/ui";
+import { Button } from "@/components/common";
 import { downloadArtifact } from "@/services/buildService";
-import { fadeInUp, staggerContainer, staggerItem } from "@treefrog/ui";
+import { fadeInUp, staggerContainer, staggerItem } from "@/utils/animations";
 import { cn } from "@/lib/utils";
 
 interface BuildDetail {

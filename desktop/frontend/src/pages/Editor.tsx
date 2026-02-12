@@ -44,9 +44,9 @@ import { syncConfig } from "@/services/configService";
 import { clampPage, modalTitle, modalPlaceholder, modalHint } from "@/utils/ui";
 import { joinPath } from "@/utils/path";
 import { cn } from "@/lib/utils";
-import { Button } from "@treefrog/ui";
-import { Input } from "@treefrog/ui";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@treefrog/ui";
+import { Button } from "@/components/common/Button";
+import { Input } from "@/components/common/Input";
+import { Dialog, DialogHeader, DialogTitle } from "@/components/common/Dialog";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -475,10 +475,11 @@ export default function Editor() {
   );
 
   return (
-    <FramelessWindow 
-      title="Treefrog" 
-      subtitle={projectRoot ? <span className="font-mono text-xs">{projectRoot}</span> : undefined}
-    >
+    <>
+      <FramelessWindow 
+        title="Treefrog" 
+        subtitle={projectRoot ? <span className="font-mono text-xs">{projectRoot}</span> : undefined}
+      >
       <div className="flex-1 flex flex-col bg-background overflow-hidden relative" style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}>
         {/* Background gradient accent */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -671,7 +672,10 @@ export default function Editor() {
         close={() => setShowPicker(false)}
       />
 
-      {/* File Operations Modal */}
+        </div>
+      </FramelessWindow>
+
+      {/* File Operations Modal - rendered outside FramelessWindow to escape overflow-hidden */}
       {modal && (
         <Dialog open={!!modal} onOpenChange={() => closeModal()}>
           <DialogHeader>
@@ -719,7 +723,6 @@ export default function Editor() {
           </div>
         </Dialog>
       )}
-    </div>
-    </FramelessWindow>
+    </>
   );
 }
