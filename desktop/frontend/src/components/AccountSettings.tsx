@@ -1,34 +1,34 @@
-import { useAuth as useClerkAuth } from "@clerk/clerk-react";
+import { useAuth as useClerkAuth, useSignIn } from "@clerk/clerk-react";
 import { LogOut, LogIn } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { Button } from "@/components/common";
 import { motion } from "motion/react";
-import { isWails, getWailsApp } from "@/utils/env";
 import { createLogger } from "@/utils/logger";
 
 const log = createLogger('AccountSettings');
 
 export default function AccountSettings() {
   const { user: clerkUser, signOut, isSignedIn } = useClerkAuth();
-  const { isFirstLaunch, markFirstLaunchComplete } = useAuthStore();
+  const { signIn, isLoaded } = useSignIn();
+  const { markFirstLaunchComplete } = useAuthStore();
 
   const handleSignIn = async () => {
+    if (!isLoaded || !signIn) {
+      log.warn('SignIn not loaded yet');
+      return;
+    }
+
     try {
-      log.debug('Starting sign in flow with Clerk from Account settings');
+      log.debug('Starting OAuth sign-in from Account settings');
       markFirstLaunchComplete();
-      if (isWails()) {
-        const app = getWailsApp();
-        if (app?.OpenExternalURL) {
-          const authUrl = `http://localhost:5173/auth/callback`;
-          log.debug('Opening Clerk login in external browser', { authUrl });
-          await app.OpenExternalURL(authUrl);
-        }
-      } else {
-        window.location.href = '/auth/callback';
-      }
+      await signIn.authenticateWithRedirect({
+        strategy: 'oauth_google',
+        redirectUrl: '/auth/callback',
+        redirectUrlComplete: '/'
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to start sign in';
-      log.error('Sign in error from Account settings', { error: message });
+      log.error('Sign in error', { error: message });
     }
   };
 
