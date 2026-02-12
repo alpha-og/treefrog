@@ -181,6 +181,15 @@ func main() {
 
 		// Coupon endpoints
 		r.Post("/coupon/redeem", RedeemCouponHandler())
+		r.Post("/coupon/apply", ApplyTrialCouponHandler())
+
+		// Allowlist endpoints
+		r.Get("/allowlist/check", CheckAllowlistHandler())
+		r.Route("/admin/allowlist", func(r chi.Router) {
+			r.Get("/", ListAllowlistHandler())
+			r.Post("/", AddToAllowlistHandler())
+			r.Delete("/{email}", RemoveFromAllowlistHandler())
+		})
 
 		// User endpoints
 		r.Get("/user/me", GetCurrentUserHandler())
