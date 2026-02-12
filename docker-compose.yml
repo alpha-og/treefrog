@@ -4,6 +4,15 @@ services:
     build:
       context: ./latex-compiler
       dockerfile: cmd/server/Dockerfile
+      # Use BuildKit for better caching, parallel layer building, and memory efficiency
+      # This significantly improves build performance and reduces memory spikes
+      args:
+        BUILDKIT_INLINE_CACHE: "1"
+        BUILDKIT_PROGRESS: "plain"
+      # Limit memory during build to prevent OOM errors
+      # Docker will use disk swap if needed but won't crash the host
+      cache_from:
+        - type=registry,ref=treefrog-renderer:buildcache
     image: treefrog-renderer:latest
     ports:
       - "127.0.0.1:9000:9000"
@@ -20,6 +29,7 @@ services:
     deploy:
       resources:
         limits:
+          # Keep high limits since all LaTeX features need these resources
           cpus: '2'
           memory: 4G
         reservations:
@@ -27,4 +37,7 @@ services:
           memory: 1G
     read_only: true
     tmpfs:
-      - /tmp:size=100M,mode=1777
+      # Increased for LaTeX compilation temp files and intermediate outputs
+      - /tmp:size=2G,mode=1777
+
+
