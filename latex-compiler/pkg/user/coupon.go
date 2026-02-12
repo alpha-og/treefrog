@@ -8,48 +8,29 @@ import (
 	"github.com/google/uuid"
 )
 
-// PlanConfig defines plan limits
-type PlanConfig struct {
-	ID            string
-	Name          string
-	MonthlyBuilds int
-	Concurrent    int
-	StorageGB     int
-}
+type CouponType string
 
-// Plans defines the available plans with storage quotas
-var Plans = map[string]PlanConfig{
-	"free": {
-		Name:          "Free",
-		MonthlyBuilds: 50,
-		Concurrent:    2,
-		StorageGB:     1,
-	},
-	"pro": {
-		Name:          "Pro",
-		MonthlyBuilds: 500,
-		Concurrent:    10,
-		StorageGB:     10,
-	},
-	"enterprise": {
-		Name:          "Enterprise",
-		MonthlyBuilds: -1, // unlimited
-		Concurrent:    50,
-		StorageGB:     100,
-	},
-}
+const (
+	CouponTypeDiscount CouponType = "discount"
+	CouponTypeTrial    CouponType = "trial"
+	CouponTypeUpgrade  CouponType = "upgrade"
+)
 
 type Coupon struct {
-	ID          string    `json:"id"`
-	Code        string    `json:"code"`
-	PlanID      string    `json:"plan_id"`
-	PlanName    string    `json:"plan_name"`
-	MaxUses     int       `json:"max_uses"`
-	UsedCount   int       `json:"used_count"`
-	ExpiresAt   time.Time `json:"expires_at"`
-	DiscountPct int       `json:"discount_percent"`
-	IsActive    bool      `json:"is_active"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID          string     `json:"id"`
+	Code        string     `json:"code"`
+	Type        CouponType `json:"type"`
+	PlanID      string     `json:"plan_id"`
+	PlanName    string     `json:"plan_name"`
+	MaxUses     int        `json:"max_uses"`
+	UsedCount   int        `json:"used_count"`
+	ExpiresAt   time.Time  `json:"expires_at"`
+	DiscountPct int        `json:"discount_percent"`
+	TrialDays   int        `json:"trial_days"`
+	TierUpgrade string     `json:"tier_upgrade"`
+	IsActive    bool       `json:"is_active"`
+	OneTimeUse  bool       `json:"one_time_use"`
+	CreatedAt   time.Time  `json:"created_at"`
 }
 
 type CouponStore struct {
@@ -70,12 +51,13 @@ func (s *CouponStore) GetByCode(code string) (*Coupon, error) {
 
 	var coupon Coupon
 	err := s.db.QueryRow(`
-		SELECT id, code, plan_id, plan_name, max_uses, used_count, expires_at, 
-		       discount_percent, is_active, created_at
+		SELECT id, code, type, plan_id, plan_name, max_uses, used_count, expires_at, 
+		       discount_percent, trial_days, tier_upgrade, is_active, one_time_use, created_at
 		FROM coupons WHERE code = ?`, code).Scan(
-		&coupon.ID, &coupon.Code, &coupon.PlanID, &coupon.PlanName,
+		&coupon.ID, &coupon.Code, &coupon.Type, &coupon.PlanID, &coupon.PlanName,
 		&coupon.MaxUses, &coupon.UsedCount, &coupon.ExpiresAt,
-		&coupon.DiscountPct, &coupon.IsActive, &coupon.CreatedAt)
+		&coupon.DiscountPct, &coupon.TrialDays, &coupon.TierUpgrade,
+		&coupon.IsActive, &coupon.OneTimeUse, &coupon.CreatedAt)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -146,15 +128,73 @@ func (s *CouponStore) Create(coupon *Coupon) error {
 
 	coupon.ID = uuid.New().String()
 	coupon.CreatedAt = time.Now()
+	if coupon.Type == "" {
+		coupon.Type = CouponTypeDiscount
+	}
 
 	_, err := s.db.Exec(`
-		INSERT INTO coupons (id, code, plan_id, plan_name, max_uses, used_count, expires_at,
-		                     discount_percent, is_active, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		coupon.ID, coupon.Code, coupon.PlanID, coupon.PlanName, coupon.MaxUses,
-		coupon.UsedCount, coupon.ExpiresAt, coupon.DiscountPct, coupon.IsActive,
-		coupon.CreatedAt)
+		INSERT INTO coupons (id, code, type, plan_id, plan_name, max_uses, used_count, expires_at,
+		                     discount_percent, trial_days, tier_upgrade, is_active, one_time_use, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		coupon.ID, coupon.Code, coupon.Type, coupon.PlanID, coupon.PlanName, coupon.MaxUses,
+		coupon.UsedCount, coupon.ExpiresAt, coupon.DiscountPct, coupon.TrialDays,
+		coupon.TierUpgrade, coupon.IsActive, coupon.OneTimeUse, coupon.CreatedAt)
 
+	if err != nil {
+		return fmt.Errorf("insert failed: %w", err)
+	}
+	return nil
+}
+
+// GetByType retrieves all coupons of a specific type
+func (s *CouponStore) GetByType(couponType CouponType) ([]*Coupon, error) {
+	query := `
+		SELECT id, code, type, plan_id, plan_name, max_uses, used_count, expires_at, 
+		       discount_percent, trial_days, tier_upgrade, is_active, one_time_use, created_at
+		FROM coupons WHERE type = ? AND is_active = 1
+		ORDER BY created_at DESC
+	`
+
+	rows, err := s.db.Query(query, couponType)
+	if err != nil {
+		return nil, fmt.Errorf("query failed: %w", err)
+	}
+	defer rows.Close()
+
+	var coupons []*Coupon
+	for rows.Next() {
+		coupon := &Coupon{}
+		err := rows.Scan(
+			&coupon.ID, &coupon.Code, &coupon.Type, &coupon.PlanID, &coupon.PlanName,
+			&coupon.MaxUses, &coupon.UsedCount, &coupon.ExpiresAt,
+			&coupon.DiscountPct, &coupon.TrialDays, &coupon.TierUpgrade,
+			&coupon.IsActive, &coupon.OneTimeUse, &coupon.CreatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("scan failed: %w", err)
+		}
+		coupons = append(coupons, coupon)
+	}
+
+	return coupons, rows.Err()
+}
+
+// HasUserUsedCoupon checks if a user has already used a one-time coupon
+func (s *CouponStore) HasUserUsedCoupon(userID, couponID string) (bool, error) {
+	var count int
+	err := s.db.QueryRow(
+		"SELECT COUNT(*) FROM coupon_redemptions WHERE user_id = ? AND coupon_id = ?",
+		userID, couponID).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("query failed: %w", err)
+	}
+	return count > 0, nil
+}
+
+// RecordRedemption records that a user used a coupon
+func (s *CouponStore) RecordRedemption(userID, couponID string) error {
+	_, err := s.db.Exec(
+		"INSERT INTO coupon_redemptions (id, user_id, coupon_id, redeemed_at) VALUES (?, ?, ?, ?)",
+		uuid.New().String(), userID, couponID, time.Now())
 	if err != nil {
 		return fmt.Errorf("insert failed: %w", err)
 	}
