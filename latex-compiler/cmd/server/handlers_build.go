@@ -395,6 +395,42 @@ func DeleteBuildHandler() http.HandlerFunc {
 	}
 }
 
+// GetCurrentUserHandler gets the current authenticated user's profile
+func GetCurrentUserHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, ok := auth.GetUserID(r)
+		if !ok {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		userStore, err := user.NewStore(dbInstance)
+		if err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+
+		userProfile, err := userStore.GetByClerkID(userID)
+		if err != nil {
+			http.Error(w, "User not found", http.StatusNotFound)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"id":           userProfile.ClerkID,
+			"email":        userProfile.Email,
+			"name":         userProfile.Name,
+			"tier":         userProfile.Tier,
+			"storage_used": userProfile.StorageUsedBytes,
+			"subscription": map[string]interface{}{
+				"paused":   userProfile.SubscriptionPaused,
+				"canceled": userProfile.SubscriptionCanceledAt != nil,
+			},
+		})
+	}
+}
+
 // GetUserUsageHandler gets the user's build usage stats
 // Returns an http.HandlerFunc that handles GET /api/user/usage
 func GetUserUsageHandler() http.HandlerFunc {

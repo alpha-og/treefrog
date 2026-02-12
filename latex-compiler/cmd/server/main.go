@@ -171,6 +171,7 @@ func main() {
 		r.Post("/coupon/redeem", RedeemCouponHandler())
 
 		// User endpoints
+		r.Get("/user/me", GetCurrentUserHandler())
 		r.Get("/user/usage", GetUserUsageHandler())
 	})
 
