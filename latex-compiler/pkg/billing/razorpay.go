@@ -5,8 +5,11 @@ import (
 	"os"
 	"time"
 
-	razorpay "github.com/razorpay/razorpay-go"
+	"github.com/razorpay/razorpay-go"
+	"github.com/sirupsen/logrus"
 )
+
+var log = logrus.WithField("component", "billing/razorpay")
 
 type RazorpayService struct {
 	Client *razorpay.Client
@@ -21,6 +24,32 @@ func NewRazorpayService(keyID, keySecret string) *RazorpayService {
 	}
 }
 
+// getString safely extracts a string from a map
+func getString(m map[string]interface{}, key string) (string, error) {
+	val, ok := m[key]
+	if !ok {
+		return "", fmt.Errorf("missing key: %s", key)
+	}
+	str, ok := val.(string)
+	if !ok {
+		return "", fmt.Errorf("key %s is not a string", key)
+	}
+	return str, nil
+}
+
+// getFloat safely extracts a float64 from a map
+func getFloat(m map[string]interface{}, key string) (float64, error) {
+	val, ok := m[key]
+	if !ok {
+		return 0, fmt.Errorf("missing key: %s", key)
+	}
+	f, ok := val.(float64)
+	if !ok {
+		return 0, fmt.Errorf("key %s is not a number", key)
+	}
+	return f, nil
+}
+
 // CreateCustomer creates or retrieves a Razorpay customer
 func (s *RazorpayService) CreateCustomer(email, name string) (string, error) {
 	data := map[string]interface{}{
@@ -30,23 +59,54 @@ func (s *RazorpayService) CreateCustomer(email, name string) (string, error) {
 
 	customer, err := s.Client.Customer.Create(data, nil)
 	if err != nil {
+		log.WithError(err).WithFields(logrus.Fields{
+			"email": email,
+			"name":  name,
+		}).Error("Failed to create customer")
 		return "", fmt.Errorf("failed to create customer: %w", err)
 	}
 
-	return customer["id"].(string), nil
+	id, err := getString(customer, "id")
+	if err != nil {
+		log.WithError(err).Error("Invalid customer response: missing id")
+		return "", fmt.Errorf("invalid customer response: %w", err)
+	}
+
+	log.WithFields(logrus.Fields{
+		"customer_id": id,
+		"email":       email,
+	}).Info("Customer created")
+
+	return id, nil
 }
 
 // GetCustomer retrieves a customer by ID
 func (s *RazorpayService) GetCustomer(customerID string) (*Customer, error) {
 	customer, err := s.Client.Customer.Fetch(customerID, map[string]interface{}{}, map[string]string{})
 	if err != nil {
+		log.WithError(err).WithField("customer_id", customerID).Error("Failed to fetch customer")
 		return nil, fmt.Errorf("failed to fetch customer: %w", err)
 	}
 
+	id, err := getString(customer, "id")
+	if err != nil {
+		return nil, fmt.Errorf("invalid customer response: %w", err)
+	}
+	email, err := getString(customer, "email")
+	if err != nil {
+		log.WithError(err).Warn("Customer response missing email")
+		email = ""
+	}
+	name, err := getString(customer, "name")
+	if err != nil {
+		log.WithError(err).Warn("Customer response missing name")
+		name = ""
+	}
+
 	return &Customer{
-		ID:    customer["id"].(string),
-		Email: customer["email"].(string),
-		Name:  customer["name"].(string),
+		ID:    id,
+		Email: email,
+		Name:  name,
 	}, nil
 }
 
@@ -55,7 +115,7 @@ func (s *RazorpayService) CreateSubscriptionLink(planID, customerID string) (str
 	data := map[string]interface{}{
 		"plan_id":         planID,
 		"customer_id":     customerID,
-		"total_count":     12, // 12 billing cycles
+		"total_count":     12,
 		"quantity":        1,
 		"notify_by_sms":   1,
 		"notify_by_email": 1,
@@ -66,20 +126,41 @@ func (s *RazorpayService) CreateSubscriptionLink(planID, customerID string) (str
 
 	subscription, err := s.Client.Subscription.Create(data, nil)
 	if err != nil {
+		log.WithError(err).WithFields(logrus.Fields{
+			"plan_id":     planID,
+			"customer_id": customerID,
+		}).Error("Failed to create subscription")
 		return "", fmt.Errorf("failed to create subscription: %w", err)
 	}
 
-	return subscription["short_url"].(string), nil
+	shortURL, err := getString(subscription, "short_url")
+	if err != nil {
+		log.WithError(err).Error("Invalid subscription response: missing short_url")
+		return "", fmt.Errorf("invalid subscription response: %w", err)
+	}
+
+	log.WithFields(logrus.Fields{
+		"customer_id": customerID,
+		"plan_id":     planID,
+	}).Info("Subscription link created")
+
+	return shortURL, nil
 }
 
 // CancelSubscription cancels a subscription
 func (s *RazorpayService) CancelSubscription(subscriptionID string) error {
 	data := map[string]interface{}{
-		"cancel_at_cycle_end": true, // Cancel at end of billing period
+		"cancel_at_cycle_end": true,
 	}
 
 	_, err := s.Client.Subscription.Cancel(subscriptionID, data, nil)
-	return err
+	if err != nil {
+		log.WithError(err).WithField("subscription_id", subscriptionID).Error("Failed to cancel subscription")
+		return fmt.Errorf("failed to cancel subscription: %w", err)
+	}
+
+	log.WithField("subscription_id", subscriptionID).Info("Subscription cancelled")
+	return nil
 }
 
 // PauseSubscription pauses a subscription
@@ -89,38 +170,72 @@ func (s *RazorpayService) PauseSubscription(subscriptionID string) error {
 	}
 
 	_, err := s.Client.Subscription.Pause(subscriptionID, data, nil)
-	return err
+	if err != nil {
+		log.WithError(err).WithField("subscription_id", subscriptionID).Error("Failed to pause subscription")
+		return fmt.Errorf("failed to pause subscription: %w", err)
+	}
+
+	log.WithField("subscription_id", subscriptionID).Info("Subscription paused")
+	return nil
 }
 
 // ResumeSubscription resumes a paused subscription
 func (s *RazorpayService) ResumeSubscription(subscriptionID string) error {
 	_, err := s.Client.Subscription.Resume(subscriptionID, map[string]interface{}{}, map[string]string{})
-	return err
+	if err != nil {
+		log.WithError(err).WithField("subscription_id", subscriptionID).Error("Failed to resume subscription")
+		return fmt.Errorf("failed to resume subscription: %w", err)
+	}
+
+	log.WithField("subscription_id", subscriptionID).Info("Subscription resumed")
+	return nil
 }
 
 // GetSubscription retrieves subscription details
 func (s *RazorpayService) GetSubscription(subscriptionID string) (*Subscription, error) {
 	sub, err := s.Client.Subscription.Fetch(subscriptionID, map[string]interface{}{}, map[string]string{})
 	if err != nil {
+		log.WithError(err).WithField("subscription_id", subscriptionID).Error("Failed to fetch subscription")
 		return nil, fmt.Errorf("failed to fetch subscription: %w", err)
 	}
 
-	status := sub["status"].(string)
-	planID := ""
+	status, err := getString(sub, "status")
+	if err != nil {
+		return nil, fmt.Errorf("invalid subscription response: %w", err)
+	}
 
-	if plan, ok := sub["plan_id"].(string); ok {
-		planID = plan
+	planID, _ := getString(sub, "plan_id")
+	customerID, err := getString(sub, "customer_id")
+	if err != nil {
+		log.WithError(err).Warn("Subscription response missing customer_id")
+	}
+
+	currentStart, err := getFloat(sub, "current_start")
+	if err != nil {
+		log.WithError(err).Warn("Subscription response missing current_start")
+	}
+	currentEnd, err := getFloat(sub, "current_end")
+	if err != nil {
+		log.WithError(err).Warn("Subscription response missing current_end")
+	}
+	paidCount, err := getFloat(sub, "paid_count")
+	if err != nil {
+		log.WithError(err).Warn("Subscription response missing paid_count")
+	}
+	totalCount, err := getFloat(sub, "total_count")
+	if err != nil {
+		log.WithError(err).Warn("Subscription response missing total_count")
 	}
 
 	return &Subscription{
 		ID:           subscriptionID,
 		PlanID:       planID,
 		Status:       status,
-		CustomerID:   sub["customer_id"].(string),
-		CurrentStart: time.Unix(int64(sub["current_start"].(float64)), 0),
-		CurrentEnd:   time.Unix(int64(sub["current_end"].(float64)), 0),
-		PaidCount:    int(sub["paid_count"].(float64)),
-		TotalCount:   int(sub["total_count"].(float64)),
+		CustomerID:   customerID,
+		CurrentStart: time.Unix(int64(currentStart), 0),
+		CurrentEnd:   time.Unix(int64(currentEnd), 0),
+		PaidCount:    int(paidCount),
+		TotalCount:   int(totalCount),
 	}, nil
 }
 
@@ -136,10 +251,26 @@ func (s *RazorpayService) CreateSubscriptionWithCoupon(planID, customerID, coupo
 
 	subscription, err := s.Client.Subscription.Create(data, nil)
 	if err != nil {
+		log.WithError(err).WithFields(logrus.Fields{
+			"plan_id":     planID,
+			"customer_id": customerID,
+			"coupon_code": couponCode,
+		}).Error("Failed to create subscription with coupon")
 		return "", fmt.Errorf("failed to create subscription with coupon: %w", err)
 	}
 
-	return subscription["short_url"].(string), nil
+	shortURL, err := getString(subscription, "short_url")
+	if err != nil {
+		return "", fmt.Errorf("invalid subscription response: %w", err)
+	}
+
+	log.WithFields(logrus.Fields{
+		"customer_id": customerID,
+		"plan_id":     planID,
+		"coupon_code": couponCode,
+	}).Info("Subscription with coupon created")
+
+	return shortURL, nil
 }
 
 type Customer struct {
@@ -159,17 +290,26 @@ type Subscription struct {
 	TotalCount   int       `json:"total_count"`
 }
 
-// PlanTierMapping maps Razorpay plan IDs to our tier names
-var PlanTierMapping = map[string]string{
-	os.Getenv("RAZORPAY_PLAN_FREE"):       "free",
-	os.Getenv("RAZORPAY_PLAN_PRO"):        "pro",
-	os.Getenv("RAZORPAY_PLAN_ENTERPRISE"): "enterprise",
+// planTierMapping holds the plan ID to tier mapping (initialized at startup)
+var planTierMapping map[string]string
+
+// InitPlanTierMapping initializes the plan tier mapping from environment variables
+func InitPlanTierMapping() {
+	planTierMapping = map[string]string{
+		os.Getenv("RAZORPAY_PLAN_FREE"):       "free",
+		os.Getenv("RAZORPAY_PLAN_PRO"):        "pro",
+		os.Getenv("RAZORPAY_PLAN_ENTERPRISE"): "enterprise",
+	}
+	log.WithField("plans", len(planTierMapping)).Info("Plan tier mapping initialized")
 }
 
 // GetTierFromPlan returns the tier name for a given Razorpay plan ID
 func GetTierFromPlan(planID string) string {
-	if tier, ok := PlanTierMapping[planID]; ok {
+	if planTierMapping == nil {
+		InitPlanTierMapping()
+	}
+	if tier, ok := planTierMapping[planID]; ok {
 		return tier
 	}
-	return "free" // Default to free tier
+	return "free"
 }
