@@ -17,9 +17,6 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@18.3.1)
-      '@treefrog/hooks':
-        specifier: workspace:*
-        version: link:../../packages/hooks
       '@treefrog/services':
         specifier: workspace:*
         version: link:../../packages/services
@@ -116,23 +113,7 @@ importers:
         version: 5.4.21(lightningcss@1.30.2)
 
   packages/hooks:
-    dependencies:
-      '@treefrog/services':
-        specifier: workspace:*
-        version: link:../services
-      '@treefrog/types':
-        specifier: workspace:*
-        version: link:../types
-      react:
-        specifier: ^18.3.1
-        version: 18.3.1
-      zustand:
-        specifier: ^5.0.11
-        version: 5.0.11(@types/react@18.3.28)(react@18.3.1)(use-sync-external-store@1.6.0(react@18.3.1))
     devDependencies:
-      '@types/react':
-        specifier: ^18.3.3
-        version: 18.3.28
       typescript:
         specifier: ^5.5.4
         version: 5.9.3

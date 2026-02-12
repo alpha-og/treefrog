@@ -6,9 +6,16 @@ dist/
 wails/frontend/wailsjs/
 wails/treefrog
 wails/*.app/
-wails/*.exe
+wails/*.exe/
 
 # Build artifacts (but not source files)
 wails/build/bin/
 wails/build/*.app/
 wails/build/*.exe
+
+# TypeScript build artifacts in packages
+packages/*/dist/
+packages/*/src/*.js
+packages/*/src/*.js.map
+packages/*/src/*.d.ts
+packages/*/src/*.d.ts.map

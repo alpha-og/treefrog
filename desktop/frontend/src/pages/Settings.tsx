@@ -95,7 +95,7 @@ export default function Settings() {
             <div className="flex items-center gap-3 w-1/4">
               <motion.button
                 onClick={handleBack}
-                className="p-2 rounded-lg hover:bg-primary/10 transition-all"
+                className="p-2 rounded-lg hover:bg-primary/10 transition-all cursor-pointer"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
@@ -116,7 +116,7 @@ export default function Settings() {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={cn(
-                      "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all",
+                      "flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all cursor-pointer",
                       activeTab === tab.id
                         ? "bg-background text-foreground shadow-sm"
                         : "text-muted-foreground hover:text-foreground hover:bg-background/50"
@@ -177,7 +177,7 @@ export default function Settings() {
                         <button
                           key={mode}
                           className={cn(
-                            "relative flex flex-col items-center gap-3 p-5 rounded-xl border-2 transition-all",
+                            "relative flex flex-col items-center gap-3 p-5 rounded-xl border-2 transition-all cursor-pointer",
                             themeMode === mode
                               ? "border-primary bg-primary/5 text-primary"
                               : "border-border bg-card text-muted-foreground hover:border-primary/40"

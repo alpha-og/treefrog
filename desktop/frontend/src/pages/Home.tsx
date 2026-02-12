@@ -76,7 +76,7 @@ export default function Home({ onSelectProject, loading }: HomeProps) {
           <div></div>
           <motion.button
             onClick={() => navigate({ to: "/settings" })}
-            className="p-2 rounded-lg hover:bg-primary/10 transition-all"
+            className="p-2 rounded-lg hover:bg-primary/10 transition-all cursor-pointer"
             title="Settings"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
