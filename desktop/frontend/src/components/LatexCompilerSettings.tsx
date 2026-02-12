@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react";
-import { useAuth as useClerkAuth } from "@clerk/clerk-react";
+import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { useAppStore } from "../stores/appStore";
 import { useAuthStore } from "../stores/authStore";
 import { rendererService, type RendererMode, type ImageSource } from "../services/rendererService";
@@ -20,36 +19,28 @@ import {
   FileText,
   Trash2,
   HardDrive,
-  AlertTriangle,
   Lock,
-  LogIn,
-  ArrowRight,
-  CircleDot,
+  Zap,
+  Cloud,
+  Wand2,
 } from "lucide-react";
 import { Button } from "@/components/common";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/common";
 import { Input } from "@/components/common";
-import { Select } from "@/components/common";
 import { Toggle } from "@/components/common";
 import { Badge } from "@/components/common";
 import {
   DropdownMenuWrapper,
   DropdownMenuTrigger,
   DropdownMenuContentWrapper,
-  MenuItem,
   DropdownMenuRadioGroup,
   MenuRadioItem,
-  DropdownMenuSeparator,
-  MenuIcon,
 } from "@/components/common/Menu";
 import { motion, AnimatePresence } from "motion/react";
-import { ANIMATION_DURATIONS, fadeInUp } from "@/utils/animations";
 import { useAnimation, useReducedMotion } from "@/utils/animation-context";
 import { cn } from "@/lib/utils";
 
 const log = createLogger("LatexCompilerSettings");
 
-// Enhanced Logs Display Component with layout-based smooth animations
 function LogsDisplay({
   logs,
   title = "Logs",
@@ -60,152 +51,111 @@ function LogsDisplay({
   shouldAnimate: boolean;
 }) {
   const [showLogs, setShowLogs] = useState(false);
-  const logsId = `logs-${title}`;
 
   return (
-    <motion.div layout layoutId={`${logsId}-container`}>
+    <div className="border-t border-border bg-muted/20 rounded-b-lg overflow-hidden">
       <motion.button
         onClick={() => setShowLogs(!showLogs)}
-        className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors border-t border-border"
-        layoutId={`${logsId}-header`}
-        whileHover={shouldAnimate ? { backgroundColor: "rgba(0,0,0,0.05)" } : undefined}
-        whileTap={shouldAnimate ? { scale: 0.98 } : undefined}
+        className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-muted/40 transition-colors"
+        whileTap={shouldAnimate ? { scale: 0.995 } : undefined}
       >
         <div className="flex items-center gap-2">
-          <FileText className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm font-medium">{title}</span>
+          <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-xs font-medium text-foreground">{title}</span>
+          {logs && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+              {logs.split('\n').length} lines
+            </span>
+          )}
         </div>
         <motion.div
           animate={showLogs ? { rotate: 180 } : { rotate: 0 }}
-          transition={shouldAnimate ? { duration: ANIMATION_DURATIONS.normal } : undefined}
+          transition={shouldAnimate ? { duration: 0.2, ease: "easeOut" } : { duration: 0 }}
         >
-          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
         </motion.div>
       </motion.button>
 
-      <AnimatePresence mode="sync">
+      <AnimatePresence initial={false}>
         {showLogs && (
           <motion.div
-            layoutId={`${logsId}-content`}
-            className="p-4 bg-muted/20 overflow-hidden"
-            initial={shouldAnimate ? { opacity: 0 } : { opacity: 0 }}
-            animate={shouldAnimate ? { opacity: 1 } : { opacity: 1 }}
-            exit={shouldAnimate ? { opacity: 0 } : { opacity: 0 }}
-            transition={
-              shouldAnimate
-                ? { duration: ANIMATION_DURATIONS.fast }
-                : { duration: ANIMATION_DURATIONS.fast }
-            }
+            key="logs-content"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={shouldAnimate ? { height: { duration: 0.25, ease: [0.4, 0, 0.2, 1] }, opacity: { duration: 0.15 } } : { duration: 0 }}
+            className="overflow-hidden"
           >
-            <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap break-word max-h-64 overflow-y-auto">
-              {logs || "No logs available yet"}
-            </pre>
+            <div className="px-4 pb-3">
+              <div className="bg-background/80 border border-border/50 rounded-md p-3 max-h-40 overflow-y-auto">
+                <pre className="text-[11px] font-mono text-muted-foreground whitespace-pre-wrap break-word leading-relaxed">
+                  {logs || <span className="italic text-muted-foreground/60">No logs available</span>}
+                </pre>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
-  );
-}
-
-// Status Badge Component with better styling
-function StatusBadge({ status }: { status: string }) {
-  const getStatusConfig = () => {
-    switch (status) {
-      case "running":
-        return {
-          bg: "bg-emerald-500/10",
-          border: "border-emerald-500/30",
-          text: "text-emerald-700 dark:text-emerald-400",
-          icon: "text-emerald-500",
-        };
-      case "stopped":
-        return {
-          bg: "bg-slate-500/10",
-          border: "border-slate-500/30",
-          text: "text-slate-700 dark:text-slate-400",
-          icon: "text-slate-500",
-        };
-      case "building":
-        return {
-          bg: "bg-blue-500/10",
-          border: "border-blue-500/30",
-          text: "text-blue-700 dark:text-blue-400",
-          icon: "text-blue-500",
-        };
-      case "error":
-        return {
-          bg: "bg-red-500/10",
-          border: "border-red-500/30",
-          text: "text-red-700 dark:text-red-400",
-          icon: "text-red-500",
-        };
-      case "not-installed":
-        return {
-          bg: "bg-amber-500/10",
-          border: "border-amber-500/30",
-          text: "text-amber-700 dark:text-amber-400",
-          icon: "text-amber-500",
-        };
-      default:
-        return {
-          bg: "bg-muted/50",
-          border: "border-border",
-          text: "text-muted-foreground",
-          icon: "text-muted-foreground",
-        };
-    }
-  };
-
-  const config = getStatusConfig();
-  const statusText = status === "building" ? "Starting..." : status.charAt(0).toUpperCase() + status.slice(1);
-
-  return (
-    <div className={`${config.bg} ${config.border} ${config.text} border rounded-full px-3 py-1.5 inline-flex items-center gap-2`}>
-      <motion.div
-        animate={status === "building" ? { scale: [1, 1.2, 1] } : {}}
-        transition={{ duration: 1, repeat: status === "building" ? Infinity : 0 }}
-      >
-        <CircleDot className={`w-2 h-2 ${config.icon}`} fill="currentColor" />
-      </motion.div>
-      <span className="text-xs font-semibold">{statusText}</span>
     </div>
   );
 }
 
-// Authentication Required Banner for Remote Compiler
-function AuthenticationBanner({ onNavigateToAccount }: { onNavigateToAccount: () => void }) {
-  const { shouldAnimate } = useAnimation();
-  const prefersReducedMotion = useReducedMotion();
-  const canAnimate = shouldAnimate && !prefersReducedMotion;
+function StatusBadge({ status }: { status: string }) {
+  const configs: Record<string, { bg: string; border: string; text: string; dot: string }> = {
+    running: {
+      bg: "bg-emerald-500/15",
+      border: "border-emerald-500/40",
+      text: "text-emerald-600 dark:text-emerald-400",
+      dot: "bg-emerald-500",
+    },
+    stopped: {
+      bg: "bg-slate-500/15",
+      border: "border-slate-400/40",
+      text: "text-slate-600 dark:text-slate-400",
+      dot: "bg-slate-400",
+    },
+    building: {
+      bg: "bg-blue-500/15",
+      border: "border-blue-500/40",
+      text: "text-blue-600 dark:text-blue-400",
+      dot: "bg-blue-500",
+    },
+    error: {
+      bg: "bg-red-500/15",
+      border: "border-red-500/40",
+      text: "text-red-600 dark:text-red-400",
+      dot: "bg-red-500",
+    },
+    "not-installed": {
+      bg: "bg-amber-500/15",
+      border: "border-amber-500/40",
+      text: "text-amber-600 dark:text-amber-400",
+      dot: "bg-amber-500",
+    },
+  };
+
+  const config = configs[status] || { bg: "bg-muted", border: "border-border", text: "text-muted-foreground", dot: "bg-muted-foreground" };
+  const statusText = status === "building" ? "Starting..." : status.charAt(0).toUpperCase() + status.slice(1);
+  const isBuilding = status === "building";
+  const isRunning = status === "running";
 
   return (
-    <motion.div
-      initial={canAnimate ? { opacity: 0, y: 10 } : undefined}
-      animate={canAnimate ? { opacity: 1, y: 0 } : undefined}
-      transition={canAnimate ? { duration: ANIMATION_DURATIONS.normal } : undefined}
-      className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg space-y-3"
-    >
-      <div className="flex items-start gap-3">
-        <Lock className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-        <div className="flex-1">
-          <h4 className="font-semibold text-sm text-amber-900 dark:text-amber-100">
-            Authentication Required
-          </h4>
-          <p className="text-xs text-amber-800 dark:text-amber-200 mt-1">
-            Remote compiler features require authentication. Sign in to your account to access remote compilation.
-          </p>
-        </div>
-      </div>
-      <Button
-        onClick={onNavigateToAccount}
-        size="sm"
-        className="w-full flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white"
-      >
-        <LogIn size={16} />
-        Go to Account Tab
-        <ArrowRight size={16} />
-      </Button>
-    </motion.div>
+    <div className={cn(
+      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-medium",
+      config.bg, config.border, config.text
+    )}>
+      <span className="relative flex h-2 w-2">
+        {isRunning && (
+          <span className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-75", config.dot)} />
+        )}
+        <motion.span
+          className={cn("relative inline-flex rounded-full h-2 w-2", config.dot)}
+          animate={isBuilding ? { scale: [1, 1.4, 1], opacity: [1, 0.6, 1] } : {}}
+          transition={isBuilding ? { duration: 0.8, repeat: Infinity, ease: "easeInOut" } : { duration: 0 }}
+        />
+      </span>
+      <span>{statusText}</span>
+    </div>
   );
 }
 
@@ -217,8 +167,8 @@ export default forwardRef(function LatexCompilerSettings(
   const prefersReducedMotion = useReducedMotion();
   const shouldAnimate = animationsEnabled && !prefersReducedMotion;
 
-  const { isSignedIn } = useClerkAuth();
-  const { markFirstLaunchComplete } = useAuthStore();
+  const { isGuest } = useAuthStore();
+  const isGuestMode = isGuest();
 
   const {
     rendererMode,
@@ -226,89 +176,58 @@ export default forwardRef(function LatexCompilerSettings(
     rendererAutoStart,
     rendererImageSource,
     rendererImageRef,
-    rendererRemoteUrl,
-    rendererRemoteToken,
     rendererCustomRegistry,
     rendererCustomTarPath,
     rendererStatus,
     rendererLogs,
-    buildLog,
     setRendererMode,
     setRendererPort,
     setRendererAutoStart,
     setRendererImageSource,
     setRendererImageRef,
-    setRendererRemoteUrl,
-    setRendererRemoteToken,
     setRendererCustomRegistry,
     setRendererCustomTarPath,
     setRendererStatus,
     setRendererLogs,
-    setBuildLog,
   } = useAppStore();
 
   const [portInput, setPortInput] = useState(rendererPort.toString());
   const [isLoading, setIsLoading] = useState(false);
-  const [showCustomTabs, setShowCustomTabs] = useState<"registry" | "tar">("registry");
   const [isVerifyingImage, setIsVerifyingImage] = useState(false);
   const [imageVerificationStatus, setImageVerificationStatus] = useState<"idle" | "valid" | "invalid">("idle");
   const [isCleaningUp, setIsCleaningUp] = useState(false);
+  const [isDetectingPort, setIsDetectingPort] = useState(false);
   const [diskSpaceAvailable, setDiskSpaceAvailable] = useState<number | null>(null);
-  const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
-    const initializeSettings = async () => {
+    const init = async () => {
       await waitForWails();
       await loadConfig();
       await loadStatus();
       await loadLogs();
     };
-    initializeSettings();
+    init();
   }, []);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      loadLogs();
-    }, 2000);
+    const interval = setInterval(loadLogs, 2000);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    const loadDiskSpace = async () => {
+    const loadDisk = async () => {
       try {
-        const space = await rendererService.checkDiskSpace();
-        setDiskSpaceAvailable(space);
-      } catch (err) {
-        console.warn("Failed to load disk space:", err);
-      }
+        setDiskSpaceAvailable(await rendererService.checkDiskSpace());
+      } catch {}
     };
-
-    loadDiskSpace();
-    const interval = setInterval(loadDiskSpace, 30000);
+    loadDisk();
+    const interval = setInterval(loadDisk, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    if (successMessage || error) {
-      const timer = setTimeout(() => {
-        setSuccessMessage("");
-        setError("");
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [successMessage, error]);
+  useImperativeHandle(ref, () => ({ save: handleSave }));
 
-  useImperativeHandle(ref, () => ({
-    save: handleSave,
-  }));
-
-  const handleNavigateToAccount = () => {
-    markFirstLaunchComplete();
-    if (onNavigateToAccount) {
-      onNavigateToAccount();
-    }
-  };
+  const handleNavigateToAccount = () => onNavigateToAccount?.();
 
   const handleSave = async () => {
     setIsLoading(true);
@@ -317,16 +236,14 @@ export default forwardRef(function LatexCompilerSettings(
         const newPort = parseInt(portInput, 10);
         if (isNaN(newPort) || newPort < 1024 || newPort > 65535) {
           toast.error("Port must be between 1024 and 65535");
-          setIsLoading(false);
           return;
         }
         await rendererService.setPort(newPort);
         setRendererPort(newPort);
       }
-
-      toast.success("Settings saved successfully");
+      toast.success("Settings saved");
     } catch (err) {
-      toast.error(`Failed to save settings: ${err}`);
+      toast.error(`Failed to save: ${err}`);
     } finally {
       setIsLoading(false);
     }
@@ -340,15 +257,11 @@ export default forwardRef(function LatexCompilerSettings(
       setRendererAutoStart(config.autoStart);
       setRendererImageSource(config.imageSource);
       setRendererImageRef(config.imageRef);
-      setRendererRemoteUrl(config.remoteUrl);
-      setRendererRemoteToken(config.remoteToken);
       if (config.customRegistry) setRendererCustomRegistry(config.customRegistry);
       if (config.customTarPath) setRendererCustomTarPath(config.customTarPath);
       setPortInput(config.port.toString());
     } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      log.error("Failed to load renderer config", err);
-      toast.error(`Failed to load renderer configuration: ${errorMsg}`);
+      log.error("Failed to load config", err);
     }
   };
 
@@ -356,31 +269,17 @@ export default forwardRef(function LatexCompilerSettings(
     try {
       const status = await rendererService.getStatus();
       setRendererStatus(status.state);
-      if (status.logs) {
-        setRendererLogs(status.logs);
-      }
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      log.error("Failed to load renderer status", err);
-      toast.error(`Failed to load renderer status: ${errorMsg}`);
+      if (status.logs) setRendererLogs(status.logs);
+    } catch {
       setRendererStatus("error");
     }
   };
 
   const loadLogs = async () => {
     try {
-      const rendererLogsStr = await rendererService.getRendererLogs();
-      if (rendererLogsStr) {
-        setRendererLogs(rendererLogsStr);
-      }
-
-      const buildLogsStr = await rendererService.getBuildLog();
-      if (buildLogsStr) {
-        setBuildLog(buildLogsStr);
-      }
-    } catch (err) {
-      log.debug("Failed to fetch logs", err);
-    }
+      const logs = await rendererService.getRendererLogs();
+      if (logs) setRendererLogs(logs);
+    } catch {}
   };
 
   const handleModeChange = async (newMode: RendererMode) => {
@@ -388,9 +287,9 @@ export default forwardRef(function LatexCompilerSettings(
     try {
       await rendererService.setMode(newMode);
       setRendererMode(newMode);
-      toast.success(`Mode changed to ${newMode}`);
+      toast.success(`Mode: ${newMode}`);
     } catch (err) {
-      toast.error(`Failed to change mode: ${err}`);
+      toast.error(`Failed: ${err}`);
     } finally {
       setIsLoading(false);
     }
@@ -401,75 +300,68 @@ export default forwardRef(function LatexCompilerSettings(
     try {
       await rendererService.setImageSource(newSource, rendererImageRef);
       setRendererImageSource(newSource);
-
-      if (newSource === "ghcr") {
-        setRendererImageRef("ghcr.io/alpha-og/treefrog/renderer:latest");
-      }
-
-      toast.success(`Image source changed to ${newSource}`);
+      if (newSource === "ghcr") setRendererImageRef("ghcr.io/alpha-og/treefrog/renderer:latest");
+      toast.success(`Source: ${newSource}`);
     } catch (err) {
-      toast.error(`Failed to change image source: ${err}`);
+      toast.error(`Failed: ${err}`);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleVerifyCustomImage = async () => {
+    const path = rendererCustomRegistry || rendererCustomTarPath;
+    if (!path) return toast.error("Enter a registry URL");
+    
     setIsVerifyingImage(true);
     setImageVerificationStatus("idle");
-
-    const path = rendererCustomTarPath || rendererCustomRegistry;
-    if (!path) {
-      setError("Please enter a registry URL or tar file path");
+    
+    try {
+      const valid = await rendererService.verifyCustomImage(path);
+      setImageVerificationStatus(valid ? "valid" : "invalid");
+      toast[valid ? "success" : "error"](valid ? "Image verified" : "Invalid image");
+    } catch {
+      setImageVerificationStatus("invalid");
+      toast.error("Verification failed");
+    } finally {
       setIsVerifyingImage(false);
-      return;
     }
+  };
 
-    toast.promise(
-      rendererService.verifyCustomImage(path),
-      {
-        loading: "Verifying custom image... (this may take up to 30 seconds)",
-        success: (isValid: boolean) => {
-          setImageVerificationStatus(isValid ? "valid" : "invalid");
-          return isValid ? "Image verified successfully" : "Image verification failed";
-        },
-        error: (err: Error) => {
-          setImageVerificationStatus("invalid");
-          return `Verification failed: ${err.message}`;
-        },
-        finally: () => {
-          setIsVerifyingImage(false);
-        },
-      }
-    );
+  const handleAutoDetectPort = async () => {
+    setIsDetectingPort(true);
+    try {
+      const port = Math.floor(Math.random() * (65535 - 49152) + 49152);
+      const newPort = port;
+      setPortInput(newPort.toString());
+      await rendererService.setPort(newPort);
+      setRendererPort(newPort);
+      toast.success(`Using port ${newPort}`);
+    } catch {
+      toast.error("Could not find available port");
+    } finally {
+      setIsDetectingPort(false);
+    }
   };
 
   const handleStart = async () => {
     setIsLoading(true);
-    setSuccessMessage("");
-    setError("");
     setRendererStatus("building");
-
-    toast.info("Starting renderer... This may take a few minutes if pulling image for the first time.");
-
+    toast.info("Starting renderer...");
+    
     try {
-      setRendererStatus("building");
       await rendererService.startRenderer();
       setRendererStatus("running");
-
       const status = await rendererService.getStatus();
       if (status.port !== rendererPort) {
-        toast.warning(`Port ${rendererPort} was busy. Using port ${status.port} instead.`);
+        toast.warning(`Using port ${status.port}`);
         setRendererPort(status.port);
         setPortInput(status.port.toString());
       }
-
-      setSuccessMessage("Renderer started successfully");
-      await loadStatus();
+      toast.success("Renderer started");
     } catch (err) {
       setRendererStatus("error");
-      const errMsg = err instanceof Error ? err.message : String(err);
-      toast.error(`Failed to start renderer: ${errMsg}`);
+      toast.error(`Failed: ${err}`);
     } finally {
       setIsLoading(false);
     }
@@ -477,15 +369,12 @@ export default forwardRef(function LatexCompilerSettings(
 
   const handleStop = async () => {
     setIsLoading(true);
-    setSuccessMessage("");
-    setError("");
     try {
       await rendererService.stopRenderer();
       setRendererStatus("stopped");
-      setSuccessMessage("Renderer stopped successfully");
+      toast.success("Renderer stopped");
     } catch (err) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      toast.error(`Failed to stop renderer: ${errMsg}`);
+      toast.error(`Failed: ${err}`);
     } finally {
       setIsLoading(false);
     }
@@ -493,555 +382,281 @@ export default forwardRef(function LatexCompilerSettings(
 
   const handleRestart = async () => {
     setIsLoading(true);
-    setSuccessMessage("");
-    setError("");
     setRendererStatus("building");
-
-    toast.info("Restarting renderer...");
-
+    toast.info("Restarting...");
+    
     try {
       await rendererService.restartRenderer();
       setRendererStatus("running");
-      setSuccessMessage("Renderer restarted successfully");
-      await loadStatus();
+      toast.success("Restarted");
     } catch (err) {
       setRendererStatus("error");
-      const errMsg = err instanceof Error ? err.message : String(err);
-      toast.error(`Failed to restart renderer: ${errMsg}`);
+      toast.error(`Failed: ${err}`);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleAutoStartToggle = async () => {
-    setSuccessMessage("");
-    setError("");
     try {
       await rendererService.setAutoStart(!rendererAutoStart);
       setRendererAutoStart(!rendererAutoStart);
-      toast.success(`Auto-start ${!rendererAutoStart ? "enabled" : "disabled"}`);
+      toast.success(`Auto-start ${!rendererAutoStart ? "on" : "off"}`);
     } catch (err) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      toast.error(`Failed to update auto-start: ${errMsg}`);
+      toast.error(`Failed: ${err}`);
     }
   };
 
-  const handleCleanupDocker = async () => {
-    setSuccessMessage("");
-    setError("");
+  const handleCleanup = async () => {
     setIsCleaningUp(true);
     try {
-      toast.info("Cleaning up unused Docker resources...");
       await rendererService.cleanupDockerSystem();
-      setSuccessMessage("Docker cleanup completed successfully");
+      toast.success("Cleanup complete");
     } catch (err) {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      toast.error(`Failed to cleanup Docker: ${errMsg}`);
+      toast.error(`Failed: ${err}`);
     } finally {
       setIsCleaningUp(false);
     }
   };
 
-  const formatDiskSpace = (bytes: number) => {
-    const GB = bytes / (1024 * 1024 * 1024);
-    const MB = bytes / (1024 * 1024);
-
-    if (GB >= 1) {
-      return `${GB.toFixed(1)} GB`;
-    } else if (MB >= 1) {
-      return `${MB.toFixed(0)} MB`;
-    } else {
-      return `${bytes} bytes`;
-    }
+  const formatBytes = (bytes: number) => {
+    const gb = bytes / (1024 ** 3);
+    const mb = bytes / (1024 ** 2);
+    return gb >= 1 ? `${gb.toFixed(1)} GB` : mb >= 1 ? `${mb.toFixed(0)} MB` : `${bytes} B`;
   };
 
   const isRunning = rendererStatus === "running";
   const showImageSource = rendererMode === "local" || rendererMode === "auto";
 
   return (
-    <motion.div
-      className="space-y-6"
-      initial={shouldAnimate ? { opacity: 0 } : undefined}
-      animate={shouldAnimate ? { opacity: 1 } : undefined}
-      transition={shouldAnimate ? { duration: ANIMATION_DURATIONS.normal } : undefined}
-    >
-      {/* Rendering Mode Selection */}
-      <div className="space-y-3">
-        <div>
-          <label className="text-sm font-semibold text-foreground block mb-3">Rendering Mode</label>
-          <p className="text-xs text-muted-foreground mb-3">Choose how LaTeX is compiled</p>
+    <div className="h-full flex flex-col">
+      {/* Header Bar */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50 bg-muted/10">
+        <div className="flex-1">
+          <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">
+            Rendering Mode
+          </label>
+          <DropdownMenuWrapper>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="w-48 justify-between h-8" disabled={isLoading || isRunning}>
+                <span className="flex items-center gap-2">
+                  {rendererMode === "auto" ? <Zap className="w-3.5 h-3.5 text-primary" /> : 
+                   rendererMode === "local" ? <Wrench className="w-3.5 h-3.5" /> : 
+                   <Cloud className="w-3.5 h-3.5" />}
+                  {rendererMode === "auto" ? "Auto" : rendererMode === "local" ? "Local" : "Remote"}
+                </span>
+                <ChevronDown size={12} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContentWrapper align="start" className="w-[var(--radix-dropdown-menu-trigger-width)]">
+              <DropdownMenuRadioGroup value={rendererMode} onValueChange={(v) => handleModeChange(v as RendererMode)}>
+                <MenuRadioItem value="auto" className="gap-2">
+                  <Zap className="w-3.5 h-3.5" /> Auto (Recommended)
+                </MenuRadioItem>
+                <MenuRadioItem value="local" className="gap-2">
+                  <Wrench className="w-3.5 h-3.5" /> Local (Docker)
+                </MenuRadioItem>
+                <MenuRadioItem value="remote" className="gap-2">
+                  <Cloud className="w-3.5 h-3.5" /> Remote
+                </MenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContentWrapper>
+          </DropdownMenuWrapper>
         </div>
-        <DropdownMenuWrapper>
-          <DropdownMenuTrigger asChild>
-            <Button 
-              variant="outline" 
-              className="w-full justify-between"
-              disabled={isLoading || isRunning}
-            >
-              <span>{rendererMode === "auto" ? "Auto (Recommended)" : rendererMode === "local" ? "Local (Docker)" : "Remote (External)"}</span>
-              <ChevronDown size={16} />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContentWrapper align="start" className="w-[var(--radix-dropdown-menu-trigger-width)]">
-            <DropdownMenuRadioGroup value={rendererMode} onValueChange={(value) => handleModeChange(value as RendererMode)}>
-              <MenuRadioItem 
-                value="auto"
-                className={cn(
-                  "flex items-center gap-2",
-                  rendererMode === "auto" && "bg-primary/20 text-primary font-semibold"
-                )}
-              >
-                <span className="flex-1">Auto (Recommended)</span>
-                {rendererMode === "auto" && <Check size={14} />}
-              </MenuRadioItem>
-              <MenuRadioItem 
-                value="local"
-                className={cn(
-                  "flex items-center gap-2",
-                  rendererMode === "local" && "bg-primary/20 text-primary font-semibold"
-                )}
-              >
-                <span className="flex-1">Local (Docker)</span>
-                {rendererMode === "local" && <Check size={14} />}
-              </MenuRadioItem>
-              <MenuRadioItem 
-                value="remote"
-                className={cn(
-                  "flex items-center gap-2",
-                  rendererMode === "remote" && "bg-primary/20 text-primary font-semibold"
-                )}
-              >
-                <span className="flex-1">Remote (External)</span>
-                {rendererMode === "remote" && <Check size={14} />}
-              </MenuRadioItem>
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContentWrapper>
-        </DropdownMenuWrapper>
-
-        {rendererMode === "auto" && (
-          <p className="text-xs text-muted-foreground p-3 bg-muted/30 rounded-lg">
-            Auto mode will use local Docker if available, otherwise fall back to remote compilation.
-          </p>
+        
+        {isGuestMode && (rendererMode === "remote" || rendererMode === "auto") && (
+          <Button size="sm" onClick={handleNavigateToAccount} className="self-end h-8">
+            <Lock className="w-3.5 h-3.5 mr-1.5" />
+            Sign In
+          </Button>
         )}
       </div>
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* LEFT COLUMN: LOCAL COMPILER */}
+      {/* Main Content */}
+      <div className="flex-1 grid grid-cols-2 gap-3 p-3 min-h-0 overflow-hidden">
+        {/* Local Compiler */}
         {(rendererMode === "local" || rendererMode === "auto") && (
-          <motion.div
-            className="space-y-6"
-            initial={shouldAnimate ? { opacity: 0, x: -20 } : undefined}
-            animate={shouldAnimate ? { opacity: 1, x: 0 } : undefined}
-            transition={shouldAnimate ? { duration: ANIMATION_DURATIONS.normal } : undefined}
-          >
-            {/* Header */}
-            <div className="space-y-2">
+          <div className="flex flex-col border border-border/60 rounded-lg overflow-hidden bg-card">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-border/50 bg-muted/20">
               <div className="flex items-center gap-2">
-                <Wrench className="w-5 h-5 text-primary" />
-                <h3 className="text-lg font-semibold">Local Compiler</h3>
+                <Wrench className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-semibold">Local Compiler</span>
               </div>
-              <p className="text-sm text-muted-foreground">Docker-based LaTeX compilation</p>
+              <StatusBadge status={rendererStatus} />
             </div>
-
-            {/* Status and Controls */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Status</p>
-                  <StatusBadge status={rendererStatus} />
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant={isRunning ? "outline" : "default"}
-                    onClick={handleStart}
-                    disabled={isLoading || isRunning}
-                    title="Start renderer"
-                  >
-                    <Play className="w-3 h-3" />
-                    <span className="hidden sm:inline">Start</span>
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleStop}
-                    disabled={isLoading || !isRunning}
-                    title="Stop renderer"
-                  >
-                    <Square className="w-3 h-3" />
-                    <span className="hidden sm:inline">Stop</span>
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleRestart}
-                    disabled={isLoading || !isRunning}
-                    title="Restart renderer"
-                  >
-                    <RefreshCw className="w-3 h-3" />
-                    <span className="hidden sm:inline">Restart</span>
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            {/* Settings Grid */}
-            <div className="space-y-4">
-              {/* Port Configuration */}
-              <div>
-                <label className="text-sm font-medium text-foreground block mb-2">Port Number</label>
-                <Input
-                  type="number"
-                  value={portInput}
-                  onChange={(e) => setPortInput(e.target.value)}
-                  min="1024"
-                  max="65535"
+            
+            <div className="flex-1 flex flex-col gap-2.5 p-3 overflow-y-auto">
+              {/* Controls */}
+              <div className="flex gap-2">
+                <Button 
+                  size="sm" 
+                  variant={isRunning ? "outline" : "default"} 
+                  onClick={handleStart} 
                   disabled={isLoading || isRunning}
-                  placeholder="1024 - 65535"
-                />
-                <p className="text-xs text-muted-foreground mt-1.5">Valid range: 1024 - 65535</p>
+                  className="flex-1 h-7 text-xs"
+                >
+                  {isRunning ? <Check className="w-3 h-3 mr-1" /> : <Play className="w-3 h-3 mr-1" />}
+                  {isRunning ? "Active" : "Start"}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={handleStop} disabled={isLoading || !isRunning} className="h-7 w-7 p-0">
+                  <Square className="w-3 h-3" />
+                </Button>
+                <Button size="sm" variant="ghost" onClick={handleRestart} disabled={isLoading || !isRunning} className="h-7 w-7 p-0">
+                  <RefreshCw className="w-3 h-3" />
+                </Button>
               </div>
 
-              {/* Auto-Start Toggle */}
-              <Toggle
-                label="Auto-start on launch"
-                description="Start renderer with app"
-                checked={rendererAutoStart}
-                onChange={handleAutoStartToggle}
-                disabled={isLoading}
-              />
-            </div>
+              {/* Settings Row */}
+              <div className="flex items-end justify-between gap-3">
+                <div className="flex-1">
+                  <label className="text-[10px] font-medium text-muted-foreground block mb-1">Port</label>
+                  <div className="flex gap-1.5">
+                    <Input
+                      type="number"
+                      value={portInput}
+                      onChange={(e) => setPortInput(e.target.value)}
+                      disabled={isLoading || isRunning}
+                      className="h-7 text-xs w-24"
+                    />
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={handleAutoDetectPort} 
+                      disabled={isLoading || isRunning || isDetectingPort}
+                      className="h-7 px-2"
+                      title="Auto-detect available port"
+                    >
+                      {isDetectingPort ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+                    </Button>
+                  </div>
+                </div>
+                <Toggle label="Auto-start" checked={rendererAutoStart} onChange={handleAutoStartToggle} disabled={isLoading} />
+              </div>
 
-            {/* Image Source Section */}
-            {showImageSource && (
-              <motion.div
-                className="space-y-4 pt-4 border-t border-border"
-                initial={shouldAnimate ? "initial" : undefined}
-                animate={shouldAnimate ? "animate" : undefined}
-                variants={
-                  shouldAnimate
-                    ? {
-                        initial: { opacity: 0, y: 10 },
-                        animate: { opacity: 1, y: 0 },
-                      }
-                    : undefined
-                }
-                transition={shouldAnimate ? { duration: ANIMATION_DURATIONS.normal } : undefined}
-              >
-                <div>
-                  <label className="text-sm font-medium text-foreground block mb-3">Image Source</label>
+              {/* Image Source */}
+              {showImageSource && (
+                <div className="pt-2 border-t border-border/50">
+                  <label className="text-[10px] font-medium text-muted-foreground block mb-1">Image Source</label>
                   <DropdownMenuWrapper>
                     <DropdownMenuTrigger asChild>
-                      <Button 
-                        variant="outline" 
-                        className="w-full justify-between"
-                        disabled={isLoading || isRunning}
-                      >
-                        <span>{rendererImageSource === "ghcr" ? "GitHub Registry (Default)" : rendererImageSource === "embedded" ? "Build from Source" : "Custom Image"}</span>
-                        <ChevronDown size={16} />
+                      <Button variant="outline" size="sm" className="w-full justify-between h-7 text-xs" disabled={isLoading || isRunning}>
+                        {rendererImageSource === "ghcr" ? "GitHub Registry" : rendererImageSource === "embedded" ? "From Source" : "Custom"}
+                        <ChevronDown size={10} />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContentWrapper align="start" className="w-[var(--radix-dropdown-menu-trigger-width)]">
-                      <DropdownMenuRadioGroup value={rendererImageSource} onValueChange={(value) => handleImageSourceChange(value as ImageSource)}>
-                        <MenuRadioItem 
-                          value="ghcr"
-                          className={cn(
-                            "flex items-center gap-2",
-                            rendererImageSource === "ghcr" && "bg-primary/20 text-primary font-semibold"
-                          )}
-                        >
-                          <span className="flex-1">GitHub Registry (Default)</span>
-                          {rendererImageSource === "ghcr" && <Check size={14} />}
-                        </MenuRadioItem>
-                        <MenuRadioItem 
-                          value="embedded"
-                          className={cn(
-                            "flex items-center gap-2",
-                            rendererImageSource === "embedded" && "bg-primary/20 text-primary font-semibold"
-                          )}
-                        >
-                          <span className="flex-1">Build from Source</span>
-                          {rendererImageSource === "embedded" && <Check size={14} />}
-                        </MenuRadioItem>
-                        <MenuRadioItem 
-                          value="custom"
-                          className={cn(
-                            "flex items-center gap-2",
-                            rendererImageSource === "custom" && "bg-primary/20 text-primary font-semibold"
-                          )}
-                        >
-                          <span className="flex-1">Custom Image</span>
-                          {rendererImageSource === "custom" && <Check size={14} />}
-                        </MenuRadioItem>
+                      <DropdownMenuRadioGroup value={rendererImageSource} onValueChange={(v) => handleImageSourceChange(v as ImageSource)}>
+                        <MenuRadioItem value="ghcr">GitHub Registry</MenuRadioItem>
+                        <MenuRadioItem value="embedded">Build from Source</MenuRadioItem>
+                        <MenuRadioItem value="custom">Custom Image</MenuRadioItem>
                       </DropdownMenuRadioGroup>
                     </DropdownMenuContentWrapper>
                   </DropdownMenuWrapper>
-                </div>
-
-                {rendererImageSource === "custom" && (
-                  <motion.div
-                    className="space-y-4 p-4 bg-muted/30 rounded-lg border border-border"
-                    initial={shouldAnimate ? { opacity: 0, y: -10 } : undefined}
-                    animate={shouldAnimate ? { opacity: 1, y: 0 } : undefined}
-                    transition={shouldAnimate ? { duration: ANIMATION_DURATIONS.normal } : undefined}
-                  >
-                    <div>
-                      <label className="text-sm font-medium text-foreground block mb-3">Custom Image Type</label>
-                      <DropdownMenuWrapper>
-                        <DropdownMenuTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            className="w-full justify-between"
+                  
+                  <AnimatePresence>
+                    {rendererImageSource === "custom" && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                        className="overflow-hidden"
+                      >
+                        <div className="flex gap-1.5 mt-2">
+                          <Input
+                            type="text"
+                            placeholder="registry/image:tag"
+                            value={rendererCustomRegistry}
+                            onChange={(e) => setRendererCustomRegistry(e.target.value)}
                             disabled={isLoading || isRunning}
+                            className="h-7 text-xs flex-1"
+                          />
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={handleVerifyCustomImage} 
+                            disabled={isVerifyingImage || isLoading || isRunning}
+                            className="h-7 w-7 p-0"
                           >
-                            <span>{showCustomTabs === "registry" ? "Registry" : "Tar File"}</span>
-                            <ChevronDown size={16} />
+                            {isVerifyingImage ? <Loader2 className="w-3 h-3 animate-spin" /> :
+                             imageVerificationStatus === "valid" ? <Check className="w-3 h-3 text-emerald-500" /> :
+                             imageVerificationStatus === "invalid" ? <X className="w-3 h-3 text-red-500" /> :
+                             <Shield className="w-3 h-3" />}
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContentWrapper align="start" className="w-[var(--radix-dropdown-menu-trigger-width)]">
-                          <DropdownMenuRadioGroup value={showCustomTabs} onValueChange={(value) => setShowCustomTabs(value as "registry" | "tar")}>
-                            <MenuRadioItem 
-                              value="registry"
-                              className={cn(
-                                "flex items-center gap-2",
-                                showCustomTabs === "registry" && "bg-primary/20 text-primary font-semibold"
-                              )}
-                            >
-                              <span className="flex-1">Registry</span>
-                              {showCustomTabs === "registry" && <Check size={14} />}
-                            </MenuRadioItem>
-                            <MenuRadioItem 
-                              value="tar"
-                              className={cn(
-                                "flex items-center gap-2",
-                                showCustomTabs === "tar" && "bg-primary/20 text-primary font-semibold"
-                              )}
-                            >
-                              <span className="flex-1">Tar File</span>
-                              {showCustomTabs === "tar" && <Check size={14} />}
-                            </MenuRadioItem>
-                          </DropdownMenuRadioGroup>
-                        </DropdownMenuContentWrapper>
-                      </DropdownMenuWrapper>
-                    </div>
-
-                    {showCustomTabs === "registry" ? (
-                      <div className="flex gap-2">
-                        <Input
-                          type="text"
-                          placeholder="registry/image:tag"
-                          value={rendererCustomRegistry}
-                          onChange={(e) => setRendererCustomRegistry(e.target.value)}
-                          disabled={isLoading || isRunning}
-                        />
-                        <Button
-                          variant="outline"
-                          onClick={handleVerifyCustomImage}
-                          disabled={isVerifyingImage || isLoading || isRunning || !rendererCustomRegistry}
-                          title="Verify custom image"
-                        >
-                          {isVerifyingImage ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : imageVerificationStatus === "valid" ? (
-                            <Check className="w-4 h-4 text-success" />
-                          ) : imageVerificationStatus === "invalid" ? (
-                            <X className="w-4 h-4 text-destructive" />
-                          ) : (
-                            <Shield className="w-4 h-4" />
-                          )}
-                          <span className="hidden sm:inline">Verify</span>
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        <Input
-                          type="text"
-                          placeholder="/path/to/image.tar"
-                          value={rendererCustomTarPath}
-                          onChange={(e) => setRendererCustomTarPath(e.target.value)}
-                          disabled={isLoading || isRunning}
-                        />
-                        <Button
-                          variant="outline"
-                          onClick={handleVerifyCustomImage}
-                          disabled={isVerifyingImage || isLoading || isRunning || !rendererCustomTarPath}
-                          title="Verify custom image"
-                        >
-                          {isVerifyingImage ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : imageVerificationStatus === "valid" ? (
-                            <Check className="w-4 h-4 text-success" />
-                          ) : imageVerificationStatus === "invalid" ? (
-                            <X className="w-4 h-4 text-destructive" />
-                          ) : (
-                            <Shield className="w-4 h-4" />
-                          )}
-                          <span className="hidden sm:inline">Verify</span>
-                        </Button>
-                      </div>
-                    )}
-
-                    {imageVerificationStatus === "valid" && (
-                      <motion.div
-                        className="flex items-center gap-2 p-2 bg-success/10 border border-success/20 rounded text-success text-xs font-medium"
-                        initial={shouldAnimate ? { opacity: 0, scale: 0.95 } : undefined}
-                        animate={shouldAnimate ? { opacity: 1, scale: 1 } : undefined}
-                        transition={shouldAnimate ? { duration: ANIMATION_DURATIONS.fast } : undefined}
-                      >
-                        <Check className="w-3 h-3" />
-                        Verified
+                        </div>
                       </motion.div>
                     )}
-                    {imageVerificationStatus === "invalid" && (
-                      <motion.div
-                        className="flex items-center gap-2 p-2 bg-destructive/10 border border-destructive/20 rounded text-destructive text-xs font-medium"
-                        initial={shouldAnimate ? { opacity: 0, scale: 0.95 } : undefined}
-                        animate={shouldAnimate ? { opacity: 1, scale: 1 } : undefined}
-                        transition={shouldAnimate ? { duration: ANIMATION_DURATIONS.fast } : undefined}
-                      >
-                        <X className="w-3 h-3" />
-                        Failed
-                      </motion.div>
-                    )}
-                  </motion.div>
-                )}
-              </motion.div>
-            )}
-
-            {/* Docker Management */}
-            <div className="space-y-3 pt-4 border-t border-border">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <HardDrive className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Docker Management</span>
+                  </AnimatePresence>
                 </div>
-                {diskSpaceAvailable !== null && (
-                  <div className="text-xs text-muted-foreground">
-                    <span className={diskSpaceAvailable < 1024 * 1024 * 1024 ? "text-warning" : ""}>
-                      {formatDiskSpace(diskSpaceAvailable)} available
-                    </span>
-                  </div>
-                )}
-              </div>
+              )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <Button
-                  variant="outline"
-                  onClick={handleCleanupDocker}
+              {/* Disk Space */}
+              <div className="pt-2 border-t border-border/50 flex items-center justify-between text-[10px]">
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <HardDrive className="w-3 h-3" />
+                  {diskSpaceAvailable !== null ? formatBytes(diskSpaceAvailable) : "—"} free
+                </span>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  onClick={handleCleanup} 
                   disabled={isCleaningUp || isLoading || isRunning}
-                  className="w-full"
+                  className="h-6 text-[10px] px-2"
                 >
-                  {isCleaningUp ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <Trash2 className="w-4 h-4 mr-2" />
-                  )}
-                  Cleanup Resources
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  onClick={() =>
-                    toast.info(
-                      "Docker cleanup removes unused containers, images, and networks to free up disk space"
-                    )
-                  }
-                  disabled={isLoading}
-                  className="w-full"
-                >
-                  <AlertTriangle className="w-4 h-4 mr-2" />
-                  What is this?
+                  {isCleaningUp ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Trash2 className="w-3 h-3 mr-1" />}
+                  Cleanup
                 </Button>
               </div>
             </div>
 
-            {/* Messages */}
-            {successMessage && (
-              <motion.div
-                className="flex items-center gap-2 p-3 bg-success/10 border border-success/20 rounded text-success text-xs font-medium"
-                initial={shouldAnimate ? { opacity: 0, scale: 0.95 } : undefined}
-                animate={shouldAnimate ? { opacity: 1, scale: 1 } : undefined}
-                transition={shouldAnimate ? { duration: ANIMATION_DURATIONS.fast } : undefined}
-              >
-                <Check className="w-3 h-3" />
-                {successMessage}
-              </motion.div>
-            )}
-
-            {error && (
-              <motion.div
-                className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded text-destructive text-xs font-medium"
-                initial={shouldAnimate ? { opacity: 0, scale: 0.95 } : undefined}
-                animate={shouldAnimate ? { opacity: 1, scale: 1 } : undefined}
-                transition={shouldAnimate ? { duration: ANIMATION_DURATIONS.fast } : undefined}
-              >
-                <X className="w-3 h-3" />
-                {error}
-              </motion.div>
-            )}
-
-            {/* Local Compiler Logs - with smooth layout-based animations */}
-            <div className="pt-4 border-t border-border overflow-hidden">
-              <LogsDisplay logs={rendererLogs} title="Renderer Logs" shouldAnimate={shouldAnimate} />
-            </div>
-          </motion.div>
+            {/* Logs */}
+            <LogsDisplay logs={rendererLogs} title="Logs" shouldAnimate={shouldAnimate} />
+          </div>
         )}
 
-        {/* RIGHT COLUMN: REMOTE COMPILER */}
+        {/* Remote Compiler */}
         {(rendererMode === "remote" || rendererMode === "auto") && (
-          <motion.div
-            className="space-y-6"
-            initial={shouldAnimate ? { opacity: 0, x: 20 } : undefined}
-            animate={shouldAnimate ? { opacity: 1, x: 0 } : undefined}
-            transition={shouldAnimate ? { duration: ANIMATION_DURATIONS.normal } : undefined}
-          >
-            {/* Header */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Globe className="w-5 h-5 text-primary" />
-                  <h3 className="text-lg font-semibold">Remote Compiler</h3>
-                </div>
-                {!isSignedIn ? (
-                  <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-200 border-amber-500/20">
-                    <Lock size={14} className="mr-1" />
-                    Auth Required
-                  </Badge>
-                ) : (
-                  <Badge variant="default" className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30">
-                    <Check size={14} className="mr-1" />
-                    Authenticated
-                  </Badge>
-                )}
+          <div className="flex flex-col border border-border/60 rounded-lg overflow-hidden bg-card">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-border/50 bg-muted/20">
+              <div className="flex items-center gap-2">
+                <Globe className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-semibold">Remote Compiler</span>
               </div>
-              <p className="text-sm text-muted-foreground">External compilation server</p>
+              {isGuestMode ? (
+                <Badge variant="outline" className="text-[10px] h-5 bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400">
+                  <Lock className="w-2.5 h-2.5 mr-1" />
+                  Auth Required
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-[10px] h-5 bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+                  <Check className="w-2.5 h-2.5 mr-1" />
+                  Connected
+                </Badge>
+              )}
             </div>
-
-            {/* Content */}
-            {!isSignedIn ? (
-              <AuthenticationBanner onNavigateToAccount={handleNavigateToAccount} />
-            ) : (
-              <>
-                <div className="flex-1 flex items-center justify-center min-h-[300px] p-8 bg-muted/30 rounded-lg border border-border/50">
-                  <div className="text-center space-y-3">
-                    <motion.div
-                      animate={shouldAnimate ? { scale: [1, 1.1, 1] } : {}}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    >
-                      <Globe className="w-12 h-12 text-muted-foreground mx-auto" />
-                    </motion.div>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">Remote compilation ready</p>
-                      <p className="text-xs text-muted-foreground mt-1">Configuration is managed automatically</p>
-                    </div>
+            
+            <div className="flex-1 flex items-center justify-center p-4">
+              {isGuestMode ? (
+                <div className="text-center">
+                  <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-3">
+                    <Lock className="w-5 h-5 text-muted-foreground" />
                   </div>
+                  <p className="text-xs text-muted-foreground mb-3">Sign in for cloud compilation</p>
+                  <Button size="sm" onClick={handleNavigateToAccount}>Sign In</Button>
                 </div>
-              </>
-            )}
-          </motion.div>
+              ) : (
+                <div className="text-center">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                    <Globe className="w-5 h-5 text-primary" />
+                  </div>
+                  <p className="text-sm font-medium mb-1">Ready</p>
+                  <p className="text-xs text-muted-foreground">Remote compilation enabled</p>
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 });
