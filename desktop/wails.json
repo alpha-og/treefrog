@@ -14,5 +14,19 @@
   "author": {
     "name": "Athul Anoop",
     "email": "athulanoop2020@gmail.com"
+  },
+  "info": {
+    "companyName": "Treefrog",
+    "productName": "Treefrog",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright © 2024 Athul Anoop",
+    "comments": "LaTeX compilation made easy",
+    "protocols": [
+      {
+        "scheme": "treefrog",
+        "description": "Treefrog Protocol",
+        "role": "Editor"
+      }
+    ]
   }
 }
