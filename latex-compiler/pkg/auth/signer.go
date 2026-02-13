@@ -32,7 +32,11 @@ func NewSignedURLSigner() (*SignedURLSigner, error) {
 	secretKey := os.Getenv("COMPILER_SIGNING_KEY")
 	if secretKey == "" {
 		// Generate secure random key if not provided
-		secretKey = generateSecureRandomKey(32)
+		var err error
+		secretKey, err = generateSecureRandomKey(32)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate signing key: %w", err)
+		}
 	}
 
 	if len(secretKey) < 32 {
@@ -57,19 +61,18 @@ func NewSignedURLSigner() (*SignedURLSigner, error) {
 }
 
 // generateSecureRandomKey generates a cryptographically secure random key
-func generateSecureRandomKey(length int) string {
+func generateSecureRandomKey(length int) (string, error) {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
 	b := make([]byte, length)
 	if _, err := rand.Read(b); err != nil {
-		// Fallback to default key if random generation fails
-		return "default-signing-key-change-in-production-environment"
+		return "", fmt.Errorf("failed to generate random key: %w", err)
 	}
 
 	result := make([]byte, length)
 	for i := 0; i < length; i++ {
 		result[i] = charset[b[i]%byte(len(charset))]
 	}
-	return string(result)
+	return string(result), nil
 }
 
 // GenerateURL creates a signed URL for accessing build artifacts
