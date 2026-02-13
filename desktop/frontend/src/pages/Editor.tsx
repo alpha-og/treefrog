@@ -266,97 +266,124 @@ export default function Editor() {
      [openModal, setModalInput, currentDir],
    );
 
-   // Menu event listeners
-   useEffect(() => {
-     // @ts-ignore - Wails runtime
-     if (!window.runtime?.EventsOn) return;
+    // Menu event listeners
+    useEffect(() => {
+      // @ts-ignore - Wails runtime
+      if (!window.runtime?.EventsOn) return;
 
-      // File menu events
-      // @ts-ignore
-      window.runtime.EventsOn("menu-open-project", () => {
-        setShowPicker(true);
-      });
+      const events = [
+        "menu-open-project",
+        "menu-new-file",
+        "menu-new-folder",
+        "menu-go-home",
+        "menu-build",
+        "menu-toggle-sidebar",
+        "menu-toggle-editor",
+        "menu-toggle-preview",
+        "menu-zoom-in",
+        "menu-zoom-out",
+        "menu-zoom-reset",
+        "menu-toggle-theme",
+        "menu-git-commit",
+        "menu-git-push",
+        "menu-git-pull",
+        "menu-git-refresh",
+      ];
 
-      // @ts-ignore
-      window.runtime.EventsOn("menu-new-file", () => {
-        handleOpenModal({ kind: "create", type: "file" });
-      });
+       // File menu events
+       // @ts-ignore
+       window.runtime.EventsOn("menu-open-project", () => {
+         setShowPicker(true);
+       });
 
-      // @ts-ignore
-      window.runtime.EventsOn("menu-new-folder", () => {
-        handleOpenModal({ kind: "create", type: "dir" });
-      });
-
-      // @ts-ignore
-      window.runtime.EventsOn("menu-go-home", () => {
-        navigate({ to: "/" });
-      });
-
-     // Build menu events
-     // @ts-ignore
-     window.runtime.EventsOn("menu-build", () => {
-       triggerBuild();
-     });
-
-     // View menu events
-     // @ts-ignore
-     window.runtime.EventsOn("menu-toggle-sidebar", () => {
-       togglePane("sidebar");
-     });
-
-     // @ts-ignore
-     window.runtime.EventsOn("menu-toggle-editor", () => {
-       togglePane("editor");
-     });
-
-     // @ts-ignore
-     window.runtime.EventsOn("menu-toggle-preview", () => {
-       togglePane("preview");
-     });
-
-     // @ts-ignore
-     window.runtime.EventsOn("menu-zoom-in", () => {
-       setZoom((z) => Math.min(z + 0.1, 2));
-     });
-
-     // @ts-ignore
-     window.runtime.EventsOn("menu-zoom-out", () => {
-       setZoom((z) => Math.max(z - 0.1, 0.5));
-     });
-
-     // @ts-ignore
-     window.runtime.EventsOn("menu-zoom-reset", () => {
-       setZoom(1.2);
-     });
-
-     // @ts-ignore
-     window.runtime.EventsOn("menu-toggle-theme", () => {
-       setTheme(theme === "dark" ? "light" : "dark");
-     });
-
-     // Git menu events
-     // @ts-ignore
-     window.runtime.EventsOn("menu-git-commit", () => {
-       if (gitStatus.state === "dirty") {
+       // @ts-ignore
+       window.runtime.EventsOn("menu-new-file", () => {
          handleOpenModal({ kind: "create", type: "file" });
-       }
-     });
+       });
 
-     // @ts-ignore
-     window.runtime.EventsOn("menu-git-push", async () => {
-       await push();
-     });
+       // @ts-ignore
+       window.runtime.EventsOn("menu-new-folder", () => {
+         handleOpenModal({ kind: "create", type: "dir" });
+       });
 
-     // @ts-ignore
-     window.runtime.EventsOn("menu-git-pull", async () => {
-       await pull();
-     });
+       // @ts-ignore
+       window.runtime.EventsOn("menu-go-home", () => {
+         navigate({ to: "/" });
+       });
 
-     // @ts-ignore
-     window.runtime.EventsOn("menu-git-refresh", () => {
-       refreshGit();
-     });
-   }, [theme, setTheme, togglePane, triggerBuild, navigate, setShowPicker, setZoom, gitStatus, push, pull, refreshGit, handleOpenModal]);
+      // Build menu events
+      // @ts-ignore
+      window.runtime.EventsOn("menu-build", () => {
+        triggerBuild();
+      });
+
+      // View menu events
+      // @ts-ignore
+      window.runtime.EventsOn("menu-toggle-sidebar", () => {
+        togglePane("sidebar");
+      });
+
+      // @ts-ignore
+      window.runtime.EventsOn("menu-toggle-editor", () => {
+        togglePane("editor");
+      });
+
+      // @ts-ignore
+      window.runtime.EventsOn("menu-toggle-preview", () => {
+        togglePane("preview");
+      });
+
+      // @ts-ignore
+      window.runtime.EventsOn("menu-zoom-in", () => {
+        setZoom((z) => Math.min(z + 0.1, 2));
+      });
+
+      // @ts-ignore
+      window.runtime.EventsOn("menu-zoom-out", () => {
+        setZoom((z) => Math.max(z - 0.1, 0.5));
+      });
+
+      // @ts-ignore
+      window.runtime.EventsOn("menu-zoom-reset", () => {
+        setZoom(1.2);
+      });
+
+      // @ts-ignore
+      window.runtime.EventsOn("menu-toggle-theme", () => {
+        setTheme(theme === "dark" ? "light" : "dark");
+      });
+
+      // Git menu events
+      // @ts-ignore
+      window.runtime.EventsOn("menu-git-commit", () => {
+        if (gitStatus.state === "dirty") {
+          handleOpenModal({ kind: "create", type: "file" });
+        }
+      });
+
+      // @ts-ignore
+      window.runtime.EventsOn("menu-git-push", async () => {
+        await push();
+      });
+
+      // @ts-ignore
+      window.runtime.EventsOn("menu-git-pull", async () => {
+        await pull();
+      });
+
+      // @ts-ignore
+      window.runtime.EventsOn("menu-git-refresh", () => {
+        refreshGit();
+      });
+
+      return () => {
+        // @ts-ignore - Wails runtime
+        if (window.runtime?.EventsOff) {
+          // @ts-ignore
+          window.runtime.EventsOff(...events);
+        }
+      };
+    }, [theme, setTheme, togglePane, triggerBuild, navigate, setShowPicker, setZoom, gitStatus, push, pull, refreshGit, handleOpenModal]);
 
   const confirmModal = useCallback(async () => {
     if (!modal) return;
