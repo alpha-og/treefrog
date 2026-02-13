@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -21,10 +22,22 @@ import (
 
 var buildLog = logrus.WithField("component", "handlers/build")
 
+var uuidRegex = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
+func validateUserID(userID string) bool {
+	return uuidRegex.MatchString(strings.ToLower(userID))
+}
+
 func CreateBuildHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserID(r)
 		if !ok {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		if !validateUserID(userID) {
+			buildLog.WithField("user_id", userID).Warn("Invalid user ID format")
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -280,7 +293,9 @@ func GetBuildHandler() http.HandlerFunc {
 
 		// Update last accessed
 		buildRec.LastAccessedAt = time.Now()
-		buildStore.Update(buildRec)
+		if err := buildStore.Update(buildRec); err != nil {
+			buildLog.WithError(err).WithField("build_id", buildID).Warn("Failed to update last accessed time")
+		}
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(buildRec)
