@@ -14,6 +14,7 @@
   "scripts": {},
   "dependencies": {
     "@treefrog/types": "workspace:*",
+    "@treefrog/supabase": "workspace:*",
     "axios": "^1.13.4"
   },
   "devDependencies": {
