@@ -8,10 +8,12 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/alpha-og/treefrog-latex-compiler/pkg/auth"
 	"github.com/alpha-og/treefrog-latex-compiler/pkg/build"
+	"github.com/alpha-og/treefrog-latex-compiler/pkg/log"
 	"github.com/alpha-og/treefrog-latex-compiler/pkg/user"
 	"github.com/go-chi/chi/v5"
 	"github.com/sirupsen/logrus"
@@ -19,8 +21,7 @@ import (
 
 var buildLog = logrus.WithField("component", "handlers/build")
 
-// CreateBuildHandler creates a new build from uploaded files
-func CreateBuildHandler(db interface{}) http.HandlerFunc {
+func CreateBuildHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserID(r)
 		if !ok {
@@ -47,6 +48,15 @@ func CreateBuildHandler(db interface{}) http.HandlerFunc {
 		if !build.ValidEngines[string(engine)] {
 			http.Error(w, "Invalid engine", http.StatusBadRequest)
 			return
+		}
+
+		// Shell-escape is a security risk - only allow for enterprise tier
+		if shellEscape {
+			userTier := auth.GetUserTier(r)
+			if userTier != "enterprise" {
+				http.Error(w, "Shell-escape feature requires enterprise tier", http.StatusForbidden)
+				return
+			}
 		}
 
 		if hasPathTraversal(mainFile) {
@@ -126,7 +136,7 @@ func CreateBuildHandler(db interface{}) http.HandlerFunc {
 			Engine:         engine,
 			MainFile:       mainFile,
 			DirPath:        buildDir,
-			ShellEscape:    shellEscape && false,
+			ShellEscape:    shellEscape,
 			CreatedAt:      time.Now(),
 			UpdatedAt:      time.Now(),
 			ExpiresAt:      time.Now().Add(24 * time.Hour),
@@ -152,6 +162,16 @@ func CreateBuildHandler(db interface{}) http.HandlerFunc {
 			"user_id":  userID,
 			"engine":   engine,
 		}).Info("Build created")
+
+		auditLogger.Log(log.AuditEntry{
+			UserID:       userID,
+			Action:       "build_created",
+			ResourceType: "build",
+			ResourceID:   buildID,
+			IPAddress:    r.RemoteAddr,
+			UserAgent:    r.UserAgent(),
+			Status:       "success",
+		})
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(build.BuildResponse{
@@ -384,9 +404,24 @@ func DeleteBuildHandler() http.HandlerFunc {
 
 		// Async hard delete
 		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					buildLog.WithField("panic", r).Error("Panic in async delete goroutine")
+				}
+			}()
 			os.RemoveAll(buildRec.DirPath)
 			buildStore.Delete(buildRec.ID)
 		}()
+
+		auditLogger.Log(log.AuditEntry{
+			UserID:       userID,
+			Action:       "build_deleted",
+			ResourceType: "build",
+			ResourceID:   buildID,
+			IPAddress:    r.RemoteAddr,
+			UserAgent:    r.UserAgent(),
+			Status:       "success",
+		})
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
@@ -411,7 +446,7 @@ func GetCurrentUserHandler() http.HandlerFunc {
 			return
 		}
 
-		userProfile, err := userStore.GetByClerkID(userID)
+		userProfile, err := userStore.GetByID(userID)
 		if err != nil {
 			http.Error(w, "User not found", http.StatusNotFound)
 			return
@@ -419,7 +454,7 @@ func GetCurrentUserHandler() http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"id":           userProfile.ClerkID,
+			"id":           userProfile.ID,
 			"email":        userProfile.Email,
 			"name":         userProfile.Name,
 			"tier":         userProfile.Tier,
@@ -594,13 +629,26 @@ func ServePDFHandler() http.HandlerFunc {
 		case "synctex":
 			filePath = buildRecord.SyncTeXPath
 		case "log":
-			filePath = buildRecord.BuildLog
+			// BuildLog is text content, not a file path
+			if buildRecord.BuildLog == "" {
+				http.Error(w, "Log not available", http.StatusNotFound)
+				return
+			}
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.log", buildID))
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(buildRecord.BuildLog))
+			return
 		default:
 			http.Error(w, "Unknown resource", http.StatusBadRequest)
 			return
 		}
 
 		// Check if file exists
+		if filePath == "" {
+			http.Error(w, "File not available", http.StatusNotFound)
+			return
+		}
 		if _, err := os.Stat(filePath); os.IsNotExist(err) {
 			http.Error(w, "File not found", http.StatusNotFound)
 			return
@@ -617,8 +665,43 @@ func ServePDFHandler() http.HandlerFunc {
 // Returns an http.HandlerFunc that handles GET /api/build/{id}/synctex
 func ServeSyncTeXHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// SyncTeX is served through ServePDFHandler by specifying resource=synctex
-		http.Error(w, "Use /api/build/{id}/synctex?token=... to download", http.StatusNotImplemented)
+		buildID := chi.URLParam(r, "id")
+		if buildID == "" {
+			http.Error(w, "Build ID required", http.StatusBadRequest)
+			return
+		}
+
+		userID, ok := auth.GetUserID(r)
+		if !ok {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		buildStore := build.NewStoreWithDB(dbInstance)
+		buildRecord, err := buildStore.Get(buildID)
+		if err != nil {
+			http.Error(w, "Build not found", http.StatusNotFound)
+			return
+		}
+
+		if buildRecord.UserID != userID {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
+		if buildRecord.SyncTeXPath == "" {
+			http.Error(w, "SyncTeX not available", http.StatusNotFound)
+			return
+		}
+
+		if _, err := os.Stat(buildRecord.SyncTeXPath); os.IsNotExist(err) {
+			http.Error(w, "SyncTeX file not found", http.StatusNotFound)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.synctex.gz", buildID))
+		http.ServeFile(w, r, buildRecord.SyncTeXPath)
 	}
 }
 
@@ -652,25 +735,5 @@ func getFileExtension(resource string) string {
 
 // hasPathTraversal checks if a filename contains path traversal sequences
 func hasPathTraversal(filename string) bool {
-	return containsString(filename, "..") || containsString(filename, "/") || containsString(filename, "\\")
-}
-
-// containsString checks if a string contains a substring
-func containsString(s, substr string) bool {
-	for i := 0; i < len(s); i++ {
-		if len(substr) > len(s)-i {
-			return false
-		}
-		match := true
-		for j := 0; j < len(substr); j++ {
-			if s[i+j] != substr[j] {
-				match = false
-				break
-			}
-		}
-		if match {
-			return true
-		}
-	}
-	return false
+	return strings.Contains(filename, "..") || strings.Contains(filename, "/") || strings.Contains(filename, "\\")
 }

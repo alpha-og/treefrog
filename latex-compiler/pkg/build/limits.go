@@ -21,7 +21,7 @@ func NewLimitService(buildStore *Store, userStore *user.Store) *LimitService {
 }
 
 func (s *LimitService) CanCreateBuild(userID string) (*LimitCheck, error) {
-	userRec, err := s.userStore.GetByClerkID(userID)
+	userRec, err := s.userStore.GetByID(userID)
 	if err != nil {
 		return nil, fmt.Errorf("user not found: %w", err)
 	}
@@ -122,7 +122,7 @@ type LimitCheck struct {
 
 // GetUserUsage returns usage statistics for a user
 func (s *LimitService) GetUserUsage(userID string) (*UsageStats, error) {
-	userRec, err := s.userStore.GetByClerkID(userID)
+	userRec, err := s.userStore.GetByID(userID)
 	if err != nil {
 		return nil, err
 	}

@@ -181,8 +181,32 @@ func (w *Worker) executeJob(job *BuildJob) {
 
 // GetJobStatus returns the status of a job (for monitoring)
 func (q *Queue) GetJobStatus(buildID string) (JobStatus, error) {
-	// Implementation: query database for latest build status
-	return JobCompleted, nil
+	if q.store == nil || q.store.db == nil {
+		return JobPending, nil
+	}
+
+	var status string
+	err := q.store.db.QueryRow(
+		"SELECT status FROM builds WHERE id = $1",
+		buildID,
+	).Scan(&status)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return JobPending, nil
+		}
+		return JobPending, err
+	}
+
+	switch status {
+	case string(StatusCompleted):
+		return JobCompleted, nil
+	case string(StatusFailed):
+		return JobFailed, nil
+	case string(StatusCompiling):
+		return JobProcessing, nil
+	default:
+		return JobPending, nil
+	}
 }
 
 // Store manages build persistence using database
@@ -215,7 +239,7 @@ func (s *Store) Create(build *Build) error {
 	query := `
 	INSERT INTO builds (id, user_id, status, engine, main_file, dir_path, pdf_path, synctex_path, 
 		build_log, error_message, shell_escape, created_at, updated_at, expires_at, last_accessed_at, storage_bytes)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 	`
 
 	_, err := s.db.Exec(query,
@@ -249,7 +273,7 @@ func (s *Store) Get(id string) (*Build, error) {
 	query := `
 	SELECT id, user_id, status, engine, main_file, dir_path, pdf_path, synctex_path,
 		build_log, error_message, shell_escape, created_at, updated_at, expires_at, last_accessed_at, storage_bytes
-	FROM builds WHERE id = ?
+	FROM builds WHERE id = $1
 	`
 
 	var b Build
@@ -290,9 +314,9 @@ func (s *Store) Update(build *Build) error {
 
 	query := `
 	UPDATE builds 
-	SET status = ?, pdf_path = ?, synctex_path = ?, build_log = ?, error_message = ?, 
-		updated_at = ?, last_accessed_at = ?, storage_bytes = ?
-	WHERE id = ?
+	SET status = $1, pdf_path = $2, synctex_path = $3, build_log = $4, error_message = $5, 
+		updated_at = $6, last_accessed_at = $7, storage_bytes = $8
+	WHERE id = $9
 	`
 
 	_, err := s.db.Exec(query,
@@ -316,7 +340,7 @@ func (s *Store) Delete(id string) error {
 		return fmt.Errorf("store not initialized with database")
 	}
 
-	query := `DELETE FROM builds WHERE id = ?`
+	query := `DELETE FROM builds WHERE id = $1`
 	_, err := s.db.Exec(query, id)
 	return err
 }
@@ -332,9 +356,9 @@ func (s *Store) ListByUser(userID string, page, pageSize int) ([]*Build, error) 
 	SELECT id, user_id, status, engine, main_file, dir_path, pdf_path, synctex_path,
 		build_log, error_message, shell_escape, created_at, updated_at, expires_at, last_accessed_at, storage_bytes
 	FROM builds 
-	WHERE user_id = ? AND status != ?
+	WHERE user_id = $1 AND status != $2
 	ORDER BY created_at DESC
-	LIMIT ? OFFSET ?
+	LIMIT $3 OFFSET $4
 	`
 
 	rows, err := s.db.Query(query, userID, StatusDeleted, pageSize, offset)
@@ -379,7 +403,7 @@ func (s *Store) CountByUser(userID string) (int, error) {
 		return 0, fmt.Errorf("store not initialized with database")
 	}
 
-	query := `SELECT COUNT(*) FROM builds WHERE user_id = ? AND status != ?`
+	query := `SELECT COUNT(*) FROM builds WHERE user_id = $1 AND status != $2`
 	var count int
 	err := s.db.QueryRow(query, userID, StatusDeleted).Scan(&count)
 	return count, err
@@ -397,7 +421,7 @@ func (s *Store) CountMonthly(userID string) (int, error) {
 
 	query := `
 	SELECT COUNT(*) FROM builds 
-	WHERE user_id = ? AND created_at >= ? AND status != ?
+	WHERE user_id = $1 AND created_at >= $2 AND status != $3
 	`
 
 	var count int
@@ -413,7 +437,7 @@ func (s *Store) CountActive(userID string) (int, error) {
 
 	query := `
 	SELECT COUNT(*) FROM builds 
-	WHERE user_id = ? AND (status = ? OR status = ?)
+	WHERE user_id = $1 AND (status = $2 OR status = $3)
 	`
 
 	var count int
@@ -429,7 +453,7 @@ func (s *Store) GetTotalStorage(userID string) (int64, error) {
 
 	query := `
 	SELECT COALESCE(SUM(storage_bytes), 0) FROM builds 
-	WHERE user_id = ? AND status != ?
+	WHERE user_id = $1 AND status != $2
 	`
 
 	var total int64
@@ -444,7 +468,7 @@ func (s *Store) FindExpiredBefore(before time.Time) ([]*Build, error) {
 	       synctex_path, build_log, error_message, shell_escape, 
 	       created_at, updated_at, expires_at, last_accessed_at, storage_bytes
 	FROM builds
-	WHERE expires_at < ? AND status NOT IN (?, ?)
+	WHERE expires_at < $1 AND status NOT IN ($2, $3)
 	ORDER BY created_at ASC
 	`
 
@@ -477,9 +501,9 @@ func (s *Store) FindOldest(limit int) ([]*Build, error) {
 	       synctex_path, build_log, error_message, shell_escape, 
 	       created_at, updated_at, expires_at, last_accessed_at, storage_bytes
 	FROM builds
-	WHERE status NOT IN (?, ?)
+	WHERE status NOT IN ($1, $2)
 	ORDER BY created_at ASC
-	LIMIT ?
+	LIMIT $3
 	`
 
 	rows, err := s.db.Query(query, StatusDeleted, StatusExpired, limit)
@@ -513,7 +537,7 @@ func (s *Store) FindExpiringIn(duration time.Duration) ([]*Build, error) {
 	       synctex_path, build_log, error_message, shell_escape, 
 	       created_at, updated_at, expires_at, last_accessed_at, storage_bytes
 	FROM builds
-	WHERE expires_at < ? AND expires_at > ? AND status NOT IN (?, ?)
+	WHERE expires_at < $1 AND expires_at > $2 AND status NOT IN ($3, $4)
 	ORDER BY expires_at ASC
 	`
 
@@ -546,9 +570,9 @@ func (s *Store) FindOldestByUser(userID string, limit int) ([]*Build, error) {
 	       synctex_path, build_log, error_message, shell_escape, 
 	       created_at, updated_at, expires_at, last_accessed_at, storage_bytes
 	FROM builds
-	WHERE user_id = ? AND status NOT IN (?, ?)
+	WHERE user_id = $1 AND status NOT IN ($2, $3)
 	ORDER BY created_at ASC
-	LIMIT ?
+	LIMIT $4
 	`
 
 	rows, err := s.db.Query(query, userID, StatusDeleted, StatusExpired, limit)
@@ -575,7 +599,7 @@ func (s *Store) FindOldestByUser(userID string, limit int) ([]*Build, error) {
 
 // GetAllIDs retrieves all build IDs from the database
 func (s *Store) GetAllIDs() ([]string, error) {
-	query := `SELECT id FROM builds WHERE status NOT IN (?, ?)`
+	query := `SELECT id FROM builds WHERE status NOT IN ($1, $2)`
 
 	rows, err := s.db.Query(query, StatusDeleted, StatusExpired)
 	if err != nil {
