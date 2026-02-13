@@ -29,6 +29,7 @@ import {
 import { createLogger } from "@/utils/logger";
 import { FileEntry } from "@/types";
 import { cn } from "@/lib/utils";
+import { fsUploadFiles } from "@/services/fsService";
 
 // Components
 import { Button } from "@/components/common";
@@ -53,6 +54,8 @@ interface SidebarProps {
   onCreateFolder: () => void;
   onFileMenu: (x: number, y: number, path: string, isDir: boolean) => void;
   onEmptySpaceMenu?: (x: number, y: number) => void;
+  onDelete?: (path: string, isDir: boolean) => void;
+  onRename?: (path: string) => void;
   gitStatus: string;
   gitError: boolean;
   onCommit: (msg: string) => Promise<void>;
@@ -71,6 +74,8 @@ export default function Sidebar({
   onCreateFolder,
   onFileMenu,
   onEmptySpaceMenu,
+  onDelete,
+  onRename,
   gitStatus,
   gitError,
   onCommit,
@@ -275,8 +280,13 @@ export default function Sidebar({
      handleDrop: handleExternalDrop,
    } = useExternalDrop({
      onDropFiles: async (files, targetPath) => {
-        // TODO: Implement file upload functionality
-        log.info("Files dropped", { count: files.length, targetPath });
+        try {
+          const resolvedTarget = targetPath || currentDir;
+          await fsUploadFiles(files, resolvedTarget);
+          log.info("Files uploaded successfully", { count: files.length, targetPath: resolvedTarget });
+        } catch (err) {
+          log.error("Failed to upload dropped files", err);
+        }
      },
    });
 
@@ -297,15 +307,16 @@ export default function Sidebar({
     },
     onOpenFile,
      onDelete: () => {
-       // Handle delete selected
-       if (!isEmpty()) {
-         // TODO: Show delete confirmation modal
+       if (onDelete && lastSelectedId) {
+         const node = displayNodes.find(n => n.path === lastSelectedId);
+         if (node) {
+           onDelete(lastSelectedId, node.isDir);
+         }
        }
      },
      onRename: () => {
-       // Handle rename
-       if (lastSelectedId) {
-         // TODO: Show rename modal
+       if (onRename && lastSelectedId) {
+         onRename(lastSelectedId);
        }
      },
     onCreateFile,
