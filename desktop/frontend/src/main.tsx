@@ -6,6 +6,7 @@ import { router } from "./router";
 import { createLogger } from "./utils/logger";
 import { AnimationProvider } from "./utils/animation-context";
 import { useAuthStore } from "./stores/authStore";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./globals.css";
 
 const log = createLogger("Main");
@@ -115,7 +116,7 @@ function AppContent() {
       checkAuth();
       
       // Listen for auth callbacks from Go backend
-      const { EventsOn } = (window as any).runtime || {};
+      const { EventsOn, EventsOff } = (window as any).runtime || {};
       if (EventsOn) {
         EventsOn("auth:callback", (data: any) => {
           log.info("Auth callback received", data);
@@ -133,6 +134,12 @@ function AppContent() {
           setSessionToken(null);
           setUser(null);
         });
+        
+        return () => {
+          if (EventsOff) {
+            EventsOff("auth:callback", "auth:signout");
+          }
+        };
       }
     } else {
       // Web environment - use Supabase Auth
@@ -161,7 +168,9 @@ const root = document.getElementById("root");
 if (root) {
   createRoot(root).render(
     <React.StrictMode>
-      <AppContent />
+      <ErrorBoundary>
+        <AppContent />
+      </ErrorBoundary>
     </React.StrictMode>
   );
 }
