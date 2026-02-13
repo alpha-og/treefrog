@@ -92,7 +92,7 @@ function AppContent() {
           if (GetAuthState) {
             const state = await GetAuthState();
             if (state?.isAuthenticated && state?.user) {
-              setMode('clerk');
+              setMode('supabase');
               setUser({
                 id: state.user.id,
                 email: state.user.email,
@@ -120,7 +120,7 @@ function AppContent() {
         EventsOn("auth:callback", (data: any) => {
           log.info("Auth callback received", data);
           if (data?.success) {
-            setMode('clerk');
+            setMode('supabase');
             toast.success("Signed in successfully");
             // Refresh auth state
             checkAuth();
@@ -135,7 +135,7 @@ function AppContent() {
         });
       }
     } else {
-      // Web environment - could use Clerk SDK here later
+      // Web environment - use Supabase Auth
       setMode('guest');
       setIsReady(true);
     }
