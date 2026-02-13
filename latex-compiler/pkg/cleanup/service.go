@@ -260,7 +260,7 @@ func (s *Service) cleanupStorageQuotas() {
 		maxStorageBytes := int64(tierConfig.StorageGB) * 1024 * 1024 * 1024
 
 		// Get user's current storage usage
-		totalStorage, err := s.buildStore.GetTotalStorage(u.ClerkID)
+		totalStorage, err := s.buildStore.GetTotalStorage(u.ID)
 		if err != nil {
 			continue
 		}
@@ -268,12 +268,12 @@ func (s *Service) cleanupStorageQuotas() {
 		// If over quota, delete oldest builds
 		if totalStorage > maxStorageBytes {
 			s.logger.WithFields(logrus.Fields{
-				"userID":  u.ClerkID,
+				"userID":  u.ID,
 				"storage": fmt.Sprintf("%.1f GB", float64(totalStorage)/(1024*1024*1024)),
 			}).Warn("User exceeded storage quota")
 
 			// Delete oldest builds until under quota
-			oldest, _ := s.buildStore.FindOldestByUser(u.ClerkID, 100)
+			oldest, _ := s.buildStore.FindOldestByUser(u.ID, 100)
 			for _, b := range oldest {
 				os.RemoveAll(b.DirPath)
 				s.buildStore.Delete(b.ID)
@@ -299,7 +299,7 @@ func (s *Service) updateUserStorageUsage() {
 	}
 
 	for _, u := range users {
-		totalStorage, _ := s.buildStore.GetTotalStorage(u.ClerkID)
+		totalStorage, _ := s.buildStore.GetTotalStorage(u.ID)
 		u.StorageUsedBytes = totalStorage
 		s.userStore.Update(u)
 	}

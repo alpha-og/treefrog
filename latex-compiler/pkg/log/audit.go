@@ -59,7 +59,7 @@ func (al *AuditLogger) Log(entry AuditEntry) error {
 	// Store in database
 	_, err := al.db.Exec(`
 		INSERT INTO audit_logs (id, user_id, action, resource_type, resource_id, details, ip_address, user_agent, status, error_message, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
 		entry.ID, entry.UserID, entry.Action, entry.ResourceType, entry.ResourceID, entry.Details,
 		entry.IPAddress, entry.UserAgent, entry.Status, entry.ErrorMessage, entry.CreatedAt)
 
