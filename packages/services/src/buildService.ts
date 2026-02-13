@@ -6,6 +6,7 @@ import type {
   DeltaSyncResponse,
 } from '@treefrog/types';
 import { apiClient } from './apiClient';
+import { supabase } from '@treefrog/supabase';
 
 export class BuildService {
   async triggerBuild(request: BuildRequest) {
@@ -18,14 +19,26 @@ export class BuildService {
     return response.data.data;
   }
 
-  async getBuildHistory(projectId: string, page = 1, limit = 10) {
-    const response = await apiClient.get<BuildHistory[]>(
-      `/projects/${projectId}/builds`,
-      {
-        params: { page, limit },
-      }
-    );
-    return response.data.data;
+  async getBuildHistory(userId: string, page = 1, limit = 10): Promise<BuildHistory[]> {
+    const offset = (page - 1) * limit;
+    
+    const { data, error } = await supabase
+      .from('builds')
+      .select('id, status, engine, main_file, created_at, expires_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+    
+    if (error) return [];
+    
+    return (data || []).map(build => ({
+      id: build.id,
+      status: build.status,
+      engine: build.engine,
+      mainFile: build.main_file,
+      createdAt: build.created_at,
+      expiresAt: build.expires_at,
+    }));
   }
 
   async initDeltaSync(request: DeltaSyncRequest & { projectName: string; mainFile: string; engine: string; shellEscape: boolean }) {

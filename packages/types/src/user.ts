@@ -4,6 +4,8 @@ export interface User {
   email: string;
   name?: string;
   avatar?: string;
+  tier: string;
+  storageUsedBytes: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -21,7 +23,13 @@ export interface AuthSession {
   isAuthenticated: boolean;
 }
 
-export interface UserProfile extends User {
+export interface UserProfile {
+  id: string;
+  email: string;
+  name?: string;
+  tier: string;
+  storageUsedBytes: number;
+  createdAt: string;
   preferences?: {
     theme?: 'light' | 'dark' | 'system';
     notifications?: boolean;
