@@ -74,7 +74,7 @@ export default function AuthPage() {
         log.info("Auth callback received", data)
         if (data?.success) {
           markFirstLaunchComplete()
-          setMode('clerk')
+          setMode('supabase')
           toast.success("Signed in successfully!")
           setTimeout(() => navigate({ to: '/' }), 500)
         }
