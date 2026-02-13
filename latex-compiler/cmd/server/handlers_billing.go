@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/alpha-og/treefrog-latex-compiler/pkg/auth"
 	"github.com/alpha-og/treefrog-latex-compiler/pkg/billing"
@@ -52,10 +51,11 @@ func CreateSubscriptionHandler() http.HandlerFunc {
 			return
 		}
 
-		razorpayService := billing.NewRazorpayService(
-			os.Getenv("RAZORPAY_KEY_ID"),
-			os.Getenv("RAZORPAY_KEY_SECRET"),
-		)
+		razorpayService := billing.GetRazorpayService()
+		if razorpayService == nil {
+			http.Error(w, "Billing service not available", http.StatusInternalServerError)
+			return
+		}
 
 		customerID := userRec.RazorpayCustomerID
 		if customerID == "" {
@@ -127,10 +127,11 @@ func CancelSubscriptionHandler() http.HandlerFunc {
 			return
 		}
 
-		razorpayService := billing.NewRazorpayService(
-			os.Getenv("RAZORPAY_KEY_ID"),
-			os.Getenv("RAZORPAY_KEY_SECRET"),
-		)
+		razorpayService := billing.GetRazorpayService()
+		if razorpayService == nil {
+			http.Error(w, "Billing service not available", http.StatusInternalServerError)
+			return
+		}
 
 		if err := razorpayService.CancelSubscription(userRec.RazorpaySubscriptionID); err != nil {
 			http.Error(w, "Failed to cancel subscription", http.StatusInternalServerError)
@@ -188,10 +189,11 @@ func GetSubscriptionStatusHandler() http.HandlerFunc {
 			return
 		}
 
-		razorpayService := billing.NewRazorpayService(
-			os.Getenv("RAZORPAY_KEY_ID"),
-			os.Getenv("RAZORPAY_KEY_SECRET"),
-		)
+		razorpayService := billing.GetRazorpayService()
+		if razorpayService == nil {
+			http.Error(w, "Billing service not available", http.StatusInternalServerError)
+			return
+		}
 
 		subscription, err := razorpayService.GetSubscription(userRec.RazorpaySubscriptionID)
 		if err != nil {
@@ -269,10 +271,11 @@ func RedeemCouponHandler() http.HandlerFunc {
 			return
 		}
 
-		razorpayService := billing.NewRazorpayService(
-			os.Getenv("RAZORPAY_KEY_ID"),
-			os.Getenv("RAZORPAY_KEY_SECRET"),
-		)
+		razorpayService := billing.GetRazorpayService()
+		if razorpayService == nil {
+			http.Error(w, "Billing service not available", http.StatusInternalServerError)
+			return
+		}
 
 		customerID := userRec.RazorpayCustomerID
 		if customerID == "" {
@@ -322,10 +325,11 @@ func RazorpayWebhookHandler() http.HandlerFunc {
 			return
 		}
 
-		razorpayService := billing.NewRazorpayService(
-			os.Getenv("RAZORPAY_KEY_ID"),
-			os.Getenv("RAZORPAY_KEY_SECRET"),
-		)
+		razorpayService := billing.GetRazorpayService()
+		if razorpayService == nil {
+			http.Error(w, "Billing service not available", http.StatusInternalServerError)
+			return
+		}
 
 		webhookHandler := billing.NewWebhookHandler(razorpayService, userStore, logger)
 		webhookHandler.ServeHTTP(w, r)
