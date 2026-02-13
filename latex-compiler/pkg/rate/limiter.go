@@ -220,3 +220,17 @@ func (l *Limiter) GetRemaining(userID, action, tier string) (int, error) {
 
 	return remaining, nil
 }
+
+// Increment increments a counter for the given key and returns the new value
+func (l *Limiter) Increment(ctx context.Context, key string, ttl time.Duration) (int64, error) {
+	count, err := l.client.Incr(ctx, key).Result()
+	if err != nil {
+		return 0, err
+	}
+
+	if count == 1 {
+		l.client.Expire(ctx, key, ttl)
+	}
+
+	return count, nil
+}
