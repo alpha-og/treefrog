@@ -66,10 +66,11 @@ func main() {
 	billing.InitPlanTierMapping()
 
 	logger.Info("Initializing Razorpay billing")
-	_ = billing.NewRazorpayService(
+	razorpaySvc := billing.NewRazorpayService(
 		cfg.Billing.RazorpayKeyID,
 		cfg.Billing.RazorpayKeySecret,
 	)
+	_ = razorpaySvc
 
 	logger.Info("Initializing Docker compiler")
 
@@ -113,18 +114,22 @@ func main() {
 	r.Use(loggingMiddleware(logger))
 	r.Use(middleware.Recoverer)
 
-	allowedOrigins := []string{"*"}
+	allowedOrigins := []string{}
 	if origins := os.Getenv("ALLOWED_ORIGINS"); origins != "" {
 		allowedOrigins = splitAndTrim(origins, ",")
+	} else {
+		allowedOrigins = []string{"http://localhost:3000", "http://localhost:5173", "http://localhost:34115"}
 	}
 	logger.WithField("origins", allowedOrigins).Info("CORS configuration")
+
+	allowCredentials := len(allowedOrigins) > 0 && allowedOrigins[0] != "*"
 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   allowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Compiler-Token", "X-Request-ID"},
 		ExposedHeaders:   []string{"X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"},
-		AllowCredentials: true,
+		AllowCredentials: allowCredentials,
 		MaxAge:           300,
 	}))
 
