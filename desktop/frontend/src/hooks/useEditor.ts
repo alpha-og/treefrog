@@ -77,6 +77,12 @@ export function useEditor(
   const saveTimer = useRef<number | null>(null);
   const ignoreChange = useRef(false);
   const lastProjectRef = useRef<string>("");
+  const onSaveRef = useRef(onSave);
+
+  // Keep onSave ref updated
+  useEffect(() => {
+    onSaveRef.current = onSave;
+  }, [onSave]);
 
   // Get Monaco theme based on system theme
   const getMonacoTheme = (themeMode: "light" | "dark") => {
@@ -129,19 +135,19 @@ export function useEditor(
       if (saveTimer.current) window.clearTimeout(saveTimer.current);
 
       saveTimer.current = window.setTimeout(() => {
-        onSave(editorRef.current?.getValue() || "");
+        onSaveRef.current(editorRef.current?.getValue() || "");
       }, 300);
     });
 
     // Keyboard shortcuts
     editorRef.current.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-      onSave(editorRef.current?.getValue() || "");
+      onSaveRef.current(editorRef.current?.getValue() || "");
     });
 
     editorRef.current.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
       () => {
-        onSave(editorRef.current?.getValue() || "");
+        onSaveRef.current(editorRef.current?.getValue() || "");
       }
     );
 
@@ -153,6 +159,9 @@ export function useEditor(
 
     return () => {
       resizeObserver.disconnect();
+      if (saveTimer.current) {
+        window.clearTimeout(saveTimer.current);
+      }
     };
   }, [isBinary, theme, projectRoot]);
 
