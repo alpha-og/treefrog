@@ -27,7 +27,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function SignedInRoute({ children }: { children: React.ReactNode }) {
   const { mode } = useAuthStore();
 
-  if (mode !== 'clerk') {
+  if (mode !== 'supabase') {
     log.debug("Not signed in, redirecting to account");
     return <Navigate to="/account" />;
   }
