@@ -11,6 +11,8 @@ import (
 
 var log = logrus.WithField("component", "billing/razorpay")
 
+var razorpayService *RazorpayService
+
 type RazorpayService struct {
 	Client *razorpay.Client
 	KeyID  string
@@ -18,10 +20,17 @@ type RazorpayService struct {
 
 func NewRazorpayService(keyID, keySecret string) *RazorpayService {
 	client := razorpay.NewClient(keyID, keySecret)
-	return &RazorpayService{
+	service := &RazorpayService{
 		Client: client,
 		KeyID:  keyID,
 	}
+	razorpayService = service
+	log.WithField("key_id", keyID).Info("Razorpay service initialized")
+	return service
+}
+
+func GetRazorpayService() *RazorpayService {
+	return razorpayService
 }
 
 // getString safely extracts a string from a map
