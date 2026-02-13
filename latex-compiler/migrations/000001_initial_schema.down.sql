@@ -1,10 +1,18 @@
+DROP INDEX IF EXISTS idx_coupons_type;
+DROP INDEX IF EXISTS idx_coupons_active;
 DROP INDEX IF EXISTS idx_coupons_code;
 DROP TABLE IF EXISTS coupons;
+DROP TRIGGER IF EXISTS update_builds_updated_at ON builds;
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+DROP FUNCTION IF EXISTS update_updated_at_column;
+DROP INDEX IF EXISTS idx_builds_user_created;
 DROP INDEX IF EXISTS idx_builds_created;
 DROP INDEX IF EXISTS idx_builds_expires;
 DROP INDEX IF EXISTS idx_builds_status;
 DROP INDEX IF EXISTS idx_builds_user;
 DROP TABLE IF EXISTS builds;
+DROP INDEX IF EXISTS idx_users_is_admin;
+DROP INDEX IF EXISTS idx_users_tier;
 DROP INDEX IF EXISTS idx_users_razorpay_customer;
 DROP INDEX IF EXISTS idx_users_clerk_id;
 DROP TABLE IF EXISTS users;

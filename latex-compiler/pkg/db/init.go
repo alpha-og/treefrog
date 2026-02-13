@@ -4,27 +4,23 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/sqlite3"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/sirupsen/logrus"
 )
 
 const (
-	// Database configuration
 	MaxOpenConnections = 25
 	MaxIdleConnections = 5
 )
 
 type InitConfig struct {
-	DBPath            string
-	MigrationsPath    string
-	Logger            *logrus.Logger
-	EnableWAL         bool
-	EnableForeignKeys bool
+	DatabaseURL    string
+	MigrationsPath string
+	Logger         *logrus.Logger
 }
 
 func InitDB(config InitConfig) (*sql.DB, error) {
@@ -33,12 +29,12 @@ func InitDB(config InitConfig) (*sql.DB, error) {
 		logger = logrus.New()
 	}
 
-	dbPath := config.DBPath
-	if dbPath == "" {
-		dbPath = os.Getenv("DATABASE_URL")
-		if dbPath == "" {
-			dbPath = "./data/treefrog.db"
-		}
+	dbURL := config.DatabaseURL
+	if dbURL == "" {
+		dbURL = os.Getenv("DATABASE_URL")
+	}
+	if dbURL == "" {
+		return nil, fmt.Errorf("DATABASE_URL environment variable is required")
 	}
 
 	migrationsPath := config.MigrationsPath
@@ -46,81 +42,49 @@ func InitDB(config InitConfig) (*sql.DB, error) {
 		migrationsPath = "./migrations"
 	}
 
-	// Ensure directory exists
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
-		logger.WithError(err).Error("Failed to create database directory")
-		return nil, fmt.Errorf("failed to create database directory: %w", err)
-	}
+	logger.Info("Opening PostgreSQL connection")
 
-	logger.WithField("path", dbPath).Info("Opening database connection")
-
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open("pgx", dbURL)
 	if err != nil {
 		logger.WithError(err).Error("Failed to open database")
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	// Set connection pool parameters
 	db.SetMaxOpenConns(MaxOpenConnections)
 	db.SetMaxIdleConns(MaxIdleConnections)
 
-	// Test connection
 	if err := db.Ping(); err != nil {
 		logger.WithError(err).Error("Failed to ping database")
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	// Enable WAL mode for better concurrency (SQLite specific optimization)
-	if config.EnableWAL {
-		if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
-			logger.WithError(err).Warn("Failed to set WAL mode")
-		} else {
-			logger.Debug("WAL mode enabled")
-		}
-	}
+	logger.WithField("migrations_path", migrationsPath).Info("Running database migrations")
 
-	// Enable foreign keys
-	if config.EnableForeignKeys {
-		if _, err := db.Exec("PRAGMA foreign_keys=ON"); err != nil {
-			logger.WithError(err).Warn("Failed to enable foreign keys")
-		} else {
-			logger.Debug("Foreign keys enabled")
-		}
-	}
-
-	// Run migrations using golang-migrate
-	logger.WithFields(logrus.Fields{
-		"migrations_path": migrationsPath,
-	}).Info("Running database migrations")
-
-	if err := runMigrations(db, dbPath, migrationsPath, logger); err != nil {
+	if err := runMigrations(db, migrationsPath, logger); err != nil {
 		logger.WithError(err).Error("Failed to run migrations")
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
-	logger.WithField("path", dbPath).Info("Database initialized successfully")
+	logger.Info("Database initialized successfully")
 	return db, nil
 }
 
-// runMigrations runs pending migrations using golang-migrate
-func runMigrations(db *sql.DB, dbPath, migrationsPath string, logger *logrus.Logger) error {
-	driver, err := sqlite3.WithInstance(db, &sqlite3.Config{})
+func runMigrations(db *sql.DB, migrationsPath string, logger *logrus.Logger) error {
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
 	if err != nil {
 		return fmt.Errorf("failed to create migration driver: %w", err)
 	}
 
 	m, err := migrate.NewWithDatabaseInstance(
 		"file://"+migrationsPath,
-		"sqlite3", driver)
+		"postgres", driver)
 	if err != nil {
 		return fmt.Errorf("failed to initialize migrations: %w", err)
 	}
 
-	// Get current version
 	version, _, _ := m.Version()
 	logger.WithField("current_version", version).Debug("Current migration version")
 
-	// Run migrations
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("migration failed: %w", err)
 	}
@@ -128,5 +92,5 @@ func runMigrations(db *sql.DB, dbPath, migrationsPath string, logger *logrus.Log
 	version, _, _ = m.Version()
 	logger.WithField("new_version", version).Info("Migrations completed")
 
-	return driver.Close()
+	return nil
 }
