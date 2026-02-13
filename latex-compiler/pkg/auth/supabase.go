@@ -47,6 +47,8 @@ type JWKSClient struct {
 	keysMu      sync.RWMutex
 	lastRefresh time.Time
 	cacheTTL    time.Duration
+	refreshing  bool
+	refreshMu   sync.Mutex
 }
 
 type JWKS struct {
@@ -82,7 +84,26 @@ func (c *JWKSClient) GetKey(kid string) (*rsa.PublicKey, error) {
 	}
 	c.keysMu.RUnlock()
 
-	if err := c.refreshKeys(); err != nil {
+	c.refreshMu.Lock()
+	if c.refreshing {
+		c.refreshMu.Unlock()
+		c.keysMu.RLock()
+		defer c.keysMu.RUnlock()
+		if key, ok := c.keys[kid]; ok {
+			return key, nil
+		}
+		return nil, fmt.Errorf("key with kid %s not found", kid)
+	}
+	c.refreshing = true
+	c.refreshMu.Unlock()
+
+	err := c.refreshKeys()
+
+	c.refreshMu.Lock()
+	c.refreshing = false
+	c.refreshMu.Unlock()
+
+	if err != nil {
 		return nil, err
 	}
 
@@ -189,6 +210,16 @@ type SupabaseClaims struct {
 }
 
 func (c *SupabaseClaims) Valid() error {
+	now := time.Now()
+	if c.ExpiresAt != nil && now.After(c.ExpiresAt.Time) {
+		return fmt.Errorf("token is expired")
+	}
+	if c.NotBefore != nil && now.Before(c.NotBefore.Time) {
+		return fmt.Errorf("token is not valid yet")
+	}
+	if c.IssuedAt != nil && now.Before(c.IssuedAt.Time) {
+		return fmt.Errorf("token issued in the future")
+	}
 	return nil
 }
 
