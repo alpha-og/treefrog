@@ -297,7 +297,14 @@ exit 0
 		}
 	case <-timeoutCtx.Done():
 		// Container timeout - kill it
-		c.dockerClient.ContainerStop(ctx, resp.ID, container.StopOptions{})
+		stopCtx, stopCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer stopCancel()
+
+		if err := c.dockerClient.ContainerStop(stopCtx, resp.ID, container.StopOptions{}); err != nil {
+			// Log but don't fail - container may have AutoRemove set
+			// Try to remove if stop fails
+			c.dockerClient.ContainerRemove(stopCtx, resp.ID, container.RemoveOptions{Force: true})
+		}
 		build.Status = StatusFailed
 		build.ErrorMessage = "Compilation timeout (exceeded 5 minutes)"
 		return fmt.Errorf("compilation timeout")

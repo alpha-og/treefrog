@@ -2,6 +2,7 @@ package build
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -71,7 +72,7 @@ func (b *Build) Validate() error {
 	}
 
 	// Prevent path traversal (Issue #9)
-	if contains(b.MainFile, "..") || contains(b.MainFile, "/") || contains(b.MainFile, "\\") {
+	if strings.Contains(b.MainFile, "..") || strings.Contains(b.MainFile, "/") || strings.Contains(b.MainFile, "\\") {
 		return fmt.Errorf("invalid main_file: path traversal not allowed")
 	}
 
@@ -84,26 +85,6 @@ func (b *Build) Validate() error {
 	}
 
 	return nil
-}
-
-// Helper function
-func contains(s, substr string) bool {
-	for i := 0; i < len(s); i++ {
-		if len(substr) > len(s)-i {
-			return false
-		}
-		match := true
-		for j := 0; j < len(substr); j++ {
-			if s[i+j] != substr[j] {
-				match = false
-				break
-			}
-		}
-		if match {
-			return true
-		}
-	}
-	return false
 }
 
 type BuildResponse struct {
