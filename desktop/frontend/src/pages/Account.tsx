@@ -1,44 +1,74 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { ArrowLeft, Eye, EyeOff, Copy, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowLeft, Copy, Check, CloudOff } from "lucide-react";
 import { motion } from "motion/react";
 import { useAuthStore } from "@/stores/authStore";
+import { useCloudData } from "@/hooks/useCloudData";
 import { Button } from "@/components/common";
 import { Input } from "@/components/common";
 import { StorageUsageWidget } from "@/components/StorageUsageWidget";
 import { fadeInUp, staggerContainer, staggerItem } from "@/utils/animations";
+import { supabase } from "@/lib/supabase";
 
 export default function Account() {
   const navigate = useNavigate();
-  const { user, isGuest } = useAuthStore();
-  const [showApiToken, setShowApiToken] = useState(false);
-  const [apiTokenCopied, setApiTokenCopied] = useState(false);
+  const { user, isGuest, setMode, setUser } = useAuthStore();
+  const { usageStats, userData } = useCloudData();
+  
   const [isSaving, setIsSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const mockApiToken =
-    "sk_live_51234567890abcdefghijklmnopqrstuvwxyz";
+  const userEmail = user?.email || userData?.email || "user@example.com";
+  const userName = user?.name || userData?.name || "User";
 
-  const userEmail = user?.email || "user@example.com";
-  const userName = user?.name || "User";
-
-  const copyApiToken = () => {
-    navigator.clipboard.writeText(mockApiToken);
-    setApiTokenCopied(true);
-    setTimeout(() => setApiTokenCopied(false), 2000);
-  };
-
-  const handleSaveSettings = async () => {
+  const handleDeleteAccount = async () => {
+    if (!supabase || !user?.id) return;
+    
     setIsSaving(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      alert("Settings saved successfully!");
-    } catch (error) {
-      alert("Failed to save settings");
+      const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', user.id);
+      
+      if (error) {
+        alert("Failed to delete account: " + error.message);
+      } else {
+        setMode('guest');
+        setUser(null);
+        navigate({ to: "/" });
+      }
+    } catch (err) {
+      alert("Failed to delete account");
     } finally {
       setIsSaving(false);
+      setShowDeleteConfirm(false);
     }
   };
+
+  if (isGuest()) {
+    return (
+      <motion.div
+        className="min-h-screen bg-[var(--background)] flex items-center justify-center"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+      >
+        <motion.div variants={staggerItem} className="text-center max-w-md px-6">
+          <CloudOff className="h-16 w-16 mx-auto mb-4 text-[var(--muted-foreground)]" />
+          <h1 className="text-2xl font-bold text-[var(--foreground)] mb-2">
+            Cloud Features Unavailable
+          </h1>
+          <p className="text-[var(--muted-foreground)] mb-6">
+            Sign in to access your account settings and manage your profile.
+          </p>
+          <Button onClick={() => navigate({ to: "/" })}>
+            Go Home
+          </Button>
+        </motion.div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -97,20 +127,8 @@ export default function Account() {
                 className="bg-[var(--muted)] cursor-not-allowed"
               />
               <p className="text-xs text-[var(--muted-foreground)] mt-1">
-                Manage in account settings
+                Managed via Supabase authentication
               </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[var(--foreground)] mb-2">
-                Phone
-              </label>
-              <Input
-                type="tel"
-                value="Not available"
-                readOnly
-                className="bg-[var(--muted)] cursor-not-allowed"
-              />
             </div>
 
             <div>
@@ -130,23 +148,38 @@ export default function Account() {
 
             <div>
               <label className="block text-sm font-medium text-[var(--foreground)] mb-2">
-                Phone
+                Account ID
+              </label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="text"
+                  value={user?.id || ""}
+                  readOnly
+                  className="bg-[var(--muted)] cursor-not-allowed font-mono text-sm"
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(user?.id || "");
+                  }}
+                  className="px-2"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[var(--foreground)] mb-2">
+                Tier
               </label>
               <Input
-                type="tel"
-                value={userPhone}
+                type="text"
+                value={usageStats?.tier ? usageStats.tier.charAt(0).toUpperCase() + usageStats.tier.slice(1) : "Free"}
                 readOnly
                 className="bg-[var(--muted)] cursor-not-allowed"
               />
-            </div>
-
-            <div className="pt-4 border-t border-[var(--border)]">
-              <Button
-                variant="outline"
-                onClick={() => navigate({ to: "/settings" })}
-              >
-                Account Settings
-              </Button>
             </div>
           </div>
         </motion.div>
@@ -160,141 +193,9 @@ export default function Account() {
             Storage Overview
           </h2>
           <StorageUsageWidget
-            usedGB={45.2}
-            limitGB={100}
+            usedGB={usageStats?.storageUsedGB || 0}
+            limitGB={usageStats?.storageLimitGB || 1}
           />
-        </motion.div>
-
-        {/* API Token Section */}
-        <motion.div
-          className="mb-8 rounded-lg border border-[var(--border)] bg-[var(--card)] p-6"
-          variants={staggerItem}
-        >
-          <h2 className="text-lg font-semibold text-[var(--foreground)] mb-4">
-            API Token
-          </h2>
-          <p className="text-sm text-[var(--muted-foreground)] mb-4">
-            Use your API token to authenticate requests from your applications.
-          </p>
-
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--muted)]/20 p-3 font-mono text-sm flex items-center">
-                {showApiToken ? mockApiToken : "••••••••••••••••••••••••••••••"}
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowApiToken(!showApiToken)}
-                className="px-2"
-              >
-                {showApiToken ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={copyApiToken}
-                className="px-2"
-              >
-                {apiTokenCopied ? (
-                  <Check className="h-4 w-4 text-green-500" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-
-            {apiTokenCopied && (
-              <p className="text-xs text-green-600 dark:text-green-400">
-                API token copied to clipboard!
-              </p>
-            )}
-
-            <div className="p-3 rounded-lg bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800">
-              <p className="text-xs text-orange-800 dark:text-orange-200">
-                ⚠️ Keep your API token secret. Anyone with this token can access your account.
-              </p>
-            </div>
-
-            <Button
-              variant="outline"
-              onClick={() => alert("Regenerate API token")}
-            >
-              Regenerate Token
-            </Button>
-          </div>
-        </motion.div>
-
-        {/* Preferences Section */}
-        <motion.div
-          className="mb-8 rounded-lg border border-[var(--border)] bg-[var(--card)] p-6"
-          variants={staggerItem}
-        >
-          <h2 className="text-lg font-semibold text-[var(--foreground)] mb-6">
-            Preferences
-          </h2>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-[var(--foreground)]">
-                  Email Notifications
-                </p>
-                <p className="text-sm text-[var(--muted-foreground)]">
-                  Receive updates about your builds
-                </p>
-              </div>
-              <input
-                type="checkbox"
-                defaultChecked
-                className="h-5 w-5 rounded border-[var(--border)] cursor-pointer"
-              />
-            </div>
-
-            <div className="border-t border-[var(--border)] pt-4 flex items-center justify-between">
-              <div>
-                <p className="font-medium text-[var(--foreground)]">
-                  Build Summaries
-                </p>
-                <p className="text-sm text-[var(--muted-foreground)]">
-                  Weekly digest of your activity
-                </p>
-              </div>
-              <input
-                type="checkbox"
-                defaultChecked
-                className="h-5 w-5 rounded border-[var(--border)] cursor-pointer"
-              />
-            </div>
-
-            <div className="border-t border-[var(--border)] pt-4 flex items-center justify-between">
-              <div>
-                <p className="font-medium text-[var(--foreground)]">
-                  Product Updates
-                </p>
-                <p className="text-sm text-[var(--muted-foreground)]">
-                  Get notified about new features
-                </p>
-              </div>
-              <input
-                type="checkbox"
-                className="h-5 w-5 rounded border-[var(--border)] cursor-pointer"
-              />
-            </div>
-
-            <div className="pt-4 border-t border-[var(--border)]">
-              <Button
-                onClick={handleSaveSettings}
-                disabled={isSaving}
-              >
-                {isSaving ? "Saving..." : "Save Preferences"}
-              </Button>
-            </div>
-          </div>
         </motion.div>
 
         {/* Danger Zone */}
@@ -314,20 +215,31 @@ export default function Account() {
               <p className="text-sm text-[var(--muted-foreground)] mb-3">
                 Permanently delete your account and all associated data. This action cannot be undone.
               </p>
-              <Button
-                variant="destructive"
-                onClick={() => {
-                  if (
-                    confirm(
-                      "Are you sure? This will permanently delete your account."
-                    )
-                  ) {
-                    alert("Account deletion requested");
-                  }
-                }}
-              >
-                Delete Account
-              </Button>
+              {showDeleteConfirm ? (
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="destructive"
+                    onClick={handleDeleteAccount}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? "Deleting..." : "Confirm Delete"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={isSaving}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  Delete Account
+                </Button>
+              )}
             </div>
           </div>
         </motion.div>

@@ -42,7 +42,7 @@ export default function AccountSettings() {
         if (data?.success) {
           // If user info is provided in the callback, use it
           if (data?.user) {
-            setMode('clerk');
+            setMode('supabase');
             setUser({
               id: data.user.id || '',
               email: data.user.email || '',
@@ -70,7 +70,7 @@ export default function AccountSettings() {
       if (getAuthState) {
         const state = await getAuthState();
         if (state?.isAuthenticated && state?.user) {
-          setMode('clerk');
+          setMode('supabase');
           setUser({
             id: state.user.id,
             email: state.user.email,
