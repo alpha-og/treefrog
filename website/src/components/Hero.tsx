@@ -1,128 +1,113 @@
 import { motion } from 'motion/react'
-import { Download, ArrowRight } from 'lucide-react'
+import { ArrowRight, Github } from 'lucide-react'
+import { fadeIn, staggerContainer, staggerItem, buttonHover, easeOutExpo, ANIMATION_DURATIONS } from '../lib/animations'
 
 export default function Hero() {
   return (
-    <section className="relative flex items-center justify-center min-h-[92vh] border-b border-border/40">
-
-      {/* Subtle background depth */}
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-b from-muted/20 via-background to-background" />
-        <div className="absolute top-1/2 left-1/2 w-[900px] h-[900px] -translate-x-1/2 -translate-y-1/2 bg-primary/5 blur-3xl rounded-full" />
+    <section className="relative min-h-screen flex items-center justify-center pt-16 overflow-hidden">
+      <div className="absolute inset-0">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1.2, ease: easeOutExpo }}
+          className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" 
+        />
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1.2, delay: 0.2, ease: easeOutExpo }}
+          className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-secondary/10 rounded-full blur-3xl" 
+        />
       </div>
 
-      <div className="max-w-5xl mx-auto px-6 py-24 text-center">
-
-        {/* Product label */}
+      <div className="container-width relative z-10">
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="mb-6 text-sm text-muted-foreground tracking-wide"
+          className="max-w-3xl mx-auto text-center"
+          variants={staggerContainer}
+          initial="initial"
+          animate="animate"
         >
-          TreeFrog — Desktop LaTeX Editor
-        </motion.div>
+          <motion.div variants={staggerItem} className="mb-6">
+            <motion.span 
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-border bg-muted/50 text-xs font-medium text-muted-foreground"
+              whileHover={{ scale: 1.02, borderColor: 'var(--border)' }}
+              transition={{ duration: ANIMATION_DURATIONS.fast, ease: easeOutExpo }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+              Open Source LaTeX Editor
+            </motion.span>
+          </motion.div>
 
-        {/* Headline */}
-        <motion.h1
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.1 }}
-          className="
-            text-4xl
-            sm:text-5xl
-            md:text-6xl
-            lg:text-[4.25rem]
-            font-semibold
-            tracking-tight
-            leading-[1.08]
-            text-foreground
-          "
-        >
-          Write LaTeX
-          <br />
-          without friction
-        </motion.h1>
-
-        {/* Supporting statement */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.7, delay: 0.25 }}
-          className="
-            mt-6
-            mx-auto
-            max-w-xl
-            text-lg
-            text-muted-foreground
-            leading-relaxed
-          "
-        >
-          Real-time preview, remote compilation, and Git-native workflows —
-          designed for focus and speed.
-        </motion.p>
-
-        {/* CTA Block */}
-        <motion.div
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.35 }}
-          className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
-        >
-          {/* Primary */}
-          <motion.a
-            href="#download"
-            whileHover={{ y: -1 }}
-            whileTap={{ scale: 0.98 }}
-            className="
-              inline-flex items-center gap-2
-              px-7 py-3
-              rounded-lg
-              bg-primary
-              text-primary-foreground
-              text-sm font-medium
-              shadow-sm
-              hover:shadow-md
-              transition-all
-            "
+          <motion.h1
+            variants={staggerItem}
+            className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-foreground mb-6"
           >
-            <Download className="w-4 h-4" />
-            Download
-          </motion.a>
+            Write LaTeX with
+            <motion.span 
+              className="block text-primary"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: ANIMATION_DURATIONS.slow, ease: easeOutExpo }}
+            >
+              clarity and speed
+            </motion.span>
+          </motion.h1>
 
-          {/* Secondary */}
-          <motion.a
-            href="https://github.com/alpha-og/treefrog"
-            target="_blank"
-            rel="noopener noreferrer"
-            whileHover={{ y: -1 }}
-            whileTap={{ scale: 0.98 }}
-            className="
-              group inline-flex items-center gap-2
-              px-6 py-3
-              text-sm font-medium
-              text-foreground/80
-              hover:text-foreground
-              transition-colors
-            "
+          <motion.p
+            variants={staggerItem}
+            className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed"
           >
-            View source
-            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-          </motion.a>
-        </motion.div>
+            A modern desktop editor with live preview, remote compilation, and seamless Git integration. Built for researchers, academics, and developers.
+          </motion.p>
 
-        {/* Platform hint */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.7 }}
-          transition={{ delay: 0.5 }}
-          className="mt-8 text-sm text-muted-foreground"
-        >
-          macOS · Windows · Linux
-        </motion.div>
+          <motion.div
+            variants={staggerItem}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+          >
+            <motion.a
+              href="#download"
+              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 transition-all duration-300 shadow-lg shadow-primary/20"
+              variants={buttonHover}
+              whileHover="hover"
+              whileTap="tap"
+            >
+              Download for Free
+              <ArrowRight className="w-4 h-4" />
+            </motion.a>
 
+            <motion.a
+              href="https://github.com/alpha-og/treefrog"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl border border-border hover:bg-muted hover:border-border/80 transition-all duration-300 font-medium"
+              variants={buttonHover}
+              whileHover="hover"
+              whileTap="tap"
+            >
+              <Github className="w-4 h-4" />
+              View Source
+            </motion.a>
+          </motion.div>
+
+          <motion.div
+            variants={fadeIn}
+            className="mt-14 flex items-center justify-center gap-8 text-sm text-muted-foreground"
+          >
+            {['macOS', 'Windows', 'Linux'].map((platform, i) => (
+              <motion.span 
+                key={platform}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8 + i * 0.1, duration: ANIMATION_DURATIONS.normal, ease: easeOutExpo }}
+                className="flex items-center gap-2"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/60" />
+                {platform}
+              </motion.span>
+            ))}
+          </motion.div>
+        </motion.div>
       </div>
     </section>
   )
 }
-

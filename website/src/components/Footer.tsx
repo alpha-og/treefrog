@@ -1,96 +1,64 @@
-import { Github, Heart } from 'lucide-react'
-
-const footerLinks = [
-  { label: 'Features', href: '#features' },
-  { label: 'Download', href: '#download' },
-  { label: 'Documentation', href: 'https://github.com/alpha-og/treefrog#readme' },
-  { label: 'Changelog', href: 'https://github.com/alpha-og/treefrog/releases' },
-  { label: 'FAQ', href: '#faq' },
-  { label: 'Issues', href: 'https://github.com/alpha-og/treefrog/issues' }
-]
+import { motion } from "motion/react";
+import { Github } from "lucide-react";
+import {
+  staggerContainer,
+  staggerItem,
+  easeOutExpo,
+  ANIMATION_DURATIONS,
+} from "../lib/animations";
 
 export default function Footer() {
-  const year = new Date().getFullYear()
+  const year = new Date().getFullYear();
 
   return (
-    <footer className="border-t border-border/40 bg-background">
-      <div className="max-w-6xl mx-auto px-6 py-14">
+    <footer className="border-t border-border bg-card/50">
+      <div className="container-width py-12">
+        <motion.div
+          className="flex flex-col md:flex-row items-center justify-between gap-6"
+          variants={staggerContainer}
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true }}
+        >
+          <motion.a
+            href="#"
+            className="flex items-center gap-3"
+            variants={staggerItem}
+            whileHover={{ scale: 1.02 }}
+            transition={{
+              duration: ANIMATION_DURATIONS.fast,
+              ease: easeOutExpo,
+            }}
+          >
+            <img
+              src="/appicon.png"
+              alt="TreeFrog"
+              className="w-7 h-7 rounded-lg"
+            />
+            <span className="font-semibold text-foreground">TreeFrog</span>
+          </motion.a>
 
-        {/* Top Section */}
-        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-10">
-
-          {/* Brand */}
-          <div className="max-w-sm">
-            <h2 className="text-xl font-semibold tracking-tight text-foreground">
-              TreeFrog
-            </h2>
-
-            <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
-              Modern LaTeX editing — fast, clean, and frustration-free.
-            </p>
-          </div>
-
-          {/* Links */}
-          <nav className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
-            {footerLinks.map(link => {
-              const external = link.href.startsWith('http')
-
-              return (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  target={external ? "_blank" : undefined}
-                  rel={external ? "noopener noreferrer" : undefined}
-                  className="
-                    text-muted-foreground
-                    hover:text-foreground
-                    transition-colors
-                  "
-                >
-                  {link.label}
-                </a>
-              )
-            })}
-          </nav>
-        </div>
-
-        {/* Divider */}
-        <div className="my-10 border-t border-border/40" />
-
-        {/* Bottom Section */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-
-          <div className="flex items-center gap-5">
-            <span>© {year} TreeFrog</span>
-
-            <a
+          <motion.div
+            variants={staggerItem}
+            className="flex items-center gap-4 text-sm text-muted-foreground"
+          >
+            <span>© {year}</span>
+            <motion.a
               href="https://github.com/alpha-og/treefrog"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 hover:text-foreground transition-colors"
+              className="hover:text-foreground transition-colors"
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              transition={{
+                duration: ANIMATION_DURATIONS.fast,
+                ease: easeOutExpo,
+              }}
             >
               <Github className="w-4 h-4" />
-              Source
-            </a>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            Made with
-            <Heart className="w-3.5 h-3.5 text-primary fill-primary" />
-            by
-            <a
-              href="https://github.com/alpha-og"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-foreground transition-colors"
-            >
-              alpha-og
-            </a>
-          </div>
-
-        </div>
+            </motion.a>
+          </motion.div>
+        </motion.div>
       </div>
     </footer>
-  )
+  );
 }
-
