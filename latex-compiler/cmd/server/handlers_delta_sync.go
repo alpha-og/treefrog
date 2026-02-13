@@ -54,7 +54,7 @@ type ProjectCache struct {
 
 // InitDeltaSyncHandler initializes a delta-sync build
 // POST /api/builds/init
-func InitDeltaSyncHandler(db interface{}) http.HandlerFunc {
+func InitDeltaSyncHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserID(r)
 		if !ok {
@@ -166,7 +166,7 @@ type DeltaSyncUploadRequest struct {
 
 // UploadDeltaSyncFilesHandler handles file uploads for delta-sync builds
 // POST /api/builds/{buildId}/upload
-func UploadDeltaSyncFilesHandler(db interface{}) http.HandlerFunc {
+func UploadDeltaSyncFilesHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserID(r)
 		if !ok {
