@@ -8,6 +8,7 @@ import (
 
 	"github.com/alpha-og/treefrog-latex-compiler/pkg/auth"
 	"github.com/alpha-og/treefrog-latex-compiler/pkg/billing"
+	"github.com/alpha-og/treefrog-latex-compiler/pkg/log"
 	"github.com/alpha-og/treefrog-latex-compiler/pkg/user"
 	"github.com/sirupsen/logrus"
 )
@@ -15,7 +16,7 @@ import (
 var billingLog = logrus.WithField("component", "handlers/billing")
 
 // CreateSubscriptionHandler creates a subscription for a user
-func CreateSubscriptionHandler(db interface{}) http.HandlerFunc {
+func CreateSubscriptionHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserID(r)
 		if !ok {
@@ -45,7 +46,7 @@ func CreateSubscriptionHandler(db interface{}) http.HandlerFunc {
 			return
 		}
 
-		userRec, err := userStore.GetByClerkID(userID)
+		userRec, err := userStore.GetByID(userID)
 		if err != nil {
 			http.Error(w, "User not found", http.StatusNotFound)
 			return
@@ -58,7 +59,7 @@ func CreateSubscriptionHandler(db interface{}) http.HandlerFunc {
 
 		customerID := userRec.RazorpayCustomerID
 		if customerID == "" {
-			customerID, err := razorpayService.CreateCustomer(userRec.Email, userRec.Name)
+			customerID, err = razorpayService.CreateCustomer(userRec.Email, userRec.Name)
 			if err != nil {
 				http.Error(w, "Failed to create customer", http.StatusInternalServerError)
 				return
@@ -80,6 +81,16 @@ func CreateSubscriptionHandler(db interface{}) http.HandlerFunc {
 			"plan_id":   req.PlanID,
 			"plan_name": plan.ID,
 		}).Info("Subscription created")
+
+		auditLogger.Log(log.AuditEntry{
+			UserID:       userRec.ID,
+			Action:       "subscription_created",
+			ResourceType: "subscription",
+			ResourceID:   plan.ID,
+			IPAddress:    r.RemoteAddr,
+			UserAgent:    r.UserAgent(),
+			Status:       "success",
+		})
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
@@ -105,7 +116,7 @@ func CancelSubscriptionHandler() http.HandlerFunc {
 			return
 		}
 
-		userRec, err := userStore.GetByClerkID(userID)
+		userRec, err := userStore.GetByID(userID)
 		if err != nil {
 			http.Error(w, "User not found", http.StatusNotFound)
 			return
@@ -127,6 +138,16 @@ func CancelSubscriptionHandler() http.HandlerFunc {
 		}
 
 		billingLog.WithField("user_id", userID).Info("Subscription cancelled")
+
+		auditLogger.Log(log.AuditEntry{
+			UserID:       userRec.ID,
+			Action:       "subscription_cancelled",
+			ResourceType: "subscription",
+			ResourceID:   userRec.RazorpaySubscriptionID,
+			IPAddress:    r.RemoteAddr,
+			UserAgent:    r.UserAgent(),
+			Status:       "success",
+		})
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
@@ -152,7 +173,7 @@ func GetSubscriptionStatusHandler() http.HandlerFunc {
 			return
 		}
 
-		userRec, err := userStore.GetByClerkID(userID)
+		userRec, err := userStore.GetByID(userID)
 		if err != nil {
 			http.Error(w, "User not found", http.StatusNotFound)
 			return
@@ -229,7 +250,7 @@ func RedeemCouponHandler() http.HandlerFunc {
 			return
 		}
 
-		userRec, err := userStore.GetByClerkID(userID)
+		userRec, err := userStore.GetByID(userID)
 		if err != nil {
 			http.Error(w, "User not found", http.StatusNotFound)
 			return

@@ -42,15 +42,13 @@ type WebhookPayload struct {
 	} `json:"payload"`
 }
 
-// VerifyWebhookSignature validates Razorpay webhook signature
 func VerifyWebhookSignature(body, signature, secret string) bool {
+	if secret == "" {
+		return false
+	}
 	computed := hmac.New(sha256.New, []byte(secret))
 	computed.Write([]byte(body))
 	expected := hex.EncodeToString(computed.Sum(nil))
-
-	if len(signature) != len(expected) {
-		return false
-	}
 
 	return hmac.Equal([]byte(signature), []byte(expected))
 }
@@ -77,17 +75,22 @@ func (h *WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to read body", http.StatusBadRequest)
 		return
 	}
-	defer r.Body.Close()
+	r.Body.Close()
 
-	// Verify signature
 	signature := r.Header.Get("X-Razorpay-Signature")
-	if !VerifyWebhookSignature(string(body), signature, os.Getenv("RAZORPAY_WEBHOOK_SECRET")) {
+	webhookSecret := os.Getenv("RAZORPAY_WEBHOOK_SECRET")
+	if webhookSecret == "" {
+		h.logger.Error("RAZORPAY_WEBHOOK_SECRET not configured")
+		http.Error(w, "Server misconfiguration", http.StatusInternalServerError)
+		return
+	}
+
+	if !VerifyWebhookSignature(string(body), signature, webhookSecret) {
 		h.logger.Warn("Invalid webhook signature")
 		http.Error(w, "Invalid signature", http.StatusUnauthorized)
 		return
 	}
 
-	// Parse payload
 	var payload WebhookPayload
 	if err := json.Unmarshal(body, &payload); err != nil {
 		h.logger.WithError(err).Error("Failed to parse webhook payload")
@@ -101,7 +104,6 @@ func (h *WebhookHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"customer":     payload.Payload.Customer.ID,
 	}).Info("Received webhook event")
 
-	// Handle event
 	if err := h.handleEvent(&payload); err != nil {
 		h.logger.WithError(err).Error("Failed to handle webhook event")
 	}
@@ -158,7 +160,7 @@ func (h *WebhookHandler) handleSubscriptionActivated(payload *WebhookPayload) er
 	}
 
 	h.logger.WithFields(logrus.Fields{
-		"user_id": u.ClerkID,
+		"user_id": u.ID,
 		"tier":    tier,
 	}).Info("Activated subscription for user")
 	return nil
@@ -185,7 +187,7 @@ func (h *WebhookHandler) handleSubscriptionCancelled(payload *WebhookPayload) er
 		return fmt.Errorf("failed to update user: %w", err)
 	}
 
-	h.logger.WithField("user_id", u.ClerkID).Info("Scheduled downgrade for user at end of billing period")
+	h.logger.WithField("user_id", u.ID).Info("Scheduled downgrade for user at end of billing period")
 	return nil
 }
 
@@ -206,7 +208,7 @@ func (h *WebhookHandler) handleSubscriptionPaused(payload *WebhookPayload) error
 		return fmt.Errorf("failed to update user: %w", err)
 	}
 
-	h.logger.WithField("user_id", u.ClerkID).Info("Paused subscription for user")
+	h.logger.WithField("user_id", u.ID).Info("Paused subscription for user")
 	return nil
 }
 
@@ -227,7 +229,7 @@ func (h *WebhookHandler) handleSubscriptionResumed(payload *WebhookPayload) erro
 		return fmt.Errorf("failed to update user: %w", err)
 	}
 
-	h.logger.WithField("user_id", u.ClerkID).Info("Resumed subscription for user")
+	h.logger.WithField("user_id", u.ID).Info("Resumed subscription for user")
 	return nil
 }
 
@@ -253,7 +255,7 @@ func (h *WebhookHandler) handlePaymentFailed(payload *WebhookPayload) error {
 	}
 
 	h.logger.WithFields(logrus.Fields{
-		"user_id":      u.ClerkID,
+		"user_id":      u.ID,
 		"subscription": payload.Payload.Subscription.ID,
 		"amount":       payload.Payload.Payment.Amount,
 	}).Error("Payment failed")
@@ -286,6 +288,6 @@ func (h *WebhookHandler) handleSubscriptionCompleted(payload *WebhookPayload) er
 		return fmt.Errorf("failed to update user: %w", err)
 	}
 
-	h.logger.WithField("user_id", u.ClerkID).Info("Subscription completed for user")
+	h.logger.WithField("user_id", u.ID).Info("Subscription completed for user")
 	return nil
 }
