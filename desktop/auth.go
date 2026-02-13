@@ -34,7 +34,7 @@ type AuthState struct {
 	User            *AuthUser `json:"user,omitempty"`
 }
 
-// authConfig holds Clerk authentication configuration (internal)
+// authConfig holds authentication configuration (internal)
 type authConfig struct {
 	SessionToken string `json:"sessionToken"`
 	UserID       string `json:"userId"`
@@ -129,39 +129,55 @@ func (a *App) GetAuthState() AuthState {
 	}
 }
 
-// GetAuthSignInURL returns the Clerk sign-in URL for browser auth
-// Uses localhost callback server for reliable OAuth flow
+// GetAuthSignInURL returns the sign-in URL for browser auth
+// Redirects to the hosted website for a consistent auth experience
 func (a *App) GetAuthSignInURL() string {
 	// Start callback server if not running
 	if globalCallbackServer == nil {
 		globalCallbackServer = startCallbackServer()
 	}
 
-	// Clerk sign-in URL
-	signInURL := "https://quality-seagull-55.accounts.dev/sign-in"
+	// Determine the website URL based on environment
+	websiteURL := os.Getenv("TREEFROG_WEBSITE_URL")
+	if websiteURL == "" {
+		// Check if we're in development mode
+		if os.Getenv("TREEFROG_DEV") == "true" {
+			websiteURL = "http://localhost:3000"
+		} else {
+			websiteURL = "https://treefrog.vercel.app"
+		}
+	}
 
-	// Use localhost callback URL (Clerk supports this for native apps)
+	// Use localhost callback URL
 	redirectURL := fmt.Sprintf("http://localhost:%d/callback", globalCallbackServer.port)
 
 	return fmt.Sprintf(
-		"%s?redirect_url=%s",
-		signInURL,
+		"%s/sign-in?redirect_url=%s",
+		websiteURL,
 		url.QueryEscape(redirectURL),
 	)
 }
 
-// GetAuthSignUpURL returns the Clerk sign-up URL for browser auth
+// GetAuthSignUpURL returns the sign-up URL for browser auth
 func (a *App) GetAuthSignUpURL() string {
 	if globalCallbackServer == nil {
 		globalCallbackServer = startCallbackServer()
 	}
 
-	signUpURL := "https://quality-seagull-55.accounts.dev/sign-up"
+	websiteURL := os.Getenv("TREEFROG_WEBSITE_URL")
+	if websiteURL == "" {
+		if os.Getenv("TREEFROG_DEV") == "true" {
+			websiteURL = "http://localhost:3000"
+		} else {
+			websiteURL = "https://treefrog.vercel.app"
+		}
+	}
+
 	redirectURL := fmt.Sprintf("http://localhost:%d/callback", globalCallbackServer.port)
 
 	return fmt.Sprintf(
-		"%s?redirect_url=%s",
-		signUpURL,
+		"%s/sign-up?redirect_url=%s",
+		websiteURL,
 		url.QueryEscape(redirectURL),
 	)
 }
@@ -187,16 +203,13 @@ func startCallbackServer() *callbackServer {
 	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
 		Logger.WithField("url", r.URL.String()).Info("Received OAuth callback")
 
-		// Extract token from query params - Clerk uses different param names
-		token := r.URL.Query().Get("__clerk_db_jwt")
+		// Extract token from query params - various auth providers use different param names
+		token := r.URL.Query().Get("access_token")
 		if token == "" {
 			token = r.URL.Query().Get("session_token")
 		}
 		if token == "" {
 			token = r.URL.Query().Get("token")
-		}
-		if token == "" {
-			token = r.URL.Query().Get("jwt")
 		}
 
 		Logger.WithField("hasToken", token != "").Info("Processing callback")
@@ -516,8 +529,8 @@ func (a *App) OpenAuthURL() error {
 		a.authConfig.SessionToken = token
 		a.authMu.Unlock()
 
-		// Fetch user info from Clerk API
-		userInfo, err := a.fetchClerkUserInfo(token)
+		// Fetch user info from backend
+		userInfo, err := a.fetchUserInfo(token)
 		if err != nil {
 			Logger.WithError(err).Warn("Failed to fetch user info, but token stored")
 		} else if userInfo != nil {
@@ -552,8 +565,8 @@ func (a *App) OpenAuthURL() error {
 	return nil
 }
 
-// fetchClerkUserInfo fetches user info from the latex-compiler backend
-func (a *App) fetchClerkUserInfo(sessionToken string) (*AuthUser, error) {
+// fetchUserInfo fetches user info from the latex-compiler backend
+func (a *App) fetchUserInfo(sessionToken string) (*AuthUser, error) {
 	// Get compiler URL from app config
 	compilerURL := a.compilerURL
 	if compilerURL == "" {
@@ -607,12 +620,12 @@ func (a *App) HandleAuthCallback(callbackURL string) error {
 	}
 
 	// Extract session token from query parameters
-	token := parsedURL.Query().Get("session_token")
+	token := parsedURL.Query().Get("access_token")
 	if token == "" {
-		token = parsedURL.Query().Get("token")
+		token = parsedURL.Query().Get("session_token")
 	}
 	if token == "" {
-		token = parsedURL.Query().Get("__clerk_db_jwt")
+		token = parsedURL.Query().Get("token")
 	}
 
 	if token == "" {
