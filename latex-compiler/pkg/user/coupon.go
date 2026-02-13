@@ -53,7 +53,7 @@ func (s *CouponStore) GetByCode(code string) (*Coupon, error) {
 	err := s.db.QueryRow(`
 		SELECT id, code, type, plan_id, plan_name, max_uses, used_count, expires_at, 
 		       discount_percent, trial_days, tier_upgrade, is_active, one_time_use, created_at
-		FROM coupons WHERE code = ?`, code).Scan(
+		FROM coupons WHERE code = $1`, code).Scan(
 		&coupon.ID, &coupon.Code, &coupon.Type, &coupon.PlanID, &coupon.PlanName,
 		&coupon.MaxUses, &coupon.UsedCount, &coupon.ExpiresAt,
 		&coupon.DiscountPct, &coupon.TrialDays, &coupon.TierUpgrade,
@@ -106,7 +106,7 @@ func (s *CouponStore) IncrementUsage(couponID string) error {
 	}
 
 	result, err := s.db.Exec(
-		"UPDATE coupons SET used_count = used_count + 1 WHERE id = ?",
+		"UPDATE coupons SET used_count = used_count + 1 WHERE id = $1",
 		couponID)
 	if err != nil {
 		return fmt.Errorf("update failed: %w", err)
@@ -135,7 +135,7 @@ func (s *CouponStore) Create(coupon *Coupon) error {
 	_, err := s.db.Exec(`
 		INSERT INTO coupons (id, code, type, plan_id, plan_name, max_uses, used_count, expires_at,
 		                     discount_percent, trial_days, tier_upgrade, is_active, one_time_use, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
 		coupon.ID, coupon.Code, coupon.Type, coupon.PlanID, coupon.PlanName, coupon.MaxUses,
 		coupon.UsedCount, coupon.ExpiresAt, coupon.DiscountPct, coupon.TrialDays,
 		coupon.TierUpgrade, coupon.IsActive, coupon.OneTimeUse, coupon.CreatedAt)
@@ -151,7 +151,7 @@ func (s *CouponStore) GetByType(couponType CouponType) ([]*Coupon, error) {
 	query := `
 		SELECT id, code, type, plan_id, plan_name, max_uses, used_count, expires_at, 
 		       discount_percent, trial_days, tier_upgrade, is_active, one_time_use, created_at
-		FROM coupons WHERE type = ? AND is_active = 1
+		FROM coupons WHERE type = $1 AND is_active = true
 		ORDER BY created_at DESC
 	`
 
@@ -182,7 +182,7 @@ func (s *CouponStore) GetByType(couponType CouponType) ([]*Coupon, error) {
 func (s *CouponStore) HasUserUsedCoupon(userID, couponID string) (bool, error) {
 	var count int
 	err := s.db.QueryRow(
-		"SELECT COUNT(*) FROM coupon_redemptions WHERE user_id = ? AND coupon_id = ?",
+		"SELECT COUNT(*) FROM coupon_redemptions WHERE user_id = $1 AND coupon_id = $2",
 		userID, couponID).Scan(&count)
 	if err != nil {
 		return false, fmt.Errorf("query failed: %w", err)
@@ -193,7 +193,7 @@ func (s *CouponStore) HasUserUsedCoupon(userID, couponID string) (bool, error) {
 // RecordRedemption records that a user used a coupon
 func (s *CouponStore) RecordRedemption(userID, couponID string) error {
 	_, err := s.db.Exec(
-		"INSERT INTO coupon_redemptions (id, user_id, coupon_id, redeemed_at) VALUES (?, ?, ?, ?)",
+		"INSERT INTO coupon_redemptions (id, user_id, coupon_id, redeemed_at) VALUES ($1, $2, $3, $4)",
 		uuid.New().String(), userID, couponID, time.Now())
 	if err != nil {
 		return fmt.Errorf("insert failed: %w", err)

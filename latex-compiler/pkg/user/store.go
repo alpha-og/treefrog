@@ -10,9 +10,9 @@ import (
 
 type User struct {
 	ID                     string     `json:"id"`
-	ClerkID                string     `json:"clerk_id"`
 	Email                  string     `json:"email"`
 	Name                   string     `json:"name"`
+	IsAdmin                bool       `json:"is_admin"`
 	RazorpayCustomerID     string     `json:"razorpay_customer_id,omitempty"`
 	RazorpaySubscriptionID string     `json:"razorpay_subscription_id,omitempty"`
 	Tier                   string     `json:"tier"`
@@ -27,7 +27,6 @@ type Store struct {
 	db *sql.DB
 }
 
-// NewStore returns a new user store (Issue #3 - FIXED error handling)
 func NewStore(db *sql.DB) (*Store, error) {
 	if db == nil {
 		return nil, fmt.Errorf("database connection required")
@@ -35,34 +34,6 @@ func NewStore(db *sql.DB) (*Store, error) {
 	return &Store{db: db}, nil
 }
 
-// GetByClerkID retrieves user by Clerk ID
-func (s *Store) GetByClerkID(clerkID string) (*User, error) {
-	if clerkID == "" {
-		return nil, fmt.Errorf("clerk_id required")
-	}
-
-	var user User
-	err := s.db.QueryRow(`
-		SELECT id, clerk_id, email, name, razorpay_customer_id, razorpay_subscription_id,
-		       tier, storage_used_bytes, subscription_canceled_at, subscription_paused,
-		       created_at, updated_at
-		FROM users WHERE clerk_id = ?`, clerkID).Scan(
-		&user.ID, &user.ClerkID, &user.Email, &user.Name, &user.RazorpayCustomerID,
-		&user.RazorpaySubscriptionID, &user.Tier, &user.StorageUsedBytes,
-		&user.SubscriptionCanceledAt, &user.SubscriptionPaused,
-		&user.CreatedAt, &user.UpdatedAt)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("user not found")
-		}
-		return nil, fmt.Errorf("query failed: %w", err)
-	}
-
-	return &user, nil
-}
-
-// GetByID retrieves user by internal ID
 func (s *Store) GetByID(id string) (*User, error) {
 	if id == "" {
 		return nil, fmt.Errorf("id required")
@@ -70,11 +41,11 @@ func (s *Store) GetByID(id string) (*User, error) {
 
 	var user User
 	err := s.db.QueryRow(`
-		SELECT id, clerk_id, email, name, razorpay_customer_id, razorpay_subscription_id,
+		SELECT id, email, name, is_admin, razorpay_customer_id, razorpay_subscription_id,
 		       tier, storage_used_bytes, subscription_canceled_at, subscription_paused,
 		       created_at, updated_at
-		FROM users WHERE id = ?`, id).Scan(
-		&user.ID, &user.ClerkID, &user.Email, &user.Name, &user.RazorpayCustomerID,
+		FROM users WHERE id = $1`, id).Scan(
+		&user.ID, &user.Email, &user.Name, &user.IsAdmin, &user.RazorpayCustomerID,
 		&user.RazorpaySubscriptionID, &user.Tier, &user.StorageUsedBytes,
 		&user.SubscriptionCanceledAt, &user.SubscriptionPaused,
 		&user.CreatedAt, &user.UpdatedAt)
@@ -89,7 +60,32 @@ func (s *Store) GetByID(id string) (*User, error) {
 	return &user, nil
 }
 
-// GetByRazorpayCustomerID retrieves user by Razorpay customer ID
+func (s *Store) GetByEmail(email string) (*User, error) {
+	if email == "" {
+		return nil, fmt.Errorf("email required")
+	}
+
+	var user User
+	err := s.db.QueryRow(`
+		SELECT id, email, name, is_admin, razorpay_customer_id, razorpay_subscription_id,
+		       tier, storage_used_bytes, subscription_canceled_at, subscription_paused,
+		       created_at, updated_at
+		FROM users WHERE email = $1`, email).Scan(
+		&user.ID, &user.Email, &user.Name, &user.IsAdmin, &user.RazorpayCustomerID,
+		&user.RazorpaySubscriptionID, &user.Tier, &user.StorageUsedBytes,
+		&user.SubscriptionCanceledAt, &user.SubscriptionPaused,
+		&user.CreatedAt, &user.UpdatedAt)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("user not found")
+		}
+		return nil, fmt.Errorf("query failed: %w", err)
+	}
+
+	return &user, nil
+}
+
 func (s *Store) GetByRazorpayCustomerID(customerID string) (*User, error) {
 	if customerID == "" {
 		return nil, fmt.Errorf("razorpay_customer_id required")
@@ -97,11 +93,11 @@ func (s *Store) GetByRazorpayCustomerID(customerID string) (*User, error) {
 
 	var user User
 	err := s.db.QueryRow(`
-		SELECT id, clerk_id, email, name, razorpay_customer_id, razorpay_subscription_id,
+		SELECT id, email, name, is_admin, razorpay_customer_id, razorpay_subscription_id,
 		       tier, storage_used_bytes, subscription_canceled_at, subscription_paused,
 		       created_at, updated_at
-		FROM users WHERE razorpay_customer_id = ?`, customerID).Scan(
-		&user.ID, &user.ClerkID, &user.Email, &user.Name, &user.RazorpayCustomerID,
+		FROM users WHERE razorpay_customer_id = $1`, customerID).Scan(
+		&user.ID, &user.Email, &user.Name, &user.IsAdmin, &user.RazorpayCustomerID,
 		&user.RazorpaySubscriptionID, &user.Tier, &user.StorageUsedBytes,
 		&user.SubscriptionCanceledAt, &user.SubscriptionPaused,
 		&user.CreatedAt, &user.UpdatedAt)
@@ -116,13 +112,14 @@ func (s *Store) GetByRazorpayCustomerID(customerID string) (*User, error) {
 	return &user, nil
 }
 
-// Create creates a new user
 func (s *Store) Create(user *User) error {
-	if user.ClerkID == "" || user.Email == "" {
-		return fmt.Errorf("clerk_id and email required")
+	if user.Email == "" {
+		return fmt.Errorf("email required")
 	}
 
-	user.ID = uuid.New().String()
+	if user.ID == "" {
+		user.ID = uuid.New().String()
+	}
 	user.CreatedAt = time.Now()
 	user.UpdatedAt = time.Now()
 	if user.Tier == "" {
@@ -130,11 +127,11 @@ func (s *Store) Create(user *User) error {
 	}
 
 	_, err := s.db.Exec(`
-		INSERT INTO users (id, clerk_id, email, name, razorpay_customer_id, razorpay_subscription_id,
+		INSERT INTO users (id, email, name, is_admin, razorpay_customer_id, razorpay_subscription_id,
 		                   tier, storage_used_bytes, subscription_canceled_at, subscription_paused,
 		                   created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		user.ID, user.ClerkID, user.Email, user.Name, user.RazorpayCustomerID,
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+		user.ID, user.Email, user.Name, user.IsAdmin, user.RazorpayCustomerID,
 		user.RazorpaySubscriptionID, user.Tier, user.StorageUsedBytes,
 		user.SubscriptionCanceledAt, user.SubscriptionPaused,
 		user.CreatedAt, user.UpdatedAt)
@@ -145,7 +142,6 @@ func (s *Store) Create(user *User) error {
 	return nil
 }
 
-// Update updates an existing user
 func (s *Store) Update(user *User) error {
 	if user.ID == "" {
 		return fmt.Errorf("user id required")
@@ -155,11 +151,11 @@ func (s *Store) Update(user *User) error {
 
 	_, err := s.db.Exec(`
 		UPDATE users SET
-			email = ?, name = ?, razorpay_customer_id = ?, razorpay_subscription_id = ?,
-			tier = ?, storage_used_bytes = ?, subscription_canceled_at = ?,
-			subscription_paused = ?, updated_at = ?
-		WHERE id = ?`,
-		user.Email, user.Name, user.RazorpayCustomerID, user.RazorpaySubscriptionID,
+			email = $1, name = $2, is_admin = $3, razorpay_customer_id = $4, razorpay_subscription_id = $5,
+			tier = $6, storage_used_bytes = $7, subscription_canceled_at = $8,
+			subscription_paused = $9, updated_at = $10
+		WHERE id = $11`,
+		user.Email, user.Name, user.IsAdmin, user.RazorpayCustomerID, user.RazorpaySubscriptionID,
 		user.Tier, user.StorageUsedBytes, user.SubscriptionCanceledAt,
 		user.SubscriptionPaused, user.UpdatedAt, user.ID)
 
@@ -169,23 +165,21 @@ func (s *Store) Update(user *User) error {
 	return nil
 }
 
-// GetOrCreate gets or creates a user
-func (s *Store) GetOrCreate(clerkID, email, name string) (*User, error) {
-	if clerkID == "" || email == "" {
-		return nil, fmt.Errorf("clerk_id and email required")
+func (s *Store) GetOrCreate(id, email, name string) (*User, error) {
+	if id == "" || email == "" {
+		return nil, fmt.Errorf("id and email required")
 	}
 
-	user, err := s.GetByClerkID(clerkID)
+	user, err := s.GetByID(id)
 	if err == nil {
 		return user, nil
 	}
 
-	// Create new user
 	user = &User{
-		ClerkID: clerkID,
-		Email:   email,
-		Name:    name,
-		Tier:    "free",
+		ID:    id,
+		Email: email,
+		Name:  name,
+		Tier:  "free",
 	}
 
 	if err := s.Create(user); err != nil {
@@ -195,15 +189,14 @@ func (s *Store) GetOrCreate(clerkID, email, name string) (*User, error) {
 	return user, nil
 }
 
-// GetAll retrieves all active users
 func (s *Store) GetAll() ([]*User, error) {
 	query := `
-	SELECT id, clerk_id, email, name, razorpay_customer_id, razorpay_subscription_id,
-	       tier, storage_used_bytes, subscription_canceled_at, subscription_paused,
-	       created_at, updated_at
-	FROM users
-	WHERE subscription_canceled_at IS NULL
-	ORDER BY created_at DESC
+		SELECT id, email, name, is_admin, razorpay_customer_id, razorpay_subscription_id,
+		       tier, storage_used_bytes, subscription_canceled_at, subscription_paused,
+		       created_at, updated_at
+		FROM users
+		WHERE subscription_canceled_at IS NULL
+		ORDER BY created_at DESC
 	`
 
 	rows, err := s.db.Query(query)
@@ -215,7 +208,7 @@ func (s *Store) GetAll() ([]*User, error) {
 	var users []*User
 	for rows.Next() {
 		user := &User{}
-		err := rows.Scan(&user.ID, &user.ClerkID, &user.Email, &user.Name,
+		err := rows.Scan(&user.ID, &user.Email, &user.Name, &user.IsAdmin,
 			&user.RazorpayCustomerID, &user.RazorpaySubscriptionID, &user.Tier,
 			&user.StorageUsedBytes, &user.SubscriptionCanceledAt, &user.SubscriptionPaused,
 			&user.CreatedAt, &user.UpdatedAt)

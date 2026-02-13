@@ -38,7 +38,7 @@ func (s *AllowlistStore) GetByEmail(email string) (*AllowlistEntry, error) {
 	var entry AllowlistEntry
 	err := s.db.QueryRow(`
 		SELECT id, email, tier, reason, expires_at, is_active, created_at, created_by
-		FROM allowlist WHERE email = ? AND is_active = 1`, email).Scan(
+		FROM allowlist WHERE email = $1 AND is_active = true`, email).Scan(
 		&entry.ID, &entry.Email, &entry.Tier, &entry.Reason, &entry.ExpiresAt,
 		&entry.IsActive, &entry.CreatedAt, &entry.CreatedBy)
 
@@ -70,7 +70,7 @@ func (s *AllowlistStore) Create(entry *AllowlistEntry) error {
 
 	_, err := s.db.Exec(`
 		INSERT INTO allowlist (id, email, tier, reason, expires_at, is_active, created_at, created_by)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
 		entry.ID, entry.Email, entry.Tier, entry.Reason, entry.ExpiresAt,
 		entry.IsActive, entry.CreatedAt, entry.CreatedBy)
 
@@ -81,7 +81,7 @@ func (s *AllowlistStore) Create(entry *AllowlistEntry) error {
 }
 
 func (s *AllowlistStore) Remove(email string) error {
-	_, err := s.db.Exec("UPDATE allowlist SET is_active = 0 WHERE email = ?", email)
+	_, err := s.db.Exec("UPDATE allowlist SET is_active = false WHERE email = $1", email)
 	if err != nil {
 		return fmt.Errorf("update failed: %w", err)
 	}
@@ -91,7 +91,7 @@ func (s *AllowlistStore) Remove(email string) error {
 func (s *AllowlistStore) List() ([]*AllowlistEntry, error) {
 	query := `
 		SELECT id, email, tier, reason, expires_at, is_active, created_at, created_by
-		FROM allowlist WHERE is_active = 1
+		FROM allowlist WHERE is_active = true
 		ORDER BY created_at DESC
 	`
 
@@ -141,7 +141,7 @@ func (s *TrialStore) GetActiveByUser(userID string) (*Trial, error) {
 	var trial Trial
 	err := s.db.QueryRow(`
 		SELECT id, user_id, tier, started_at, ends_at, coupon_code, converted_at
-		FROM trials WHERE user_id = ? AND ends_at > ? AND converted_at IS NULL
+		FROM trials WHERE user_id = $1 AND ends_at > $2 AND converted_at IS NULL
 		ORDER BY ends_at DESC LIMIT 1`, userID, time.Now()).Scan(
 		&trial.ID, &trial.UserID, &trial.Tier, &trial.StartedAt,
 		&trial.EndsAt, &trial.CouponCode, &trial.ConvertedAt)
@@ -169,7 +169,7 @@ func (s *TrialStore) Create(userID, tier string, durationDays int, couponCode st
 
 	_, err := s.db.Exec(`
 		INSERT INTO trials (id, user_id, tier, started_at, ends_at, coupon_code)
-		VALUES (?, ?, ?, ?, ?, ?)`,
+		VALUES ($1, $2, $3, $4, $5, $6)`,
 		trial.ID, trial.UserID, trial.Tier, trial.StartedAt,
 		trial.EndsAt, trial.CouponCode)
 
@@ -183,7 +183,7 @@ func (s *TrialStore) Create(userID, tier string, durationDays int, couponCode st
 func (s *TrialStore) Convert(trialID string) error {
 	now := time.Now()
 	_, err := s.db.Exec(
-		"UPDATE trials SET converted_at = ? WHERE id = ?",
+		"UPDATE trials SET converted_at = $1 WHERE id = $2",
 		now, trialID)
 	if err != nil {
 		return fmt.Errorf("update failed: %w", err)
@@ -194,7 +194,7 @@ func (s *TrialStore) Convert(trialID string) error {
 func (s *TrialStore) HasUsedTrial(userID string) (bool, error) {
 	var count int
 	err := s.db.QueryRow(
-		"SELECT COUNT(*) FROM trials WHERE user_id = ?",
+		"SELECT COUNT(*) FROM trials WHERE user_id = $1",
 		userID).Scan(&count)
 	if err != nil {
 		return false, fmt.Errorf("query failed: %w", err)
