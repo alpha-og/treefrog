@@ -82,16 +82,34 @@ Use `workspace:*` for internal dependencies. Run `pnpm install` from root.
 
 ## Environment Variables
 
-Copy `.env.example` to `.env.local`:
-- `VITE_CLERK_PUBLISHABLE_KEY` - Clerk auth
-- `CLERK_SECRET_KEY` - Backend auth
-- `DATABASE_URL` - SQLite path
-- `COMPILER_WORKDIR` - Build artifacts
+Each component has its own `.env.local` file:
+
+### Website (`website/.env.local`)
+- `VITE_SUPABASE_URL` - Supabase project URL
+- `VITE_SUPABASE_PUBLISHABLE_KEY` - Supabase anon/public key
+- `VITE_API_URL` - Backend API URL
+- `VITE_WEBSITE_URL` - Website URL (for redirects)
+
+### Backend (`latex-compiler/.env.local`)
+- `DATABASE_URL` - PostgreSQL connection string (SECRET)
+- `SUPABASE_URL` - Supabase project URL (for JWKS token verification)
+- `SUPABASE_SECRET_KEY` - Supabase service_role key for admin ops (SECRET)
+- `RAZORPAY_*` - Payment configuration
+- `REDIS_URL` - Redis for rate limiting
+- `COMPILER_*` - Compiler settings
+
+### Desktop (`desktop/frontend/.env.local`)
+- `VITE_SUPABASE_URL` - Supabase project URL
+- `VITE_SUPABASE_PUBLISHABLE_KEY` - Supabase anon/public key
+- `VITE_API_URL` - Backend API URL
+- `VITE_WEBSITE_URL` - Website for auth/billing redirect
+
+Copy `.env.example` to `.env.local` in each directory and fill in values.
 
 ## Important Notes
 
 - Preserve existing features: local Docker renderer, custom compiler URLs
-- All auth routes require Clerk JWT
+- All auth routes require Supabase JWT (passed in Authorization header)
 - Delta-sync caching: compute SHA256 checksums before upload
 - Build artifacts expire after 24 hours
 - Frontend uses Tailwind 4 with oklch colors
