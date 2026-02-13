@@ -519,32 +519,38 @@ export default function Editor() {
                    animate={{ opacity: 1, x: 0 }}
                    transition={{ duration: 0.3 }}
                  >
-                   <Sidebar
-                     projectRoot={projectRoot}
-                     entries={entries}
-                     currentDir={currentDir}
-                     currentFile={currentFile}
-                     onNavigate={loadEntries}
-                     onOpenFile={openFile}
-                     onCreateFile={() =>
-                       handleOpenModal({ kind: "create", type: "file" })
-                     }
-                      onCreateFolder={() =>
-                        handleOpenModal({ kind: "create", type: "dir" })
+                    <Sidebar
+                      projectRoot={projectRoot}
+                      entries={entries}
+                      currentDir={currentDir}
+                      currentFile={currentFile}
+                      onNavigate={loadEntries}
+                      onOpenFile={openFile}
+                      onCreateFile={() =>
+                        handleOpenModal({ kind: "create", type: "file" })
                       }
-                      onFileMenu={(x, y, path, isDir) =>
-                        setContextMenu({ x, y, path, isDir })
+                       onCreateFolder={() =>
+                         handleOpenModal({ kind: "create", type: "dir" })
                        }
-                        onEmptySpaceMenu={(x, y) => {
-                          const projectName = projectRoot.split("/").pop() || projectRoot;
-                          setContextMenu({ x, y, path: projectName, isDir: true, isRoot: true });
-                        }}
-                        gitStatus={gitStatus}
-                        gitError={gitError}
-                        onCommit={commit}
-                        onPush={push}
-                        onPull={pull}
-                      />
+                       onFileMenu={(x, y, path, isDir) =>
+                         setContextMenu({ x, y, path, isDir })
+                        }
+                         onEmptySpaceMenu={(x, y) => {
+                           const projectName = projectRoot.split("/").pop() || projectRoot;
+                           setContextMenu({ x, y, path: projectName, isDir: true, isRoot: true });
+                         }}
+                         onDelete={(path, isDir) =>
+                           handleOpenModal({ kind: "delete", path, isDir })
+                         }
+                         onRename={(path) =>
+                           handleOpenModal({ kind: "rename", path })
+                         }
+                         gitStatus={gitStatus}
+                         gitError={gitError}
+                         onCommit={commit}
+                         onPush={push}
+                         onPull={pull}
+                       />
                  </motion.div>
                  {(editor || preview) && (
                    <div

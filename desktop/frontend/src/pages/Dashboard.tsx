@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
-import { ArrowLeft, Plus, TrendingUp } from "lucide-react";
+import { useEffect, useMemo } from "react";
+import { ArrowLeft, Plus, TrendingUp, CloudOff } from "lucide-react";
 import { motion } from "motion/react";
 import { Button } from "@/components/common";
 import { BuildHistoryTable, type BuildHistoryItem } from "@/components/BuildHistoryTable";
@@ -11,49 +11,8 @@ import {
   staggerContainer,
   staggerItem,
 } from "@/utils/animations";
-import { cn } from "@/lib/utils";
-
-// Mock data - replace with real API calls
-const mockBuilds: BuildHistoryItem[] = [
-  {
-    id: "bld_abc123_1",
-    projectName: "My Project",
-    status: "completed",
-    engine: "pdflatex",
-    createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-    completedAt: new Date(Date.now() - 1000 * 60 * 2).toISOString(),
-    duration: 180,
-    artifacts: 3,
-  },
-  {
-    id: "bld_def456_2",
-    projectName: "Research Paper",
-    status: "completed",
-    engine: "xelatex",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-    completedAt: new Date(Date.now() - 1000 * 60 * 55).toISOString(),
-    duration: 300,
-    artifacts: 2,
-  },
-  {
-    id: "bld_ghi789_3",
-    projectName: "Thesis Draft",
-    status: "failed",
-    engine: "lualatex",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-    duration: 45,
-  },
-  {
-    id: "bld_jkl012_4",
-    projectName: "Presentation Slides",
-    status: "completed",
-    engine: "pdflatex",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    completedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 + 120000).toISOString(),
-    duration: 120,
-    artifacts: 1,
-  },
-];
+import { useCloudData } from "@/hooks/useCloudData";
+import { useAuthStore } from "@/stores/authStore";
 
 interface StatCard {
   label: string;
@@ -62,42 +21,90 @@ interface StatCard {
   trend?: number;
 }
 
+const PLAN_FEATURES: Record<string, string[]> = {
+  free: ["50 builds/month", "2 concurrent builds", "1 GB storage", "Community support"],
+  pro: ["500 builds/month", "10 concurrent builds", "10 GB storage", "Priority support", "Early access features"],
+  enterprise: ["Unlimited builds", "50 concurrent builds", "100 GB storage", "Dedicated support", "SLA guarantee"],
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [builds, setBuilds] = useState<BuildHistoryItem[]>(mockBuilds);
-  const [isLoading, setIsLoading] = useState(false);
-  const [stats, setStats] = useState<StatCard[]>([
-    {
-      label: "Total Builds",
-      value: 42,
-      icon: <TrendingUp className="h-5 w-5" />,
-      trend: 12,
-    },
-    {
-      label: "Success Rate",
-      value: "95%",
-      icon: <TrendingUp className="h-5 w-5" />,
-      trend: 2,
-    },
-    {
-      label: "Avg Duration",
-      value: "2m 15s",
-      icon: <TrendingUp className="h-5 w-5" />,
-    },
-    {
-      label: "This Month",
-      value: 18,
-      icon: <TrendingUp className="h-5 w-5" />,
-      trend: 5,
-    },
-  ]);
+  const { isGuest } = useAuthStore();
+  const { isLoading, usageStats, recentBuilds, userData } = useCloudData();
 
-  // In a real app, fetch from API
-  useEffect(() => {
-    // setIsLoading(true);
-    // const timer = setTimeout(() => setIsLoading(false), 500);
-    // return () => clearTimeout(timer);
-  }, []);
+  const builds: BuildHistoryItem[] = useMemo(() => {
+    return recentBuilds.map(b => ({
+      id: b.id,
+      projectName: b.main_file || "Untitled",
+      status: b.status as "completed" | "failed" | "running" | "pending",
+      engine: b.engine,
+      createdAt: b.created_at,
+      completedAt: b.status === "completed" ? b.created_at : undefined,
+      duration: undefined,
+      artifacts: b.status === "completed" ? 1 : undefined,
+    }));
+  }, [recentBuilds]);
+
+  const stats: StatCard[] = useMemo(() => {
+    if (!usageStats) {
+      return [
+        { label: "Plan", value: "Free", icon: <TrendingUp className="h-5 w-5" /> },
+        { label: "Builds", value: 0, icon: <TrendingUp className="h-5 w-5" /> },
+        { label: "Storage", value: "0 GB", icon: <TrendingUp className="h-5 w-5" /> },
+        { label: "Active", value: "0/2", icon: <TrendingUp className="h-5 w-5" /> },
+      ];
+    }
+
+    return [
+      {
+        label: "Plan",
+        value: usageStats.tier.charAt(0).toUpperCase() + usageStats.tier.slice(1),
+        icon: <TrendingUp className="h-5 w-5" />,
+      },
+      {
+        label: "Builds",
+        value: usageStats.monthlyLimit > 0 ? `${usageStats.monthlyUsed}/${usageStats.monthlyLimit}` : `${usageStats.monthlyUsed}`,
+        icon: <TrendingUp className="h-5 w-5" />,
+      },
+      {
+        label: "Storage",
+        value: `${usageStats.storageUsedGB.toFixed(1)}/${usageStats.storageLimitGB} GB`,
+        icon: <TrendingUp className="h-5 w-5" />,
+      },
+      {
+        label: "Active",
+        value: `${usageStats.concurrentUsed}/${usageStats.concurrentLimit}`,
+        icon: <TrendingUp className="h-5 w-5" />,
+      },
+    ];
+  }, [usageStats]);
+
+  const planName = usageStats?.tier ? usageStats.tier.charAt(0).toUpperCase() + usageStats.tier.slice(1) : "Free";
+  const planFeatures = PLAN_FEATURES[usageStats?.tier || "free"] || PLAN_FEATURES.free;
+
+  if (isGuest()) {
+    return (
+      <motion.div
+        className="min-h-screen bg-[var(--background)] flex items-center justify-center"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+      >
+        <motion.div variants={staggerItem} className="text-center max-w-md px-6">
+          <CloudOff className="h-16 w-16 mx-auto mb-4 text-[var(--muted-foreground)]" />
+          <h1 className="text-2xl font-bold text-[var(--foreground)] mb-2">
+            Cloud Features Unavailable
+          </h1>
+          <p className="text-[var(--muted-foreground)] mb-6">
+            Sign in to access your dashboard, view build history, and manage your subscription.
+          </p>
+          <Button onClick={() => navigate({ to: "/" })}>
+            Go Home
+          </Button>
+        </motion.div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -167,11 +174,6 @@ export default function Dashboard() {
                   <p className="text-2xl font-bold text-[var(--foreground)]">
                     {stat.value}
                   </p>
-                  {stat.trend && (
-                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                      +{stat.trend}% this month
-                    </p>
-                  )}
                 </div>
               </div>
             </motion.div>
@@ -186,8 +188,8 @@ export default function Dashboard() {
           {/* Storage Widget */}
           <motion.div variants={staggerItem}>
             <StorageUsageWidget
-              usedGB={45.2}
-              limitGB={100}
+              usedGB={usageStats?.storageUsedGB || 0}
+              limitGB={usageStats?.storageLimitGB || 1}
               className="h-full"
             />
           </motion.div>
@@ -195,17 +197,12 @@ export default function Dashboard() {
           {/* Subscription Card */}
           <motion.div variants={staggerItem} className="lg:col-span-2">
             <SubscriptionStatusCard
-              planName="Pro"
-              price={29}
+              planName={planName}
+              price={usageStats?.tier === "pro" ? 9 : usageStats?.tier === "enterprise" ? 0 : 0}
               isActive={true}
-              features={[
-                "Unlimited builds",
-                "100 GB storage",
-                "Priority support",
-                "Advanced features",
-              ]}
-              buildLimit={-1}
-              storageLimit={100}
+              features={planFeatures}
+              buildLimit={usageStats?.monthlyLimit || 50}
+              storageLimit={usageStats?.storageLimitGB || 1}
               onManage={() => navigate({ to: "/billing" })}
               className="h-full"
             />
@@ -226,7 +223,7 @@ export default function Dashboard() {
             builds={builds}
             isLoading={isLoading}
             onBuildClick={(buildId) => {
-              // Handle build click
+              navigate({ to: "/build", search: { id: buildId } });
             }}
           />
         </motion.div>
