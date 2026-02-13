@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -19,6 +20,12 @@ import (
 )
 
 var deltaLog = logrus.WithField("component", "handlers/delta-sync")
+
+var deltaUUIDRegex = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
+func validateDeltaUserID(userID string) bool {
+	return deltaUUIDRegex.MatchString(strings.ToLower(userID))
+}
 
 // DeltaSyncInitRequest initializes delta-sync for a build
 type DeltaSyncInitRequest struct {
@@ -58,6 +65,12 @@ func InitDeltaSyncHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserID(r)
 		if !ok {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		if !validateDeltaUserID(userID) {
+			deltaLog.WithField("user_id", userID).Warn("Invalid user ID format")
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -134,7 +147,9 @@ func InitDeltaSyncHandler() http.HandlerFunc {
 			"buildId":     buildID,
 			"existingDir": filepath.Join(workDir, userID, projectCache.LastBuildID),
 		})
-		os.WriteFile(buildContextFile, contextData, 0644)
+		if err := os.WriteFile(buildContextFile, contextData, 0644); err != nil {
+			deltaLog.WithError(err).Warn("Failed to write build context file")
+		}
 
 		response := DeltaSyncInitResponse{
 			BuildID:       buildID,
@@ -170,6 +185,12 @@ func UploadDeltaSyncFilesHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, ok := auth.GetUserID(r)
 		if !ok {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		if !validateDeltaUserID(userID) {
+			deltaLog.WithField("user_id", userID).Warn("Invalid user ID format")
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
