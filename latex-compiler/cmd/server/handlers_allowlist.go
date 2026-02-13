@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/alpha-og/treefrog-latex-compiler/pkg/auth"
@@ -272,10 +271,11 @@ func ApplyTrialCouponHandler() http.HandlerFunc {
 				return
 			}
 
-			razorpayService := billing.NewRazorpayService(
-				getEnvOrDefault("RAZORPAY_KEY_ID", ""),
-				getEnvOrDefault("RAZORPAY_KEY_SECRET", ""),
-			)
+			razorpayService := billing.GetRazorpayService()
+			if razorpayService == nil {
+				http.Error(w, "Billing service not available", http.StatusInternalServerError)
+				return
+			}
 
 			customerID := userRec.RazorpayCustomerID
 			if customerID == "" {
@@ -363,11 +363,4 @@ func CheckAllowlistHandler() http.HandlerFunc {
 			"expires_at":  entry.ExpiresAt,
 		})
 	}
-}
-
-func getEnvOrDefault(key, defaultVal string) string {
-	if val := os.Getenv(key); val != "" {
-		return val
-	}
-	return defaultVal
 }
