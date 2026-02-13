@@ -15,14 +15,6 @@ import (
 
 var allowlistLog = logrus.WithField("component", "handlers/allowlist")
 
-func AllowlistRoutes() chi.Router {
-	r := chi.NewRouter()
-	r.Get("/", ListAllowlistHandler())
-	r.Post("/", AddToAllowlistHandler())
-	r.Delete("/{email}", RemoveFromAllowlistHandler())
-	return r
-}
-
 func ListAllowlistHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		allowlistStore, err := user.NewAllowlistStore(dbInstance)
@@ -155,7 +147,7 @@ func ApplyTrialCouponHandler() http.HandlerFunc {
 			return
 		}
 
-		userRec, err := userStore.GetByClerkID(userID)
+		userRec, err := userStore.GetByID(userID)
 		if err != nil {
 			http.Error(w, "User not found", http.StatusNotFound)
 			return
@@ -280,14 +272,9 @@ func ApplyTrialCouponHandler() http.HandlerFunc {
 				return
 			}
 
-			planID := coupon.PlanID
-			if coupon.PlanID != "" {
-				planID = coupon.PlanID
-			}
-
 			razorpayService := billing.NewRazorpayService(
-				os.Getenv("RAZORPAY_KEY_ID"),
-				os.Getenv("RAZORPAY_KEY_SECRET"),
+				getEnvOrDefault("RAZORPAY_KEY_ID", ""),
+				getEnvOrDefault("RAZORPAY_KEY_SECRET", ""),
 			)
 
 			customerID := userRec.RazorpayCustomerID
@@ -298,10 +285,12 @@ func ApplyTrialCouponHandler() http.HandlerFunc {
 					return
 				}
 				userRec.RazorpayCustomerID = customerID
-				userStore.Update(userRec)
+				if err := userStore.Update(userRec); err != nil {
+					allowlistLog.WithError(err).Error("Failed to update user with customer ID")
+				}
 			}
 
-			plan, ok := billing.Plans[planID]
+			plan, ok := billing.Plans[coupon.PlanID]
 			if !ok {
 				http.Error(w, "Invalid plan", http.StatusBadRequest)
 				return
@@ -322,7 +311,7 @@ func ApplyTrialCouponHandler() http.HandlerFunc {
 				"type":             "discount",
 				"checkout_url":     checkoutURL,
 				"discount_percent": coupon.DiscountPct,
-				"plan":             planID,
+				"plan":             coupon.PlanID,
 			})
 
 		default:
@@ -345,7 +334,7 @@ func CheckAllowlistHandler() http.HandlerFunc {
 			return
 		}
 
-		userRec, err := userStore.GetByClerkID(userID)
+		userRec, err := userStore.GetByID(userID)
 		if err != nil {
 			http.Error(w, "User not found", http.StatusNotFound)
 			return
@@ -374,4 +363,11 @@ func CheckAllowlistHandler() http.HandlerFunc {
 			"expires_at":  entry.ExpiresAt,
 		})
 	}
+}
+
+func getEnvOrDefault(key, defaultVal string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return defaultVal
 }
