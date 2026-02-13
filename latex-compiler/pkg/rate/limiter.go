@@ -172,7 +172,8 @@ func (l *Limiter) Allow(userID, action, tier string) (bool, error) {
 	}
 
 	key := fmt.Sprintf("ratelimit:%s:%s", userID, action)
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
 
 	count, err := l.client.Incr(ctx, key).Result()
 	if err != nil {
@@ -203,7 +204,8 @@ func (l *Limiter) GetRemaining(userID, action, tier string) (int, error) {
 	}
 
 	key := fmt.Sprintf("ratelimit:%s:%s", userID, action)
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
 
 	count, err := l.client.Get(ctx, key).Int()
 	if err != nil {
