@@ -1,73 +1,110 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { ArrowLeft, Zap, Gift } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { ArrowLeft, Zap, Gift, CloudOff, ExternalLink } from "lucide-react";
 import { motion } from "motion/react";
 import { Button } from "@/components/common";
 import { PlanComparisonTable, type Plan } from "@/components/PlanComparisonTable";
 import { SubscriptionStatusCard } from "@/components/SubscriptionStatusCard";
 import { Input } from "@/components/common";
+import { useCloudData } from "@/hooks/useCloudData";
+import { useAuthStore } from "@/stores/authStore";
 import { fadeInUp, staggerContainer, staggerItem } from "@/utils/animations";
+import { supabase } from "@/lib/supabase";
 
-const plans: Plan[] = [
-  {
-    id: "starter",
-    name: "Starter",
-    price: 0,
-    description: "Perfect for trying out",
-    features: [
-      { name: "Builds per month", included: true },
-      { name: "Storage", included: true },
-      { name: "Priority support", included: false },
-      { name: "Advanced analytics", included: false },
-      { name: "Custom domains", included: false },
-    ],
-    actionLabel: "Current Plan",
-    isCurrentPlan: true,
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: 29,
-    description: "For serious projects",
-    features: [
-      { name: "Unlimited builds", included: true },
-      { name: "100 GB storage", included: true },
-      { name: "Priority support", included: true },
-      { name: "Advanced analytics", included: false },
-      { name: "Custom domains", included: false },
-    ],
-    isPopular: true,
-    actionLabel: "Upgrade",
-    onAction: () => {
-      // Handle upgrade
-      alert("Upgrade to Pro plan");
-    },
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    price: 99,
-    description: "For large teams",
-    features: [
-      { name: "Unlimited builds", included: true },
-      { name: "Unlimited storage", included: true },
-      { name: "Priority support", included: true },
-      { name: "Advanced analytics", included: true },
-      { name: "Custom domains", included: true },
-    ],
-    actionLabel: "Contact Sales",
-    onAction: () => {
-      // Handle contact sales
-      alert("Contact our sales team");
-    },
-  },
-];
+const PLAN_FEATURES: Record<string, string[]> = {
+  free: ["50 builds/month", "2 concurrent builds", "1 GB storage", "Community support"],
+  pro: ["500 builds/month", "10 concurrent builds", "10 GB storage", "Priority support", "Early access features"],
+  enterprise: ["Unlimited builds", "50 concurrent builds", "100 GB storage", "Dedicated support", "SLA guarantee"],
+};
 
 export default function Billing() {
   const navigate = useNavigate();
+  const { isGuest } = useAuthStore();
+  const { usageStats, userData, isLoading } = useCloudData();
   const [couponCode, setCouponCode] = useState("");
   const [couponApplied, setCouponApplied] = useState(false);
   const [couponError, setCouponError] = useState("");
+  const [invoices, setInvoices] = useState<Array<{
+    id: string;
+    amount: number;
+    currency: string;
+    status: string;
+    created_at: string;
+    invoice_url: string | null;
+  }>>([]);
+
+  const currentTier = usageStats?.tier || "free";
+
+  useEffect(() => {
+    if (isGuest() || !supabase || !userData?.id) return;
+
+    supabase
+      .from('invoices')
+      .select('*')
+      .eq('user_id', userData.id)
+      .order('created_at', { ascending: false })
+      .limit(5)
+      .then(({ data, error }) => {
+        if (!error && data) {
+          setInvoices(data);
+        }
+      });
+  }, [isGuest, userData?.id]);
+
+  const plans: Plan[] = useMemo(() => [
+    {
+      id: "free",
+      name: "Free",
+      price: 0,
+      description: "Perfect for trying out",
+      features: [
+        { name: "50 builds/month", included: true },
+        { name: "2 concurrent builds", included: true },
+        { name: "1 GB storage", included: true },
+        { name: "Priority support", included: false },
+        { name: "Shell-escape", included: false },
+      ],
+      actionLabel: currentTier === "free" ? "Current Plan" : "Downgrade",
+      isCurrentPlan: currentTier === "free",
+    },
+    {
+      id: "pro",
+      name: "Pro",
+      price: 9,
+      description: "For serious projects",
+      features: [
+        { name: "500 builds/month", included: true },
+        { name: "10 concurrent builds", included: true },
+        { name: "10 GB storage", included: true },
+        { name: "Priority support", included: true },
+        { name: "Shell-escape", included: false },
+      ],
+      isPopular: currentTier === "free",
+      actionLabel: currentTier === "pro" ? "Current Plan" : "Upgrade",
+      isCurrentPlan: currentTier === "pro",
+      onAction: currentTier !== "pro" ? () => {
+        window.open("https://treefrog.vercel.app/billing", "_blank");
+      } : undefined,
+    },
+    {
+      id: "enterprise",
+      name: "Enterprise",
+      price: null,
+      description: "For large teams",
+      features: [
+        { name: "Unlimited builds", included: true },
+        { name: "50 concurrent builds", included: true },
+        { name: "100 GB storage", included: true },
+        { name: "Dedicated support", included: true },
+        { name: "Shell-escape enabled", included: true },
+      ],
+      actionLabel: currentTier === "enterprise" ? "Current Plan" : "Contact Sales",
+      isCurrentPlan: currentTier === "enterprise",
+      onAction: currentTier !== "enterprise" ? () => {
+        window.open("mailto:support@treefrog.app?subject=Enterprise Plan Inquiry", "_blank");
+      } : undefined,
+    },
+  ], [currentTier]);
 
   const handleApplyCoupon = () => {
     setCouponError("");
@@ -76,14 +113,37 @@ export default function Billing() {
       return;
     }
 
-    // Simulate coupon validation
-    if (couponCode.toLowerCase() === "welcome20") {
-      setCouponApplied(true);
-      alert("Coupon applied! 20% off");
-    } else {
-      setCouponError("Invalid coupon code");
-    }
+    // Coupon validation would go through the backend
+    setCouponError("Coupon redemption is handled through the website. Please visit treefrog.app/billing");
   };
+
+  const planName = currentTier.charAt(0).toUpperCase() + currentTier.slice(1);
+  const planPrice = currentTier === "pro" ? 9 : currentTier === "enterprise" ? 0 : 0;
+  const planFeatures = PLAN_FEATURES[currentTier] || PLAN_FEATURES.free;
+
+  if (isGuest()) {
+    return (
+      <motion.div
+        className="min-h-screen bg-[var(--background)] flex items-center justify-center"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+      >
+        <motion.div variants={staggerItem} className="text-center max-w-md px-6">
+          <CloudOff className="h-16 w-16 mx-auto mb-4 text-[var(--muted-foreground)]" />
+          <h1 className="text-2xl font-bold text-[var(--foreground)] mb-2">
+            Cloud Features Unavailable
+          </h1>
+          <p className="text-[var(--muted-foreground)] mb-6">
+            Sign in to manage your subscription and billing.
+          </p>
+          <Button onClick={() => navigate({ to: "/" })}>
+            Go Home
+          </Button>
+        </motion.div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -130,18 +190,15 @@ export default function Billing() {
             Current Subscription
           </h2>
           <SubscriptionStatusCard
-            planName="Pro"
-            price={29}
+            planName={planName}
+            price={planPrice}
             isActive={true}
-            features={[
-              "Unlimited builds",
-              "100 GB storage",
-              "Priority support",
-              "Advanced features",
-            ]}
-            buildLimit={-1}
-            storageLimit={100}
-            onManage={() => alert("Manage subscription")}
+            features={planFeatures}
+            buildLimit={usageStats?.monthlyLimit || 50}
+            storageLimit={usageStats?.storageLimitGB || 1}
+            onManage={() => {
+              window.open("https://treefrog.vercel.app/billing", "_blank");
+            }}
           />
         </motion.div>
 
@@ -178,13 +235,8 @@ export default function Billing() {
           </div>
 
           {couponError && (
-            <p className="text-sm text-[var(--destructive)] mt-2">
+            <p className="text-sm text-[var(--muted-foreground)] mt-2">
               {couponError}
-            </p>
-          )}
-          {couponApplied && (
-            <p className="text-sm text-green-600 dark:text-green-400 mt-2">
-              Coupon successfully applied!
             </p>
           )}
         </motion.div>
@@ -212,32 +264,44 @@ export default function Billing() {
             <h3 className="text-sm font-semibold text-[var(--foreground)] mb-4">
               Billing History
             </h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
-                <div>
-                  <p className="font-medium text-[var(--foreground)]">
-                    Pro Plan
-                  </p>
-                  <p className="text-xs text-[var(--muted-foreground)]">
-                    Feb 12, 2025
-                  </p>
-                </div>
-                <p className="font-semibold text-[var(--foreground)]">$29.00</p>
+            {invoices.length > 0 ? (
+              <div className="space-y-3">
+                {invoices.map((invoice) => (
+                  <div key={invoice.id} className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
+                    <div>
+                      <p className="font-medium text-[var(--foreground)]">
+                        {invoice.currency.toUpperCase()} {(invoice.amount / 100).toFixed(2)}
+                      </p>
+                      <p className="text-xs text-[var(--muted-foreground)]">
+                        {new Date(invoice.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs px-2 py-1 rounded ${
+                        invoice.status === 'paid' ? 'bg-green-500/10 text-green-600' : 'bg-yellow-500/10 text-yellow-600'
+                      }`}>
+                        {invoice.status}
+                      </span>
+                      {invoice.invoice_url && (
+                        <a href={invoice.invoice_url} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-4 w-4 text-[var(--primary)]" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
-                <div>
-                  <p className="font-medium text-[var(--foreground)]">
-                    Pro Plan
-                  </p>
-                  <p className="text-xs text-[var(--muted-foreground)]">
-                    Jan 12, 2025
-                  </p>
-                </div>
-                <p className="font-semibold text-[var(--foreground)]">$29.00</p>
-              </div>
-            </div>
-            <Button variant="outline" className="w-full mt-4">
-              View Full History
+            ) : (
+              <p className="text-sm text-[var(--muted-foreground)]">
+                No billing history yet.
+              </p>
+            )}
+            <Button 
+              variant="outline" 
+              className="w-full mt-4"
+              onClick={() => window.open("https://treefrog.vercel.app/billing", "_blank")}
+            >
+              Manage on Website
             </Button>
           </motion.div>
 
@@ -249,19 +313,15 @@ export default function Billing() {
               Payment Method
             </h3>
             <div className="space-y-4">
-              <div className="flex items-center gap-3 p-3 rounded-lg border border-[var(--border)] bg-[var(--muted)]/20">
-                <Zap className="h-5 w-5 text-[var(--primary)]" />
-                <div>
-                  <p className="font-medium text-[var(--foreground)]">
-                    Visa ending in 4242
-                  </p>
-                  <p className="text-xs text-[var(--muted-foreground)]">
-                    Expires 12/26
-                  </p>
-                </div>
-              </div>
-              <Button variant="outline" className="w-full">
-                Update Payment Method
+              <p className="text-sm text-[var(--muted-foreground)]">
+                Payment methods are managed through the TreeFrog website.
+              </p>
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => window.open("https://treefrog.vercel.app/settings", "_blank")}
+              >
+                Manage on Website
               </Button>
             </div>
           </motion.div>
