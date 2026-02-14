@@ -34,6 +34,15 @@ const (
 	MaxBuildTimeout = 10 * time.Minute
 )
 
+// Container resource limits for build isolation
+const (
+	ContainerMemoryMB    = 2048   // 2GB memory limit per container
+	ContainerCPUQuota    = 200000 // 2 CPU cores (100000 per core)
+	ContainerCPUShares   = 1024   // Default CPU shares
+	ContainerPidsLimit   = 256    // Max processes in container
+	ContainerTmpfsSizeMB = 2048   // 2GB tmpfs for /tmp
+)
+
 var (
 	ValidEngines = map[string]bool{
 		"pdflatex": true,
