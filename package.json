@@ -1,0 +1,39 @@
+{
+  "name": "treefrog-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Treefrog - LaTeX compilation made easy",
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "make dev",
+    "build": "make build",
+    "build:all": "make build-all",
+    "test": "make test",
+    "test:backend": "make test-backend",
+    "test:frontend": "make test-frontend",
+    "lint": "make lint",
+    "lint:backend": "make lint-backend",
+    "lint:frontend": "make lint-frontend",
+    "fmt": "make fmt",
+    "typecheck": "make typecheck",
+    "clean": "make clean",
+    "clean:all": "make clean-all",
+    "doctor": "make doctor",
+    "website:dev": "cd website && pnpm dev",
+    "website:build": "cd website && pnpm build",
+    "compiler": "make compiler",
+    "stop": "make stop"
+  },
+  "keywords": [
+    "latex",
+    "editor",
+    "compiler",
+    "desktop-app"
+  ],
+  "author": "Athul Anoop",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
