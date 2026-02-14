@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { RendererMode, ImageSource } from "../services/rendererService";
+import type { RendererMode, ImageSource } from "@/types";
 
 interface AppState {
   apiUrl: string;

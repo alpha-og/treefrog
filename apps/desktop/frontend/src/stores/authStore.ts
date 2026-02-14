@@ -110,7 +110,7 @@ export const useAuthStore = create<AuthState>()(
         mode: state.mode,
         isFirstLaunch: state.isFirstLaunch,
       }),
-      onRehydrationStorage: () => (state) => {
+      onRehydrateStorage: () => (state: AuthState | undefined) => {
         state?.setHasHydrated(true)
         log.debug('Auth store hydrated from localStorage')
       },
