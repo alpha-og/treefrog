@@ -69,10 +69,10 @@ func (c *DockerCompiler) Compile(build *Build) error {
 
 	// Create tmpfs for compilation
 	tmpfs := map[string]string{
-		"/tmp": "size=2G,mode=1777",
+		"/tmp": fmt.Sprintf("size=%dm,mode=1777", ContainerTmpfsSizeMB),
 	}
 
-	// Container config
+	// Container config with resource limits for isolation
 	resp, err := c.dockerClient.ContainerCreate(ctx, &container.Config{
 		Image:      c.imageName,
 		WorkingDir: "/data",
@@ -85,10 +85,17 @@ func (c *DockerCompiler) Compile(build *Build) error {
 			"engine":   string(build.Engine),
 		},
 	}, &container.HostConfig{
-		Mounts: mounts,
-		Tmpfs:  tmpfs,
-		// Note: Memory limits are set using Resources field (updated Docker API)
+		Mounts:     mounts,
+		Tmpfs:      tmpfs,
 		AutoRemove: true,
+		Resources: container.Resources{
+			Memory:     ContainerMemoryMB * 1024 * 1024, // Convert to bytes
+			MemorySwap: ContainerMemoryMB * 1024 * 1024, // Disable swap
+			CPUQuota:   ContainerCPUQuota,
+			CPUShares:  ContainerCPUShares,
+			PidsLimit:  &[]int64{ContainerPidsLimit}[0],
+		},
+		NetworkMode: "none", // Disable network access for security
 	}, nil, nil, "")
 
 	if err != nil {
@@ -253,7 +260,7 @@ fi
 exit 0
 `, engineFlag, build.MainFile)
 
-	// Run container with script
+	// Run container with script and resource limits
 	resp, err := c.dockerClient.ContainerCreate(ctx, &container.Config{
 		Image: c.imageName,
 		Cmd:   []string{"bash", "-c", script},
@@ -270,9 +277,17 @@ exit 0
 			},
 		},
 		Tmpfs: map[string]string{
-			"/tmp": "size=2G,mode=1777",
+			"/tmp": fmt.Sprintf("size=%dm,mode=1777", ContainerTmpfsSizeMB),
 		},
 		AutoRemove: true,
+		Resources: container.Resources{
+			Memory:     ContainerMemoryMB * 1024 * 1024,
+			MemorySwap: ContainerMemoryMB * 1024 * 1024,
+			CPUQuota:   ContainerCPUQuota,
+			CPUShares:  ContainerCPUShares,
+			PidsLimit:  &[]int64{ContainerPidsLimit}[0],
+		},
+		NetworkMode: "none",
 	}, nil, nil, "")
 
 	if err != nil {
