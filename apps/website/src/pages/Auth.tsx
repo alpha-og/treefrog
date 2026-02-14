@@ -11,11 +11,23 @@ interface AuthPageProps {
   mode: 'sign-in' | 'sign-up' | 'reset-password'
 }
 
+function isValidRedirect(redirect: string): boolean {
+  if (!redirect) return false
+  if (redirect.startsWith('/') && !redirect.startsWith('//')) return true
+  try {
+    const url = new URL(redirect, window.location.origin)
+    return url.origin === window.location.origin
+  } catch {
+    return false
+  }
+}
+
 export default function AuthPage({ mode }: AuthPageProps) {
   const { signIn, signUp, resetPassword, signInWithOAuth } = useAuth()
   const navigate = useNavigate()
   const search = useSearch({ strict: false })
-  const redirectUrl = (search as { redirect?: string })?.redirect || '/dashboard'
+  const rawRedirect = (search as { redirect?: string })?.redirect || '/dashboard'
+  const redirectUrl = isValidRedirect(rawRedirect) ? rawRedirect : '/dashboard'
   
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -58,14 +70,14 @@ export default function AuthPage({ mode }: AuthPageProps) {
         } else if (needsConfirmation) {
           setSuccess('Account created! Please check your email to confirm your account.')
         } else {
-          navigate({ to: redirectUrl as '/dashboard' })
+          navigate({ to: redirectUrl as never })
         }
       } else {
         const { error } = await signIn(email, password)
         if (error) {
           setError(error.message)
         } else {
-          navigate({ to: redirectUrl as '/dashboard' })
+          navigate({ to: redirectUrl as never })
         }
       }
     } catch (err) {
