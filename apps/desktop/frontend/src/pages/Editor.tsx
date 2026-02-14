@@ -362,7 +362,7 @@ export default function Editor() {
       // @ts-ignore
       window.runtime.EventsOn("menu-git-commit", () => {
         if (gitStatus.state === "dirty") {
-          handleOpenModal({ kind: "create", type: "file" });
+          handleOpenModal({ kind: "commit" });
         }
       });
 
