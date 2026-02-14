@@ -10,15 +10,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/auth"
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/billing"
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/build"
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/cleanup"
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/config"
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/db"
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/log"
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/rate"
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/user"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/auth"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/billing"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/build"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/cleanup"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/config"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/db"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/log"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/rate"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/user"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -150,7 +150,7 @@ func main() {
 		r.With(rateLimiter.Middleware("build")).Post("/builds/{buildId}/upload", UploadDeltaSyncFilesHandler())
 
 		r.With(rateLimiter.Middleware("default")).Get("/build/{id}/pdf/url", GetSignedPDFURLHandler())
-		r.With(rateLimiter.Middleware("download")).Get("/build/{id}/pdf", ServePDFHandler())
+		r.With(rateLimiter.Middleware("download")).Get("/build/{id}/artifact/{resource}", ServePDFHandler())
 		r.With(rateLimiter.Middleware("download")).Get("/build/{id}/synctex", ServeSyncTeXHandler())
 		r.With(rateLimiter.Middleware("default")).Get("/build/{id}/synctex/view", SyncTeXViewHandler())
 		r.With(rateLimiter.Middleware("default")).Get("/build/{id}/synctex/edit", SyncTeXEditHandler())
