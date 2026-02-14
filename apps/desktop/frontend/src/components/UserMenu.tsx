@@ -18,18 +18,7 @@ import {
   HardDrive,
 } from "lucide-react";
 import { toast } from "sonner";
-
-declare global {
-  interface Window {
-    go?: {
-      main?: {
-        App?: {
-          SignOut: () => Promise<void>
-        }
-      }
-    }
-  }
-}
+import { getWailsApp } from "@/services/api";
 
 export function UserMenu() {
   const navigate = useNavigate();
@@ -41,9 +30,9 @@ export function UserMenu() {
 
   const handleSignOut = async () => {
     try {
-      const signOut = window.go?.main?.App?.SignOut;
-      if (signOut) {
-        await signOut();
+      const app = getWailsApp();
+      if (app?.SignOut) {
+        await app.SignOut();
         toast.success("Signed out");
       }
     } catch (error) {

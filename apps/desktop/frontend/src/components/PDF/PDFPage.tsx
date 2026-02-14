@@ -1,5 +1,5 @@
-import { Page, pdfjs } from "react-pdf";
-import { useState, useEffect, useCallback } from "react";
+import { Page } from "react-pdf";
+import { useState, useCallback } from "react";
 
 interface PDFPageProps {
   pageNum: number;
