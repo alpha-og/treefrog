@@ -1,9 +1,7 @@
 "use client"
 
-import * as React from "react"
 import { useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "motion/react"
-import { Edit2, Copy, ArrowRight, Trash2, FilePlus, FolderPlus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MenuShortcut, MenuIcon } from "@/components/common/Menu";
 

@@ -1,11 +1,9 @@
-import { X, Lock, Globe, AlertCircle } from "lucide-react";
+import { Lock, Globe } from "lucide-react";
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/common/Button";
 import { Input } from "@/components/common/Input";
-import { Dialog, DialogHeader, DialogTitle, DialogDescription } from "@/components/common/Dialog";
+import { Dialog } from "@/components/common/Dialog";
 import { Alert } from "@/components/common/Alert";
-import { backdropFade, modalSlideUp } from "@/utils/animations";
 
 interface SettingsModalProps {
   isOpen: boolean;

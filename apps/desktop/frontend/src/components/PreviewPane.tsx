@@ -6,8 +6,6 @@ import { createLogger } from "../utils/logger";
 import {
   ZoomIn,
   ZoomOut,
-  Download,
-  FileArchive,
   FileText,
   Loader2,
   CheckCircle2,
@@ -26,7 +24,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContentWrapper,
   MenuItem,
-  DropdownMenuSeparator,
   DropdownMenuRadioGroup,
   MenuRadioItem,
   MenuIcon,

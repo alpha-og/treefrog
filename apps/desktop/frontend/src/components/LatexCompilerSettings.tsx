@@ -1,7 +1,8 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { useAppStore } from "../stores/appStore";
 import { useAuthStore } from "../stores/authStore";
-import { rendererService, type RendererMode, type ImageSource } from "../services/rendererService";
+import { rendererService } from "../services/rendererService";
+import type { RendererMode, ImageSource } from "@/types";
 import { createLogger } from "../utils/logger";
 import { waitForWails } from "../utils/env";
 import { toast } from "sonner";
@@ -252,10 +253,10 @@ export default forwardRef(function LatexCompilerSettings(
   const loadConfig = async () => {
     try {
       const config = await rendererService.getConfig();
-      setRendererMode(config.mode);
+      setRendererMode(config.mode as RendererMode);
       setRendererPort(config.port);
       setRendererAutoStart(config.autoStart);
-      setRendererImageSource(config.imageSource);
+      setRendererImageSource(config.imageSource as ImageSource);
       setRendererImageRef(config.imageRef);
       if (config.customRegistry) setRendererCustomRegistry(config.customRegistry);
       if (config.customTarPath) setRendererCustomTarPath(config.customTarPath);
