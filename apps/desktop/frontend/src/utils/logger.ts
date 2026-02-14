@@ -1,10 +1,5 @@
 export type LogLevel = "debug" | "info" | "warn" | "error" | "silent";
 
-interface LogConfig {
-  level: LogLevel;
-  namespace?: string;
-}
-
 const LOG_LEVELS: Record<LogLevel, number> = {
   debug: 0,
   info: 1,
@@ -13,12 +8,11 @@ const LOG_LEVELS: Record<LogLevel, number> = {
   silent: 4,
 };
 
-const COLORS = {
-  debug: "#7c3aed", // violet
-  info: "#0ea5e9", // cyan
-  warn: "#f59e0b", // amber
-  error: "#ef4444", // red
-  reset: "color: inherit",
+const COLORS: Record<Exclude<LogLevel, 'silent'>, string> = {
+  debug: "#7c3aed",
+  info: "#0ea5e9",
+  warn: "#f59e0b",
+  error: "#ef4444",
 };
 
 class Logger {
@@ -32,25 +26,21 @@ class Logger {
   }
 
   private getLogLevel(): LogLevel {
-    // Check window.__LOG_CONFIG (runtime override)
-    const windowConfig = (window as any).__LOG_CONFIG;
+    const windowConfig = (window as unknown as { __LOG_CONFIG?: { level?: LogLevel } }).__LOG_CONFIG;
     if (windowConfig?.level) {
       return windowConfig.level;
     }
 
-    // Check localStorage
     const stored = localStorage.getItem("treefrog-log-level");
     if (stored && this.isValidLogLevel(stored)) {
       return stored as LogLevel;
     }
 
-    // Check environment variable
     const envLevel = import.meta.env.VITE_LOG_LEVEL;
     if (envLevel && this.isValidLogLevel(envLevel)) {
       return envLevel as LogLevel;
     }
 
-    // Default: debug in dev, error in production
     return this.isDev ? "debug" : "error";
   }
 
@@ -60,14 +50,14 @@ class Logger {
 
   private shouldLog(level: LogLevel): boolean {
     if (!this.isDev && level === "debug") {
-      return false; // Never log debug in production
+      return false;
     }
     return LOG_LEVELS[level] >= LOG_LEVELS[this.level];
   }
 
-  private format(level: LogLevel, namespace: string, message: string, data?: any) {
+  private format(level: LogLevel, namespace: string, message: string, data?: unknown) {
     const timestamp = new Date().toLocaleTimeString();
-    const style = `color: ${COLORS[level]}; font-weight: bold;`;
+    const style = level !== 'silent' ? `color: ${COLORS[level]}; font-weight: bold;` : '';
     const prefix = `%c[${timestamp}] [${level.toUpperCase()}] ${namespace}:`;
 
     if (data !== undefined) {
@@ -88,32 +78,32 @@ class Logger {
     return this.level;
   }
 
-  debug(namespace: string, message: string, data?: any) {
+  debug(namespace: string, message: string, data?: unknown) {
     if (this.shouldLog("debug")) {
-      console.log(...this.format("debug", namespace, message, data));
+      console.log(...this.format("debug", namespace, message, data) as [string, string, string, unknown?]);
     }
   }
 
-  info(namespace: string, message: string, data?: any) {
+  info(namespace: string, message: string, data?: unknown) {
     if (this.shouldLog("info")) {
-      console.log(...this.format("info", namespace, message, data));
+      console.log(...this.format("info", namespace, message, data) as [string, string, string, unknown?]);
     }
   }
 
-  warn(namespace: string, message: string, data?: any) {
+  warn(namespace: string, message: string, data?: unknown) {
     if (this.shouldLog("warn")) {
-      console.warn(...this.format("warn", namespace, message, data));
+      console.warn(...this.format("warn", namespace, message, data) as [string, string, string, unknown?]);
     }
   }
 
-  error(namespace: string, message: string, data?: any) {
+  error(namespace: string, message: string, data?: unknown) {
     if (this.shouldLog("error")) {
-      console.error(...this.format("error", namespace, message, data));
+      console.error(...this.format("error", namespace, message, data) as [string, string, string, unknown?]);
     }
   }
 
   private setupWindowDebug() {
-    (window as any).__LOG_CONFIG = {
+    (window as unknown as { __LOG_CONFIG: { setLevel: (level: LogLevel) => void; getLevel: () => LogLevel; logger: Logger } }).__LOG_CONFIG = {
       setLevel: (level: LogLevel) => this.setLevel(level),
       getLevel: () => this.getLevel(),
       logger: this,
@@ -132,16 +122,14 @@ class Logger {
   }
 }
 
-// Create singleton instance
 const logger = new Logger();
 
-// Create namespace-based logger
 export function createLogger(namespace: string) {
   return {
-    debug: (message: string, data?: any) => logger.debug(namespace, message, data),
-    info: (message: string, data?: any) => logger.info(namespace, message, data),
-    warn: (message: string, data?: any) => logger.warn(namespace, message, data),
-    error: (message: string, data?: any) => logger.error(namespace, message, data),
+    debug: (message: string, data?: unknown) => logger.debug(namespace, message, data),
+    info: (message: string, data?: unknown) => logger.info(namespace, message, data),
+    warn: (message: string, data?: unknown) => logger.warn(namespace, message, data),
+    error: (message: string, data?: unknown) => logger.error(namespace, message, data),
   };
 }
 
