@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { BuildStatus } from "../types";
 import {
   triggerBuild,
@@ -25,6 +25,7 @@ interface DeltaSyncBuildParams {
 
 export function useBuild() {
   const buildInFlightRef = useRef<boolean>(false);
+  const progressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [status, setStatus] = useState<BuildStatus | null>(null);
   const [deltaProgress, setDeltaProgress] = useState<{
     phase: string;
@@ -32,6 +33,14 @@ export function useBuild() {
   } | null>(null);
 
   const cacheStore = useCacheStore();
+
+  useEffect(() => {
+    return () => {
+      if (progressTimeoutRef.current) {
+        clearTimeout(progressTimeoutRef.current);
+      }
+    };
+  }, []);
 
   /**
    * Build using delta-sync: only upload changed files
@@ -160,8 +169,8 @@ export function useBuild() {
           });
         }
 
-        // Wait a bit before clearing progress
-        setTimeout(() => setDeltaProgress(null), 1000);
+        // Wait a bit before clearing progress (cleanup on unmount handled in useEffect)
+        progressTimeoutRef.current = setTimeout(() => setDeltaProgress(null), 1000);
       } catch (err) {
         log.error("Failed to trigger delta-sync build", {
           error: err,

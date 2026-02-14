@@ -176,6 +176,11 @@ export function useEditor(
       if (saveTimer.current) {
         window.clearTimeout(saveTimer.current);
       }
+      if (editorRef.current) {
+        editorRef.current.dispose();
+        editorRef.current = null;
+        editorInstanceRef.current = null;
+      }
     };
   }, [isBinary, theme, projectRoot]);
 
