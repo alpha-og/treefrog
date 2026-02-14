@@ -102,11 +102,9 @@ export default function Sidebar({
   const {
     selectedIds,
     lastSelectedId,
-    select,
-    toggle,
+    toggle: toggleSelection,
     selectRange,
-    clear,
-    isEmpty,
+    clear: clearSelection,
   } = useSelectionStore();
 
   // Local state
@@ -120,38 +118,30 @@ export default function Sidebar({
    const [isCommitting, setIsCommitting] = useState(false);
    const [isGitExpanded, setIsGitExpanded] = useState(true);
 
-   // Load persisted filter settings on mount and pre-load expanded folder contents
-   useEffect(() => {
-     const settings = loadFilterSettings();
-     // Only apply if not already set
-     if (!filterHidden && settings.hidden) {
-       toggleFilterHidden();
-     }
-     if (settings.sortBy !== sortBy) {
-       setSortBy(settings.sortBy);
-     }
-     if (settings.sortOrder !== sortOrder) {
-       toggleSortOrder();
-     }
-     
-     // Pre-load contents for folders that are already expanded from localStorage
-     // This ensures they show with children on initial load
-     expandedFolders.forEach(folderPath => {
-       const cachedContents = getCachedFolderContents(folderPath);
-       if (!cachedContents && folderPath) {
-         // Load contents for pre-expanded folders
-         onNavigate(folderPath).catch((err: any) => {
-           log.error("Failed to load persisted expanded folder", { path: folderPath, error: err });
-           // Remove from expanded if loading fails
-           setExpandedFolders(current => {
-             const updated = new Set(current);
-             updated.delete(folderPath);
-             return updated;
-           });
-         });
-       }
-     });
-    }, [expandedFolders, getCachedFolderContents, onNavigate]);
+// Load persisted filter settings on mount and pre-load expanded folder contents
+    useEffect(() => {
+      const settings = loadFilterSettings();
+      // Only apply if not already set
+      if (!filterHidden && settings.hidden) {
+        toggleFilterHidden();
+      }
+      if (settings.sortBy !== sortBy) {
+        setSortBy(settings.sortBy);
+      }
+      if (settings.sortOrder !== sortOrder) {
+        toggleSortOrder();
+      }
+      
+      // Pre-load contents for folders that are already expanded from localStorage
+      // This ensures they show with children on initial load
+      expandedFolders.forEach(folderPath => {
+        const cachedContents = getCachedFolderContents(folderPath);
+        if (!cachedContents && folderPath) {
+          // Load contents for pre-expanded folders
+          void onNavigate(folderPath);
+        }
+      });
+     }, [expandedFolders, getCachedFolderContents, onNavigate]);
 
   // Persist expanded folders
   useEffect(() => {
@@ -225,34 +215,26 @@ export default function Sidebar({
    // Flatten for keyboard navigation
    const flatPaths = useMemo(() => flattenTree(displayNodes), [displayNodes]);
 
-   // Toggle folder expansion
-    const toggleFolder = useCallback((path: string) => {
-      setExpandedFolders((prev) => {
-        const next = new Set(prev);
-        if (next.has(path)) {
-          next.delete(path);
-        } else {
-          next.add(path);
-        }
-        return next;
-      });
+// Toggle folder expansion
+     const toggleFolder = useCallback((path: string) => {
+       setExpandedFolders((prev) => {
+         const next = new Set(prev);
+         if (next.has(path)) {
+           next.delete(path);
+         } else {
+           next.add(path);
+         }
+         return next;
+       });
 
-      // Load contents if not cached (do this after state update)
-      const cachedContents = getCachedFolderContents(path);
-      if (!cachedContents && path) {
-        onNavigate(path).catch((err: any) => {
-          log.error("Failed to load folder contents", { path, error: err });
-          // If loading fails, remove from expanded folders
-          setExpandedFolders(current => {
-            const updated = new Set(current);
-            updated.delete(path);
-            return updated;
-          });
-        });
-      }
-    }, [onNavigate, getCachedFolderContents]);
+       // Load contents if not cached (do this after state update)
+       const cachedContents = getCachedFolderContents(path);
+       if (!cachedContents && path) {
+         void onNavigate(path);
+       }
+     }, [onNavigate, getCachedFolderContents]);
 
-  // Handle node selection with multi-select
+// Handle node selection with multi-select
    const handleNodeSelect = useCallback(
      (path: string, e: React.MouseEvent) => {
        const isCtrl = e.ctrlKey || e.metaKey;
@@ -261,13 +243,12 @@ export default function Sidebar({
        if (isShift && lastSelectedId) {
          selectRange(lastSelectedId, path, flatPaths);
        } else if (isCtrl) {
-         toggle(path);
+         toggleSelection(path);
        } else {
-         // No modifier: just clear selection (don't select clicked item)
-         clear();
+         clearSelection();
        }
      },
-     [flatPaths, lastSelectedId, toggle, selectRange, clear]
+     [flatPaths, lastSelectedId, toggleSelection, selectRange, clearSelection]
    );
 
    // External drop handlers
@@ -402,7 +383,7 @@ export default function Sidebar({
           isSearchOpen={isSearchOpen}
           isFilterOpen={isFilterOpen}
           selectionCount={selectedIds.size}
-          onClearSelection={clear}
+          onClearSelection={clearSelection}
           breadcrumbs={breadcrumbs}
           onBreadcrumbClick={(index) => {
             const path = breadcrumbs.slice(0, index + 1).join("/");

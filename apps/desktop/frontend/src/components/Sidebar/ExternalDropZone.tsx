@@ -1,5 +1,5 @@
 import React from "react";
-import { Upload, File, Folder } from "lucide-react";
+import { Upload } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 interface ExternalDropZoneProps {
