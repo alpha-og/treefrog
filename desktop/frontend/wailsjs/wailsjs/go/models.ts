@@ -308,6 +308,9 @@ export namespace main {
 	    page: number;
 	    x: number;
 	    y: number;
+	    file: string;
+	    line: number;
+	    col: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new SyncTeXResult(source);
@@ -318,6 +321,9 @@ export namespace main {
 	        this.page = source["page"];
 	        this.x = source["x"];
 	        this.y = source["y"];
+	        this.file = source["file"];
+	        this.line = source["line"];
+	        this.col = source["col"];
 	    }
 	}
 
