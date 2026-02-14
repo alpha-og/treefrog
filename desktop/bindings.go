@@ -1129,7 +1129,7 @@ func (a *App) SyncTeXView(file string, line, col int) (*SyncTeXResult, error) {
 	}).Debug("SyncTeX forward search request")
 
 	compilerURL := a.getCompilerURL()
-	url := fmt.Sprintf("%s/build/%s/synctex/view?file=%s&line=%d",
+	url := fmt.Sprintf("%s/api/build/%s/synctex/view?file=%s&line=%d",
 		compilerURL, remoteID, url.QueryEscape(file), line)
 	if col > 0 {
 		url += fmt.Sprintf("&col=%d", col)
@@ -1189,7 +1189,7 @@ func (a *App) SyncTeXEdit(page int, x, y float64) (*SyncTeXResult, error) {
 	}).Debug("SyncTeX reverse search request")
 
 	compilerURL := a.getCompilerURL()
-	url := fmt.Sprintf("%s/build/%s/synctex/edit?page=%d&x=%f&y=%f",
+	url := fmt.Sprintf("%s/api/build/%s/synctex/edit?page=%d&x=%f&y=%f",
 		compilerURL, remoteID, page, x, y)
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -1223,9 +1223,9 @@ func (a *App) SyncTeXEdit(page int, x, y float64) (*SyncTeXResult, error) {
 	}
 
 	Logger.WithFields(logrus.Fields{
-		"page": result.Page,
-		"x":    result.X,
-		"y":    result.Y,
+		"file": result.File,
+		"line": result.Line,
+		"col":  result.Col,
 	}).Debug("SyncTeX edit completed")
 
 	return &result, nil

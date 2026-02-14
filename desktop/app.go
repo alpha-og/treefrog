@@ -64,9 +64,12 @@ type GitStatus struct {
 
 // SyncTeXResult holds SyncTeX navigation results
 type SyncTeXResult struct {
-	Page int     `json:"page"`
-	X    float64 `json:"x"`
-	Y    float64 `json:"y"`
+	Page int     `json:"page,omitempty"`
+	X    float64 `json:"x,omitempty"`
+	Y    float64 `json:"y,omitempty"`
+	File string  `json:"file,omitempty"`
+	Line int     `json:"line,omitempty"`
+	Col  int     `json:"col,omitempty"`
 }
 
 // App struct
