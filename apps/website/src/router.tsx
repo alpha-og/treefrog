@@ -1,4 +1,5 @@
 import { createRootRoute, createRoute, createRouter, Outlet, useLocation, Link, useNavigate } from '@tanstack/react-router'
+import { useEffect } from 'react'
 import { useAuth, AuthCallback } from './lib/auth'
 import Header from './components/Header'
 import Footer from './components/Footer'
@@ -103,6 +104,15 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const location = useLocation()
   const navigate = useNavigate()
 
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate({
+        to: '/sign-in',
+        search: { redirect: location.pathname },
+      })
+    }
+  }, [user, loading, navigate, location.pathname])
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -112,10 +122,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) {
-    navigate({
-      to: '/sign-in',
-      search: { redirect: location.pathname },
-    })
     return null
   }
 
