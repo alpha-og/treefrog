@@ -26,10 +26,10 @@ export function EditorPane({
   onEditorReady,
   highlightedLine 
 }: EditorPaneProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null!);
   const hasFile = currentFile && currentFile.length > 0;
 
-  const { revealLine, editorRef } = useEditor(containerRef, theme, fileContent, isBinary, currentFile, projectRoot, onSave, {
+  const { revealLine, editorRef } = useEditor(containerRef as React.RefObject<HTMLDivElement>, theme, fileContent, isBinary, currentFile, projectRoot, onSave, {
     onForwardSearch
   });
 

@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 export interface Plan {
   id: string;
   name: string;
-  price: number;
+  price: number | null;
   description: string;
   features: {
     name: string;
@@ -79,11 +79,13 @@ export function PlanComparisonTable({
               </p>
               <div className="mt-3">
                 <span className="text-3xl font-bold text-[var(--foreground)]">
-                  ${plan.price}
+                  {plan.price !== null ? `$${plan.price}` : 'Custom'}
                 </span>
-                <span className="text-sm text-[var(--muted-foreground)]">
-                  /month
-                </span>
+                {plan.price !== null && (
+                  <span className="text-sm text-[var(--muted-foreground)]">
+                    /month
+                  </span>
+                )}
               </div>
             </div>
           </motion.div>
@@ -181,11 +183,13 @@ export function PlanComparisonTable({
 
             <div className="mt-4">
               <span className="text-3xl font-bold text-[var(--foreground)]">
-                ${plan.price}
+                {plan.price !== null ? `$${plan.price}` : 'Custom'}
               </span>
-              <span className="text-sm text-[var(--muted-foreground)]">
-                /month
-              </span>
+              {plan.price !== null && (
+                <span className="text-sm text-[var(--muted-foreground)]">
+                  /month
+                </span>
+              )}
             </div>
 
             <div className="mt-6 space-y-3">
