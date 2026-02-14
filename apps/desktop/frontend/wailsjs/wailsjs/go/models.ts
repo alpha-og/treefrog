@@ -305,12 +305,12 @@ export namespace main {
 	    }
 	}
 	export class SyncTeXResult {
-	    page: number;
-	    x: number;
-	    y: number;
-	    file: string;
-	    line: number;
-	    col: number;
+	    page?: number;
+	    x?: number;
+	    y?: number;
+	    file?: string;
+	    line?: number;
+	    col?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new SyncTeXResult(source);
