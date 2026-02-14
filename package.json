@@ -19,8 +19,8 @@
     "clean": "make clean",
     "clean:all": "make clean-all",
     "doctor": "make doctor",
-    "website:dev": "cd website && pnpm dev",
-    "website:build": "cd website && pnpm build",
+    "website:dev": "cd apps/website && pnpm dev",
+    "website:build": "cd apps/website && pnpm build",
     "compiler": "make compiler",
     "stop": "make stop"
   },
