@@ -1,8 +1,13 @@
-module github.com/alpha-og/treefrog-latex-compiler
+module github.com/alpha-og/treefrog/apps/compiler
 
 go 1.24.0
 
 require (
+	github.com/alpha-og/treefrog/packages/go/http v0.0.0
+	github.com/alpha-og/treefrog/packages/go/security v0.0.0
+	github.com/alpha-og/treefrog/packages/go/signer v0.0.0
+	github.com/alpha-og/treefrog/packages/go/synctex v0.0.0
+	github.com/alpha-og/treefrog/packages/go/validation v0.0.0
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/go-chi/cors v1.2.1
@@ -26,6 +31,7 @@ require (
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
+	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -49,4 +55,13 @@ require (
 	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 	gotest.tools/v3 v3.5.2 // indirect
+)
+
+replace (
+	github.com/alpha-og/treefrog/packages/go/config => ../../packages/go/config
+	github.com/alpha-og/treefrog/packages/go/http => ../../packages/go/http
+	github.com/alpha-og/treefrog/packages/go/security => ../../packages/go/security
+	github.com/alpha-og/treefrog/packages/go/signer => ../../packages/go/signer
+	github.com/alpha-og/treefrog/packages/go/synctex => ../../packages/go/synctex
+	github.com/alpha-og/treefrog/packages/go/validation => ../../packages/go/validation
 )
