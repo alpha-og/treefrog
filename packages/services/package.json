@@ -11,7 +11,10 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "scripts": {},
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@treefrog/types": "workspace:*",
     "@treefrog/supabase": "workspace:*",
