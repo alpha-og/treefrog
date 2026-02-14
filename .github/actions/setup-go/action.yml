@@ -1,0 +1,23 @@
+name: Setup Go
+description: Install Go and setup module cache
+inputs:
+  go-version:
+    description: Go version
+    required: false
+    default: '1.23'
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version }}
+        cache-dependency-path: |
+          go.sum
+          apps/**/go.sum
+          packages/**/go.sum
+
+    - name: Download Go modules
+      shell: bash
+      run: go mod download
