@@ -13,9 +13,12 @@ make dev-info                     # INFO level logging
 # Building
 make build                        # Build for current platform
 make build-all                    # Build for all platforms (macOS, Linux, Windows)
-make compiler                     # Start Docker compiler
+make build-backend                # Build Go backend binary
+
+# Docker
+make compiler                     # Start Docker compiler (with Redis, Postgres)
 make stop                         # Stop Docker services
-make doctor                       # Check Wails setup
+make logs                         # View Docker logs
 
 # Frontend only
 cd desktop/frontend && pnpm dev   # Frontend dev server
@@ -23,17 +26,48 @@ cd desktop/frontend && pnpm build # Production build
 
 # Backend only
 cd latex-compiler && go build -o server ./cmd/server
+
+# Website
+make website-dev                  # Start website dev server
+make website-build                # Build website
+
+# Diagnostics
+make doctor                       # Check Wails setup
+make clean                        # Clean build artifacts
+make clean-all                    # Deep clean (removes node_modules)
 ```
 
 ## Testing
 
 ```bash
+# All tests
+make test                         # Run all tests
+
 # Go tests
-cd latex-compiler && go test ./...
-cd latex-compiler && go test ./pkg/build -v                    # Verbose
+make test-backend                 # Run Go tests
+make test-backend-verbose         # Verbose Go tests with coverage
 cd latex-compiler && go test ./pkg/build -run TestCreateBuild  # Single test
 
-# No frontend tests configured yet
+# Frontend tests
+make test-frontend                # Run frontend tests (placeholder)
+cd desktop/frontend && pnpm test  # Direct frontend test
+```
+
+## Linting and Formatting
+
+```bash
+# Linting
+make lint                         # Lint all code
+make lint-backend                 # Lint Go code (golangci-lint)
+make lint-frontend                # Lint frontend (ESLint)
+
+# Formatting
+make fmt                          # Format all code
+make fmt-backend                  # Format Go code
+make fmt-frontend                 # Format frontend code
+
+# Type checking
+make typecheck                    # Type check frontend
 ```
 
 ## Code Style
