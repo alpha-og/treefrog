@@ -14,7 +14,6 @@ import (
 
 	"github.com/alpha-og/treefrog/apps/compiler/internal/auth"
 	"github.com/alpha-og/treefrog/apps/compiler/internal/build"
-	httputil "github.com/alpha-og/treefrog/packages/go/http"
 	"github.com/alpha-og/treefrog/packages/go/security"
 	"github.com/alpha-og/treefrog/packages/go/validation"
 	"github.com/go-chi/chi/v5"
