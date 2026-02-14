@@ -1,5 +1,5 @@
 // Billing-related types
-export interface Plan {
+export interface BillingPlan {
   id: string;
   name: string;
   description?: string;
@@ -15,7 +15,7 @@ export interface Subscription {
   id: string;
   userId: string;
   planId: string;
-  plan?: Plan;
+  plan?: BillingPlan;
   status: 'active' | 'canceled' | 'expired' | 'pending';
   currentPeriodStart: string;
   currentPeriodEnd: string;
