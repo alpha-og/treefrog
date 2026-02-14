@@ -1,28 +1,5 @@
 import { getWailsApp } from "./api";
-
-export type RendererMode = "auto" | "local" | "remote";
-export type ImageSource = "ghcr" | "embedded" | "custom";
-
-export interface RendererStatus {
-  state: "running" | "stopped" | "error" | "not-installed" | "building";
-  isRunning: boolean; // Added for backend compatibility.
-  mode: RendererMode;
-  message: string;
-  port: number;
-  logs: string;
-}
-
-export interface RendererConfig {
-  mode: string; // Temporarily use string; runtime validation will convert this.
-  port: number;
-  autoStart: boolean;
-  imageSource: ImageSource;
-  imageRef: string;
-  remoteUrl: string;
-  remoteToken: string;
-  customRegistry?: string;
-  customTarPath?: string;
-}
+import { RendererMode, ImageSource, RendererStatus, RendererConfig } from "@/types";
 
 const getApp = () => {
   const app = getWailsApp();
@@ -37,10 +14,10 @@ const toRendererMode = (mode: string): RendererMode => {
     return mode;
   }
   console.warn(`Invalid RendererMode: ${mode}`);
-  return "auto"; // Default fallback.
+  return "auto";
 };
 
-const fromBackendRendererConfig = (config: any): RendererConfig => {
+const fromBackendRendererConfig = (config: RendererConfig): RendererConfig => {
   return {
     mode: toRendererMode(config.mode),
     port: config.port,
@@ -51,6 +28,10 @@ const fromBackendRendererConfig = (config: any): RendererConfig => {
     remoteToken: config.remoteToken,
     customRegistry: config.customRegistry,
     customTarPath: config.customTarPath,
+    maxRetries: config.maxRetries,
+    retryDelay: config.retryDelay,
+    retryBackoff: config.retryBackoff,
+    retryTimeout: config.retryTimeout,
   };
 };
 
@@ -75,7 +56,7 @@ export const rendererService = {
 
   async getConfig(): Promise<RendererConfig> {
     const config = await getApp().GetRendererConfig();
-    return fromBackendRendererConfig(config); // Validate config.
+    return fromBackendRendererConfig(config);
   },
 
   async setMode(mode: RendererMode): Promise<void> {
@@ -91,39 +72,40 @@ export const rendererService = {
   },
 
   async detectBestMode(): Promise<RendererMode> {
-    return await getApp().DetectBestMode();
+    const mode = await getApp().DetectBestMode();
+    return toRendererMode(mode);
   },
 
   async setRemoteUrl(url: string): Promise<void> {
     return await getApp().SetRendererRemoteURL(url);
   },
 
-   async setRemoteToken(token: string): Promise<void> {
-     return await getApp().SetRendererRemoteToken(token);
-   },
+  async setRemoteToken(token: string): Promise<void> {
+    return await getApp().SetRendererRemoteToken(token);
+  },
 
-    async setAutoStart(enabled: boolean): Promise<void> {
-      return await getApp().SetRendererAutoStart(enabled);
-    },
+  async setAutoStart(enabled: boolean): Promise<void> {
+    return await getApp().SetRendererAutoStart(enabled);
+  },
 
-    async setPort(port: number): Promise<void> {
-      return await getApp().SetRendererPort(port);
-    },
+  async setPort(port: number): Promise<void> {
+    return await getApp().SetRendererPort(port);
+  },
 
-    async getBuildLog(): Promise<string> {
-      return await getApp().GetBuildLog();
-    },
+  async getBuildLog(): Promise<string> {
+    return await getApp().GetBuildLog();
+  },
 
-     async getRendererLogs(): Promise<string> {
-       return await getApp().GetRendererLogs();
-     },
+  async getRendererLogs(): Promise<string> {
+    return await getApp().GetRendererLogs();
+  },
 
-     async cleanupDockerSystem(): Promise<void> {
-       return await getApp().CleanupDockerSystem();
-     },
+  async cleanupDockerSystem(): Promise<void> {
+    return await getApp().CleanupDockerSystem();
+  },
 
-     async checkDiskSpace(): Promise<number> {
-       const bytes = await getApp().CheckDockerDiskSpace();
-       return bytes;
-     },
-   };
+  async checkDiskSpace(): Promise<number> {
+    const bytes = await getApp().CheckDockerDiskSpace();
+    return bytes;
+  },
+};

@@ -24,9 +24,7 @@ export const uploadDeltaSyncFiles = (
   buildId: string,
   formData: FormData
 ) => {
-  return POST(`/builds/${buildId}/upload`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  return POST(`/builds/${buildId}/upload`, formData);
 };
 
 export const triggerBuild = (
@@ -99,9 +97,9 @@ export const getSignedArtifactUrl = async (
   type: 'pdf' | 'logs' | 'synctex',
   expires: number = 300
 ): Promise<string> => {
-  const response = await GET<{ url: string; expiresAt: string }>(
+  const response = await GET(
     `/builds/${buildId}/artifacts/${type}/signed-url?expires=${expires}`
-  );
+  ) as { url: string; expiresAt: string };
   return response.url;
 };
 
