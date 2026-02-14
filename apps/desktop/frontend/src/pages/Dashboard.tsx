@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { ArrowLeft, Plus, TrendingUp, CloudOff } from "lucide-react";
 import { motion } from "motion/react";
 import { Button } from "@/components/common";
@@ -7,7 +7,6 @@ import { BuildHistoryTable, type BuildHistoryItem } from "@/components/BuildHist
 import { StorageUsageWidget } from "@/components/StorageUsageWidget";
 import { SubscriptionStatusCard } from "@/components/SubscriptionStatusCard";
 import {
-  fadeInUp,
   staggerContainer,
   staggerItem,
 } from "@/utils/animations";
@@ -30,7 +29,7 @@ const PLAN_FEATURES: Record<string, string[]> = {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { isGuest } = useAuthStore();
-  const { isLoading, usageStats, recentBuilds, userData } = useCloudData();
+  const { isLoading, usageStats, recentBuilds } = useCloudData();
 
   const builds: BuildHistoryItem[] = useMemo(() => {
     return recentBuilds.map(b => ({
@@ -223,7 +222,7 @@ export default function Dashboard() {
             builds={builds}
             isLoading={isLoading}
             onBuildClick={(buildId) => {
-              navigate({ to: "/build", search: { id: buildId } });
+              navigate({ to: "/build/$buildId", params: { buildId } });
             }}
           />
         </motion.div>

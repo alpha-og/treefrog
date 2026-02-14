@@ -5,11 +5,9 @@ import React, {
   useState,
   useCallback,
 } from "react";
-import * as monaco from "monaco-editor";
 import { pdfjs } from "react-pdf";
 import { useNavigate } from "@tanstack/react-router";
 import { motion } from "motion/react";
-
 // Components
 import Toolbar from "@/components/Toolbar";
 import Sidebar from "@/components/Sidebar";
@@ -44,7 +42,6 @@ import { syncConfig } from "@/services/configService";
 // Utils
 import { clampPage, modalTitle, modalPlaceholder, modalHint } from "@/utils/ui";
 import { joinPath } from "@/utils/path";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/common/Button";
 import { Input } from "@/components/common/Input";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/common/Dialog";
@@ -121,7 +118,7 @@ export default function Editor() {
   // ========== UI STATE ==========
   const [engine, setEngine] = useState<string>("pdflatex");
   const [shellEscape, setShellEscape] = useState<boolean>(false);
-  const [zoom, setZoom] = useState<number | string>(1.2);
+  const [zoom, setZoom] = useState<number>(1.2);
   const [numPages, setNumPages] = useState<number>(0);
   const [pageInput, setPageInput] = useState<string>("1");
   const [configSynced, setConfigSynced] = useState<boolean>(false);
@@ -145,9 +142,6 @@ export default function Editor() {
   const currentFileRef = useRef<string>("");
   const pageProxyRef = useRef<Map<number, pdfjs.PDFPageProxy>>(new Map());
   const buildTimer = useRef<number | null>(null);
-  const _editorInstance = useRef<monaco.editor.IStandaloneCodeEditor | null>(
-    null,
-  );
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const mainRef = useRef<HTMLDivElement | null>(null);
   const startPosRef = useRef<number>(0);
@@ -361,7 +355,7 @@ export default function Editor() {
       // Git menu events
       // @ts-ignore
       window.runtime.EventsOn("menu-git-commit", () => {
-        if (gitStatus.state === "dirty") {
+        if (gitStatus.includes("modified") || gitStatus.includes("untracked")) {
           handleOpenModal({ kind: "commit" });
         }
       });
@@ -483,6 +477,14 @@ export default function Editor() {
   const [highlightedLine, setHighlightedLine] = useState<number | null>(null);
   const [pdfHighlight, setPdfHighlight] = useState<{ page: number; x: number; y: number } | null>(null);
 
+  const scrollToPage = useCallback((page: number) => {
+    const ref = pageRefs.current.get(page);
+    if (ref) {
+      ref.scrollIntoView({ behavior: "smooth", block: "start" });
+      setPageInput(String(page));
+    }
+  }, []);
+
   const handleForwardSearch = useCallback(async (line: number, col: number = 0) => {
     const file = currentFileRef.current;
     if (!file) return;
@@ -521,7 +523,6 @@ export default function Editor() {
     revealLineRef.current = revealLine;
   }, []);
 
-  // ========== PDF HELPERS ==========
   const registerPageRef = useCallback(
     (page: number, el: HTMLDivElement | null) => {
       if (!el) return;
@@ -529,14 +530,6 @@ export default function Editor() {
     },
     [],
   );
-
-  const scrollToPage = useCallback((page: number) => {
-    const ref = pageRefs.current.get(page);
-    if (ref) {
-      ref.scrollIntoView({ behavior: "smooth", block: "start" });
-      setPageInput(String(page));
-    }
-  }, []);
 
   // ========== COMPUTED ==========
   const visiblePanes = useMemo(
@@ -561,21 +554,17 @@ export default function Editor() {
           <div className="absolute bottom-0 left-1/4 w-96 h-96 bg-secondary/5 rounded-full blur-3xl -mb-48"></div>
         </div>
 
-         {/* Toolbar */}
-         <Toolbar
-          projectRoot={projectRoot}
-          onOpenProject={() => setShowPicker(true)}
-          onBuild={triggerBuild}
-          engine={engine}
-          onEngineChange={setEngine}
-          shell={shellEscape}
-          onShellChange={setShellEscape}
-          theme={theme}
-          onThemeToggle={() => setTheme(theme === "dark" ? "light" : "dark")}
-          onTogglePane={togglePane}
-          panesVisible={visiblePanes}
-          configSynced={configSynced}
-        />
+{/* Toolbar */}
+          <Toolbar
+           onBuild={triggerBuild}
+           engine={engine}
+           onEngineChange={setEngine}
+           shell={shellEscape}
+           onShellChange={setShellEscape}
+           onTogglePane={togglePane}
+           panesVisible={visiblePanes}
+           configSynced={configSynced}
+         />
 
         {/* Main Content */}
         <div className="flex-1 flex flex-row overflow-hidden relative z-10" ref={mainRef} style={_isResizing ? { userSelect: "none" } as React.CSSProperties : {}}>
@@ -685,7 +674,7 @@ export default function Editor() {
                     onZoomChange={setZoom}
                     numPages={numPages}
                     onNumPagesChange={setNumPages}
-                    currentPage={Number(pageInput) || 1}
+                    currentPage={typeof pageInput === 'number' ? pageInput : parseInt(pageInput) || 1}
                     onPageChange={(page) => {
                       setPageInput(String(page));
                       scrollToPage(page);
