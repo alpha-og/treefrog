@@ -103,7 +103,7 @@ func (c *DockerCompiler) Compile(build *Build) error {
 	}
 
 	// Wait for completion with timeout
-	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	timeoutCtx, cancel := context.WithTimeout(ctx, MaxBuildTimeout)
 	defer cancel()
 
 	statusCh, errCh := c.dockerClient.ContainerWait(timeoutCtx, containerID, container.WaitConditionNotRunning)
@@ -234,7 +234,7 @@ func (c *DockerCompiler) CompileWithLatexmk(build *Build) error {
 	if build.Engine == EnginePDFLaTeX {
 		engineFlag = "pdf"
 	} else if build.Engine == EngineXeLaTeX {
-		engineFlag = "xex"
+		engineFlag = "xelatex"
 	} else if build.Engine == EngineLuaLaTeX {
 		engineFlag = "lualatex"
 	}
@@ -285,7 +285,7 @@ exit 0
 	}
 
 	// Wait for completion with timeout (Issue #19 - enforced timeout)
-	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	timeoutCtx, cancel := context.WithTimeout(ctx, MaxBuildTimeout)
 	defer cancel()
 
 	statusCh, errCh := c.dockerClient.ContainerWait(timeoutCtx, resp.ID, container.WaitConditionNotRunning)
@@ -320,13 +320,12 @@ exit 0
 	defer logs.Close()
 
 	// Parse output (Issue #18 - limit log size to prevent DoS)
-	const maxLogSize = 10 * 1024 * 1024 // 10MB limit
 	var stdout, stderr bytes.Buffer
 	stdcopy.StdCopy(&stdout, &stderr, logs)
 	logContent := stdout.String() + stderr.String()
 
-	if len(logContent) > maxLogSize {
-		logContent = logContent[:maxLogSize] + "\n[LOG TRUNCATED - exceeded 10MB]"
+	if len(logContent) > MaxLogSize {
+		logContent = logContent[:MaxLogSize] + "\n[LOG TRUNCATED - exceeded 10MB]"
 	}
 	build.BuildLog = logContent
 
