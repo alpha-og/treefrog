@@ -29,8 +29,9 @@ const (
 )
 
 var (
-	dbInstance *sql.DB
-	jwksClient *JWKSClient
+	dbInstance  *sql.DB
+	jwksClient  *JWKSClient
+	supabaseURL string
 )
 
 type UserInfo struct {
@@ -42,6 +43,7 @@ type UserInfo struct {
 
 type JWKSClient struct {
 	jwksURL     string
+	supabaseURL string
 	httpClient  *http.Client
 	keys        map[string]*rsa.PublicKey
 	keysMu      sync.RWMutex
@@ -67,7 +69,8 @@ type JWK struct {
 func NewJWKSClient(supabaseURL string) *JWKSClient {
 	jwksURL := strings.TrimSuffix(supabaseURL, "/") + "/auth/v1/.well-known/jwks.json"
 	return &JWKSClient{
-		jwksURL: jwksURL,
+		jwksURL:     jwksURL,
+		supabaseURL: strings.TrimSuffix(supabaseURL, "/"),
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -191,10 +194,11 @@ func decodeBase64URL(s string) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(s)
 }
 
-func InitSupabase(supabaseURL string, db *sql.DB) error {
-	if supabaseURL == "" {
+func InitSupabase(supabaseURLParam string, db *sql.DB) error {
+	if supabaseURLParam == "" {
 		return fmt.Errorf("SUPABASE_URL is required")
 	}
+	supabaseURL = strings.TrimSuffix(supabaseURLParam, "/")
 	jwksClient = NewJWKSClient(supabaseURL)
 	dbInstance = db
 	log.WithField("jwks_url", jwksClient.jwksURL).Info("Supabase auth initialized with JWKS")
@@ -219,6 +223,12 @@ func (c *SupabaseClaims) Valid() error {
 	}
 	if c.IssuedAt != nil && now.Before(c.IssuedAt.Time) {
 		return fmt.Errorf("token issued in the future")
+	}
+	if c.Issuer != "" && jwksClient != nil {
+		expectedIssuer := jwksClient.supabaseURL + "/auth/v1"
+		if c.Issuer != expectedIssuer {
+			return fmt.Errorf("invalid token issuer: expected %s, got %s", expectedIssuer, c.Issuer)
+		}
 	}
 	return nil
 }
@@ -259,7 +269,8 @@ func getUserInfo(userID string) (*UserInfo, error) {
 		if err == sql.ErrNoRows {
 			return info, nil
 		}
-		return info, err
+		log.WithError(err).Error("Database error in getUserInfo, returning default free tier")
+		return nil, fmt.Errorf("database error: %w", err)
 	}
 	return info, nil
 }
