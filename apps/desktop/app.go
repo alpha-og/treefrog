@@ -212,7 +212,9 @@ func (a *App) loadConfig() {
 	if err != nil {
 		return
 	}
-	json.Unmarshal(data, &a.config)
+	if err := json.Unmarshal(data, &a.config); err != nil {
+		Logger.WithError(err).Warn("Failed to parse config file, using defaults")
+	}
 }
 
 // saveConfig saves configuration to disk
@@ -223,7 +225,7 @@ func (a *App) saveConfig() error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(configPath, data, 0644)
+	return os.WriteFile(configPath, data, 0600)
 }
 
 // GetConfig returns the current configuration
