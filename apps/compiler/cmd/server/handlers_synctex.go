@@ -8,6 +8,7 @@ import (
 
 	"github.com/alpha-og/treefrog/apps/compiler/internal/auth"
 	"github.com/alpha-og/treefrog/apps/compiler/internal/build"
+	"github.com/alpha-og/treefrog/packages/go/security"
 	"github.com/alpha-og/treefrog/packages/go/synctex"
 	"github.com/go-chi/chi/v5"
 	"github.com/sirupsen/logrus"
@@ -55,7 +56,7 @@ func SyncTeXViewHandler() http.HandlerFunc {
 			return
 		}
 
-		if hasPathTraversal(file) {
+		if security.HasPathTraversal(file) {
 			http.Error(w, "Invalid file path", http.StatusBadRequest)
 			return
 		}
