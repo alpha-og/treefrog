@@ -618,3 +618,54 @@ func (s *Store) GetAllIDs() ([]string, error) {
 
 	return ids, rows.Err()
 }
+
+// CountAll returns the total number of non-deleted, non-expired builds
+func (s *Store) CountAll() (int64, error) {
+	if s.db == nil {
+		return 0, fmt.Errorf("store not initialized with database")
+	}
+
+	query := `SELECT COUNT(*) FROM builds WHERE status NOT IN ($1, $2)`
+	var count int64
+	err := s.db.QueryRow(query, StatusDeleted, StatusExpired).Scan(&count)
+	return count, err
+}
+
+// CountAllMonthly returns the total number of builds created this month
+func (s *Store) CountAllMonthly() (int64, error) {
+	if s.db == nil {
+		return 0, fmt.Errorf("store not initialized with database")
+	}
+
+	now := time.Now()
+	startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+
+	query := `SELECT COUNT(*) FROM builds WHERE created_at >= $1 AND status != $2`
+	var count int64
+	err := s.db.QueryRow(query, startOfMonth, StatusDeleted).Scan(&count)
+	return count, err
+}
+
+// CountAllActive returns the total number of active (pending or compiling) builds
+func (s *Store) CountAllActive() (int64, error) {
+	if s.db == nil {
+		return 0, fmt.Errorf("store not initialized with database")
+	}
+
+	query := `SELECT COUNT(*) FROM builds WHERE status IN ($1, $2)`
+	var count int64
+	err := s.db.QueryRow(query, StatusPending, StatusCompiling).Scan(&count)
+	return count, err
+}
+
+// GetTotalStorageAll returns the total storage used by all non-deleted builds
+func (s *Store) GetTotalStorageAll() (int64, error) {
+	if s.db == nil {
+		return 0, fmt.Errorf("store not initialized with database")
+	}
+
+	query := `SELECT COALESCE(SUM(storage_bytes), 0) FROM builds WHERE status != $1`
+	var total int64
+	err := s.db.QueryRow(query, StatusDeleted).Scan(&total)
+	return total, err
+}
