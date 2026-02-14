@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Eye,
   EyeOff,
@@ -16,9 +16,9 @@ import {
   DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui";
+import { Button } from "@/components/common";
 
 interface FilterBarProps {
   filterHidden: boolean;
@@ -41,7 +41,6 @@ export function FilterBar({
   sortOrder,
   onToggleSortOrder,
 }: FilterBarProps) {
-  const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
 
   const filterOptions = [
@@ -127,21 +126,15 @@ export function FilterBar({
             variant="ghost"
             size="sm"
             title="Change sort field"
-            className={cn(
-              "flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors",
-              showSortDropdown && "bg-primary/20 text-primary"
-            )}
+            className="flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors hover:bg-accent text-muted-foreground"
           >
             <span className="capitalize text-[10px]">{sortBy}</span>
-            <ChevronDown
-              size={8}
-              className={cn("transition-transform", showSortDropdown && "rotate-180")}
-            />
+            <ChevronDown size={8} className="transition-transform" />
           </Button>
         </DropdownMenuTrigger>
         
         <DropdownMenuContent align="end" className="min-w-28">
-          <DropdownMenuRadioGroup value={sortBy} onValueChange={onSortByChange}>
+          <DropdownMenuRadioGroup value={sortBy} onValueChange={(value) => onSortByChange(value as "name" | "size" | "date")}>
             {sortOptions.map((field) => (
               <DropdownMenuRadioItem
                 key={field.field}
