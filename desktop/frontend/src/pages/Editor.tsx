@@ -36,6 +36,7 @@ import { useFiles } from "@/hooks/useFiles";
 import { useBuild } from "@/hooks/useBuild";
 import { useGit } from "@/hooks/useGit";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { useSyncTeX } from "@/hooks/useSyncTex";
 
 // Services
 import { syncConfig } from "@/services/configService";
@@ -114,6 +115,9 @@ export default function Editor() {
     pull,
   } = useGit();
 
+  // ========== SYNCTEX ==========
+  const { fromCursor, fromClick } = useSyncTeX(buildStatus?.id ?? null);
+
   // ========== UI STATE ==========
   const [engine, setEngine] = useState<string>("pdflatex");
   const [shellEscape, setShellEscape] = useState<boolean>(false);
@@ -152,6 +156,7 @@ export default function Editor() {
     editor: 0,
   });
   const resizingRef = useRef<"sidebar-editor" | "editor-preview" | null>(null);
+  const revealLineRef = useRef<((line: number, col?: number) => void) | null>(null);
 
   // Keep currentFileRef in sync
   useEffect(() => {
@@ -471,8 +476,50 @@ export default function Editor() {
        document.addEventListener("mousemove", handleResizeMove);
        document.addEventListener("mouseup", handleResizeEnd);
      },
-     [sidebarWidth, editorWidth, setSidebarWidth, setEditorWidth],
-   );
+[sidebarWidth, editorWidth, setSidebarWidth, setEditorWidth],
+  );
+
+  // ========== SYNCTEX HANDLERS ==========
+  const [highlightedLine, setHighlightedLine] = useState<number | null>(null);
+  const [pdfHighlight, setPdfHighlight] = useState<{ page: number; x: number; y: number } | null>(null);
+
+  const handleForwardSearch = useCallback(async (line: number, col: number = 0) => {
+    const file = currentFileRef.current;
+    if (!file) return;
+
+    try {
+      const result = await fromCursor(file, line, col);
+      if (result && result.page) {
+        scrollToPage(result.page);
+        setPdfHighlight({ page: result.page, x: result.x, y: result.y });
+        setTimeout(() => setPdfHighlight(null), 2000);
+      }
+    } catch (err) {
+      console.warn("Forward search failed:", err);
+    }
+  }, [fromCursor, scrollToPage]);
+
+  const handleInverseSearch = useCallback(async (page: number, x: number, y: number) => {
+    try {
+      const result = await fromClick(page, x, y);
+      if (result && result.file && result.line) {
+        if (result.file !== currentFileRef.current) {
+          await openFile(result.file);
+        }
+        if (revealLineRef.current) {
+          revealLineRef.current(result.line, result.col || 1);
+        }
+        setHighlightedLine(result.line);
+        setTimeout(() => setHighlightedLine(null), 2000);
+      }
+    } catch (err) {
+      console.warn("Inverse search failed:", err);
+    }
+  }, [fromClick, openFile]);
+
+  const handleEditorReady = useCallback((revealLine: (line: number, col?: number) => void) => {
+    revealLineRef.current = revealLine;
+  }, []);
 
   // ========== PDF HELPERS ==========
   const registerPageRef = useCallback(
@@ -601,14 +648,17 @@ export default function Editor() {
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.3 }}
                    >
-                     <EditorPane
-                       theme={resolveTheme(theme)}
-                       fileContent={fileContent}
-                       isBinary={isBinary}
-                       currentFile={currentFile}
-                       projectRoot={projectRoot}
-                       onSave={handleSave}
-                     />
+<EditorPane
+                        theme={resolveTheme(theme)}
+                        fileContent={fileContent}
+                        isBinary={isBinary}
+                        currentFile={currentFile}
+                        projectRoot={projectRoot}
+                        onSave={handleSave}
+                        onForwardSearch={handleForwardSearch}
+                        onEditorReady={handleEditorReady}
+                        highlightedLine={highlightedLine}
+                      />
                   </motion.div>
                   {preview && (
                     <div
@@ -628,23 +678,26 @@ export default function Editor() {
                  animate={{ opacity: 1, x: 0 }}
                  transition={{ duration: 0.3 }}
                >
-                 <PreviewPane
-                   apiUrl={apiUrl}
-                   buildStatus={buildStatus}
-                   zoom={zoom}
-                   onZoomChange={setZoom}
-                   numPages={numPages}
-                  onNumPagesChange={setNumPages}
-                  currentPage={Number(pageInput) || 1}
-                  onPageChange={(page) => {
-                    setPageInput(String(page));
-                    scrollToPage(page);
-                  }}
-                  projectRoot={projectRoot}
-                  pdfKey={pdfKey}
-                  pageProxyRef={pageProxyRef}
-                  registerPageRef={registerPageRef}
-                />
+<PreviewPane
+                    apiUrl={apiUrl}
+                    buildStatus={buildStatus}
+                    zoom={zoom}
+                    onZoomChange={setZoom}
+                    numPages={numPages}
+                    onNumPagesChange={setNumPages}
+                    currentPage={Number(pageInput) || 1}
+                    onPageChange={(page) => {
+                      setPageInput(String(page));
+                      scrollToPage(page);
+                    }}
+                    projectRoot={projectRoot}
+                    pdfKey={pdfKey}
+                    pageProxyRef={pageProxyRef}
+                    registerPageRef={registerPageRef}
+                    onInverseSearch={handleInverseSearch}
+                    highlightPosition={pdfHighlight}
+                    onPageNavigate={scrollToPage}
+                  />
               </motion.div>
             )}
           </>
