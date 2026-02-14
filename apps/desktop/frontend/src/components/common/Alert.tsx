@@ -1,5 +1,5 @@
 import * as React from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import {
   AlertCircle,
   CheckCircle,
@@ -135,7 +135,7 @@ interface ToastProps extends AlertProps {
 }
 
 const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
-  ({ id, variant = "info", title, message, onClose, className, animated = true }, ref) => {
+  ({ id: _id, variant = "info", title, message, onClose, className, animated = true }, ref) => {
     const Icon = variantIcons[variant];
     const { animationsEnabled } = useAnimation();
     const prefersReducedMotion = useReducedMotion();

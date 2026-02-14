@@ -1,5 +1,5 @@
 import * as React from "react";
-import { motion } from "motion/react";
+import { motion, type HTMLMotionProps } from "motion/react";
 import { cn } from "@/lib/utils";
 import { LucideIcon, ChevronDown } from "lucide-react";
 import {
@@ -9,7 +9,7 @@ import {
 import { useAnimation, useReducedMotion } from "@/utils/animation-context";
 
 export interface SelectProps
-  extends React.SelectHTMLAttributes<HTMLSelectElement> {
+  extends Partial<HTMLMotionProps<"select">> {
   icon?: LucideIcon;
   error?: string;
   label?: string;

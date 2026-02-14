@@ -1,9 +1,8 @@
 import * as React from "react";
-import { motion } from "motion/react";
+import { motion, type HTMLMotionProps } from "motion/react";
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
 import {
-  errorShake,
   fadeInUp,
   ANIMATION_DURATIONS,
 } from "@/utils/animations";
@@ -11,7 +10,7 @@ import { LoadingSpinner } from "./LoadingSpinner";
 import { useAnimation, useReducedMotion } from "@/utils/animation-context";
 
 export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
+  extends Partial<HTMLMotionProps<"input">> {
   icon?: LucideIcon;
   error?: string;
   label?: string;
@@ -97,7 +96,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             initial={shouldAnimate ? { opacity: 0, y: 5 } : undefined}
             animate={
               shouldAnimate && error
-                ? "error"
+                ? { x: [-2, 2, -2, 0] }
                 : shouldAnimate
                   ? { opacity: 1, y: 0 }
                   : undefined
@@ -110,11 +109,12 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
                   }
                 : undefined
             }
-            variants={shouldAnimate ? { error: errorShake } : undefined}
             transition={
-              shouldAnimate && !error
-                ? { duration: ANIMATION_DURATIONS.normal }
-                : undefined
+              shouldAnimate && error
+                ? { duration: 0.3 }
+                : shouldAnimate
+                  ? { duration: ANIMATION_DURATIONS.normal }
+                  : undefined
             }
             {...props}
           />

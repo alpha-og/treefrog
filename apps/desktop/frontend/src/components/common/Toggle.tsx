@@ -5,7 +5,7 @@ import { ANIMATION_DURATIONS } from "@/utils/animations";
 import { useAnimation, useReducedMotion } from "@/utils/animation-context";
 
 export interface ToggleProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
   label?: string;
   description?: string;
   animated?: boolean;
@@ -47,14 +47,6 @@ const Toggle = React.forwardRef<HTMLInputElement, ToggleProps>(
       sm: 16,
       md: 20,
       lg: 24,
-    };
-
-    const colorClasses = {
-      primary: "bg-primary",
-      secondary: "bg-secondary",
-      success: "bg-success",
-      warning: "bg-warning",
-      error: "bg-error",
     };
 
   return (
