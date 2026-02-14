@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { Skeleton as ShadcnSkeleton } from "@/components/ui/skeleton";
-import { pulse, ANIMATION_DURATIONS } from "@/utils/animations";
+import { ANIMATION_DURATIONS } from "@/utils/animations";
 import { useAnimation, useReducedMotion } from "@/utils/animation-context";
 
 interface SkeletonProps {
