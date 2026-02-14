@@ -2,16 +2,17 @@ node_modules/
 dist/
 .treefrog-cache/
 .env
+.env.local
 .DS_Store
-wails/frontend/wailsjs/
-wails/treefrog
-wails/*.app/
-wails/*.exe/
 
-# Build artifacts (but not source files)
-wails/build/bin/
-wails/build/*.app/
-wails/build/*.exe
+# Build artifacts
+apps/desktop/build/bin/
+apps/desktop/treefrog
+apps/desktop/*.app/
+apps/desktop/*.exe/
+apps/desktop/*.dmg
+apps/compiler/server
+apps/local-cli/latex-local
 
 # TypeScript build artifacts in packages
 packages/*/dist/
@@ -19,3 +20,19 @@ packages/*/src/*.js
 packages/*/src/*.js.map
 packages/*/src/*.d.ts
 packages/*/src/*.d.ts.map
+
+# Wails generated bindings
+apps/desktop/frontend/wailsjs/
+
+# Go coverage
+*.out
+coverage.html
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
