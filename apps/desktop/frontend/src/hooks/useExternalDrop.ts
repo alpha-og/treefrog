@@ -19,7 +19,7 @@ interface UseExternalDropReturn {
 }
 
 export function useExternalDrop(options: UseExternalDropOptions): UseExternalDropReturn {
-  const { onDropFiles, onDropPaths, acceptedTypes } = options;
+  const { onDropFiles, acceptedTypes } = options;
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
 
