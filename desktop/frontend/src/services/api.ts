@@ -120,12 +120,12 @@ interface WailsApp {
     file: string,
     line: number,
     col: number,
-  ): Promise<{ page: number; x: number; y: number }>;
+  ): Promise<{ page: number; x: number; y: number; file: string; line: number }>;
   SyncTeXEdit(
     page: number,
     x: number,
     y: number,
-  ): Promise<{ page: number; x: number; y: number }>;
+  ): Promise<{ file: string; line: number; col: number }>;
 
   // Config
   GetConfig(): Promise<{
