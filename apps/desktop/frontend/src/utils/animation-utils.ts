@@ -56,7 +56,7 @@ export function calculateStaggerDelay(
  * @returns Object with stagger configuration
  */
 export function createStaggerConfig(
-  childCount: number,
+  _childCount: number,
   baseDelay: number = ANIMATION_DELAYS.md,
   staggerAmount: number = ANIMATION_DELAYS.sm
 ) {
