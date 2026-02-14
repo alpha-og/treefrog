@@ -28,17 +28,9 @@ cd apps/desktop/frontend && pnpm build # Production build
 # Backend only
 cd apps/compiler && go build -o server ./cmd/server
 
-# CLI
-cd apps/local-cli && go build -o latex-local ./cmd
-
 # Website
 make website-dev                  # Start website dev server
 make website-build                # Build website
-
-# Diagnostics
-make doctor                       # Check Wails setup
-make clean                        # Clean build artifacts
-make clean-all                    # Deep clean (removes node_modules)
 ```
 
 ## Testing
@@ -51,6 +43,7 @@ make test                         # Run all tests
 make test-backend                 # Run Go tests
 make test-backend-verbose         # Verbose Go tests with coverage
 cd apps/compiler && go test ./internal/build -run TestCreateBuild  # Single test
+cd apps/compiler && go test ./internal/build -v -run TestCreateBuild  # Single test verbose
 
 # Frontend tests
 make test-frontend                # Run frontend tests (placeholder)
@@ -60,48 +53,46 @@ cd apps/desktop/frontend && pnpm test  # Direct frontend test
 ## Linting and Formatting
 
 ```bash
-# Linting
 make lint                         # Lint all code
 make lint-backend                 # Lint Go code (golangci-lint)
 make lint-frontend                # Lint frontend (ESLint)
-
-# Formatting
 make fmt                          # Format all code
 make fmt-backend                  # Format Go code
 make fmt-frontend                 # Format frontend code
-
-# Type checking
 make typecheck                    # Type check frontend
 ```
 
 ## Code Style
 
 ### TypeScript/React
-- Use TypeScript strict mode
-- Functional components with explicit return types
+- Use TypeScript strict mode with `noUnusedLocals` and `noUnusedParameters`
+- Functional components with explicit return types when complex
 - Path aliases: `@/components`, `@/hooks`, `@/services`, `@/stores`, `@/utils`, `@/lib`
-- Import order: React → External libs → Internal aliases → Relative imports
-- Zustand for state management
-- React Query/Tanstack Router for data/routing
+- Import order: React → External libs (motion, lucide-react) → Internal aliases → Relative imports
+- Zustand for state management with `persist` middleware
 - React 19 for desktop and website
+- Components export as `export default function ComponentName()`
+- Use `cn()` utility from `@/lib/utils` for conditional classNames
 
 ### Go
 - Standard Go formatting (gofmt)
 - Package structure: `internal/` for app-private code, `cmd/` for binaries
-- Handler functions return `http.HandlerFunc`
-- Errors wrapped with context: `fmt.Errorf("context: %w", err)`
+- Errors wrapped with context: `fmt.Errorf("failed to create container: %w", err)`
 - HTTP status codes: `http.StatusBadRequest`, not 400
+- Config structs with nested types (ServerConfig, BuildConfig, etc.)
+- Helper functions for env vars: `getEnvOrDefault`, `getIntEnv`, `getDurationEnv`
 
 ### Naming
 - TypeScript: PascalCase types/interfaces, camelCase functions/variables
 - Go: PascalCase exports, camelCase internals
-- Files: kebab-case (e.g., `build-service.ts`)
-- Components: PascalCase matching filename
+- Files: kebab-case (e.g., `build-service.ts`, `renderer-service.ts`)
+- Components: PascalCase matching filename (e.g., `Sidebar.tsx` → `Sidebar`)
+- Stores: camelCase with `Store` suffix (e.g., `appStore.ts`, `fileStore.ts`)
 
 ### Error Handling
-- TypeScript: Try/catch with typed errors, user-facing messages
-- Go: Early returns, check `ok` booleans, log with context
-- Always validate user input
+- TypeScript: Try/catch with typed errors, user-facing messages via sonner
+- Go: Early returns, wrap errors with context, log with structured logger
+- Always validate user input before processing
 
 ## Monorepo Structure
 
@@ -111,20 +102,14 @@ apps/
     cmd/server/        # HTTP server entry point
     internal/          # Private packages (auth, billing, build, etc.)
     migrations/        # SQL migrations
-    Dockerfile         # Server container
-
   local-cli/           # Standalone local LaTeX compiler CLI
-    cmd/main.go        # CLI entry point
-
   desktop/             # Wails desktop application
     frontend/          # React frontend (React 19)
     *.go               # Go backend (app.go, bindings.go, etc.)
-    wails.json         # Wails configuration
-
   website/             # Marketing website (React 19)
 
 packages/
-  types/               # @treefrog/types - Shared TypeScript types + constants
+  types/               # @treefrog/types - Shared TypeScript types
   services/            # @treefrog/services - API clients
   supabase/            # @treefrog/supabase - Database client + types
   ui/                  # @treefrog/ui - Shared React components
@@ -147,7 +132,7 @@ Use `workspace:*` for internal dependencies. Run `pnpm install` from root.
 The project uses Go workspaces (`go.work`) to manage multiple modules:
 
 ```go
-go 1.23
+go 1.24.0
 
 use (
     ./apps/compiler
@@ -185,7 +170,7 @@ Each component has its own `.env.local` file:
 ### Backend (`apps/compiler/.env.local`)
 - `DATABASE_URL` - PostgreSQL connection string (SECRET)
 - `SUPABASE_URL` - Supabase project URL (for JWKS token verification)
-- `SUPABASE_SECRET_KEY` - Supabase service_role key for admin ops (SECRET)
+- `SUPABASE_SECRET_KEY` - Supabase service_role key (SECRET)
 - `RAZORPAY_*` - Payment configuration
 - `REDIS_URL` - Redis for rate limiting
 - `COMPILER_*` - Compiler settings
