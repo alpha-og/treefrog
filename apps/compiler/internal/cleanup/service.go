@@ -179,7 +179,11 @@ func (s *Service) emergencyCleanup() {
 	s.hardDeleteExpired()
 
 	// Also delete oldest builds regardless of expiration (up to 50)
-	oldest, _ := s.buildStore.FindOldest(50)
+	oldest, err := s.buildStore.FindOldest(50)
+	if err != nil {
+		s.logger.WithError(err).Warn("Failed to find oldest builds for emergency cleanup")
+		return
+	}
 	for _, b := range oldest {
 		s.logger.WithField("buildID", b.ID).Debug("Emergency delete build")
 		s.buildStore.Delete(b.ID)
@@ -195,7 +199,11 @@ func (s *Service) aggressiveCleanup() {
 	s.hardDeleteExpired()
 
 	// Delete builds close to expiration (within 1 hour)
-	expiring, _ := s.buildStore.FindExpiringIn(1 * time.Hour)
+	expiring, err := s.buildStore.FindExpiringIn(1 * time.Hour)
+	if err != nil {
+		s.logger.WithError(err).Warn("Failed to find expiring builds for aggressive cleanup")
+		return
+	}
 	for i, b := range expiring {
 		if i >= 25 { // Delete max 25 at a time
 			break
@@ -215,7 +223,11 @@ func (s *Service) cleanOrphanedFiles() {
 	}
 
 	// Build index of known builds
-	allBuilds, _ := s.buildStore.GetAllIDs()
+	allBuilds, err := s.buildStore.GetAllIDs()
+	if err != nil {
+		s.logger.WithError(err).Warn("Failed to get all build IDs for orphan check")
+		return
+	}
 	knownBuilds := make(map[string]bool)
 	for _, id := range allBuilds {
 		knownBuilds[id] = true
@@ -273,7 +285,11 @@ func (s *Service) cleanupStorageQuotas() {
 			}).Warn("User exceeded storage quota")
 
 			// Delete oldest builds until under quota
-			oldest, _ := s.buildStore.FindOldestByUser(u.ID, 100)
+			oldest, err := s.buildStore.FindOldestByUser(u.ID, 100)
+			if err != nil {
+				s.logger.WithError(err).WithField("userID", u.ID).Warn("Failed to find oldest builds for user")
+				continue
+			}
 			for _, b := range oldest {
 				os.RemoveAll(b.DirPath)
 				s.buildStore.Delete(b.ID)
@@ -299,7 +315,11 @@ func (s *Service) updateUserStorageUsage() {
 	}
 
 	for _, u := range users {
-		totalStorage, _ := s.buildStore.GetTotalStorage(u.ID)
+		totalStorage, err := s.buildStore.GetTotalStorage(u.ID)
+		if err != nil {
+			s.logger.WithError(err).WithField("userID", u.ID).Debug("Failed to get storage for user")
+			continue
+		}
 		u.StorageUsedBytes = totalStorage
 		s.userStore.Update(u)
 	}
