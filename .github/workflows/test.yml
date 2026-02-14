@@ -22,17 +22,17 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.23'
-          cache-dependency-path: latex-compiler/go.sum
+          cache-dependency-path: apps/compiler/go.sum
 
       - name: Run Backend Tests
         run: |
-          cd latex-compiler
+          cd apps/compiler
           go test ./... -v -race -coverprofile=coverage.out -covermode=atomic
 
       - name: Upload Coverage
         uses: codecov/codecov-action@v5
         with:
-          files: ./latex-compiler/coverage.out
+          files: ./apps/compiler/coverage.out
           flags: backend
           fail_ci_if_error: false
 
@@ -73,18 +73,18 @@ jobs:
 
       - name: Type Check Frontend
         run: |
-          cd desktop/frontend
+          cd apps/desktop/frontend
           pnpm typecheck || echo "No typecheck script defined"
 
       - name: Run Frontend Tests
         run: |
-          cd desktop/frontend
+          cd apps/desktop/frontend
           pnpm test || echo "No test script defined"
 
       - name: Upload Coverage
         uses: codecov/codecov-action@v5
         with:
-          files: ./desktop/frontend/coverage/lcov.info
+          files: ./apps/desktop/frontend/coverage/lcov.info
           flags: frontend
           fail_ci_if_error: false
 
@@ -100,13 +100,13 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.23'
-          cache-dependency-path: latex-compiler/go.sum
+          cache-dependency-path: apps/compiler/go.sum
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
-          working-directory: ./latex-compiler
+          working-directory: ./apps/compiler
           args: --timeout=5m
 
   lint-frontend:
@@ -132,12 +132,12 @@ jobs:
 
       - name: Run ESLint (Desktop)
         run: |
-          cd desktop/frontend
+          cd apps/desktop/frontend
           pnpm lint
 
       - name: Run ESLint (Website)
         run: |
-          cd website
+          cd apps/website
           pnpm lint
 
   build-packages:

@@ -48,7 +48,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.23'
-          cache-dependency-path: desktop/go.sum
+          cache-dependency-path: apps/desktop/go.sum
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -98,7 +98,7 @@ jobs:
 
       - name: Generate Wails bindings
         run: |
-          cd desktop
+          cd apps/desktop
           BUILD_FLAGS=""
           if [[ "$DISTRO" == "24.04" && "${{ runner.os }}" == "Linux" ]]; then
             BUILD_FLAGS="-tags webkit2_41"
@@ -108,17 +108,17 @@ jobs:
 
       - name: Install frontend dependencies
         run: |
-          cd desktop/frontend
+          cd apps/desktop/frontend
           pnpm install --frozen-lockfile
 
       - name: Build frontend
         run: |
-          cd desktop/frontend
+          cd apps/desktop/frontend
           pnpm build
 
       - name: Build Treefrog for ${{ matrix.platform }}
         run: |
-          cd desktop
+          cd apps/desktop
           BUILD_FLAGS=""
           if [[ "$DISTRO" == "24.04" && "${{ runner.os }}" == "Linux" ]]; then
             BUILD_FLAGS="-tags webkit2_41"
@@ -129,7 +129,7 @@ jobs:
       - name: Create macOS DMG (Universal)
         if: matrix.platform == 'darwin/universal'
         run: |
-          cd desktop/build/bin
+          cd apps/desktop/build/bin
           mkdir -p Treefrog.dmg-source
           cp -r Treefrog.app Treefrog.dmg-source/
           hdiutil create -srcfolder Treefrog.dmg-source -volname Treefrog -ov -format UDZO -o treefrog-macos-universal.dmg
@@ -139,14 +139,14 @@ jobs:
       - name: Create Linux tarball
         if: runner.os == 'linux'
         run: |
-          cd desktop/build/bin
+          cd apps/desktop/build/bin
           tar -czf treefrog-linux-x86_64.tar.gz treefrog
           mv treefrog-linux-x86_64.tar.gz ../../../treefrog-linux-x86_64.tar.gz
 
       - name: Create Windows ZIP
         if: runner.os == 'windows'
         run: |
-          cd desktop\build\bin
+          cd apps\desktop\build\bin
           7z a treefrog-windows-x64.zip treefrog.exe
           move treefrog-windows-x64.zip ..\..\..
         shell: powershell
