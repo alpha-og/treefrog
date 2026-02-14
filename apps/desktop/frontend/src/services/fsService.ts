@@ -55,7 +55,7 @@ export const fsMove = async (from: string, toDir: string) => {
 export const fsCopy = async (from: string, to: string) => {
   if (isWails()) {
     const app = getWailsApp();
-    return app?.CopyFile(from, to);
+    return app?.DuplicateFile(from, to);
   }
   return POST("/fs/copy", { from, to });
 };
@@ -92,7 +92,12 @@ export const fsUploadFiles = async (
 
     for (const file of files) {
       const arrayBuffer = await file.arrayBuffer();
-      const content = Buffer.from(arrayBuffer).toString("base64");
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const content = btoa(binary);
       const targetFilePath = targetPath
         ? `${targetPath}/${file.name}`
         : file.name;
