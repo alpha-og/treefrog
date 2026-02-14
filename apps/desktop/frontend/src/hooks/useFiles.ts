@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { useFileStore } from "../stores/fileStore";
 import {
   listFiles,
