@@ -13,6 +13,8 @@ export function getModalTitle(modal: ModalState): string {
       return "Duplicate";
     case "delete":
       return "Delete";
+    case "commit":
+      return "Commit Changes";
   }
 }
 
@@ -26,6 +28,8 @@ export function getModalPlaceholder(modal: ModalState, currentDir: string): stri
       return currentDir || "";
     case "duplicate":
       return modal.path + " copy";
+    case "commit":
+      return "Enter commit message...";
     default:
       return "";
   }
@@ -43,5 +47,7 @@ export function getModalHint(modal: ModalState): string {
       return "Enter the new relative path.";
     case "delete":
       return modal.isDir ? "Delete folder recursively?" : "Delete this file?";
+    case "commit":
+      return "Describe the changes you've made.";
   }
 }

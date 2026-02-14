@@ -32,5 +32,6 @@ export type ModalState =
   | { kind: "rename"; path: string }
   | { kind: "move"; path: string }
   | { kind: "duplicate"; path: string }
-  | { kind: "delete"; path: string; isDir: boolean };
+  | { kind: "delete"; path: string; isDir: boolean }
+  | { kind: "commit" };
 
