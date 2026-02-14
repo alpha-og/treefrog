@@ -48,6 +48,9 @@ interface PreviewPaneProps {
   pdfKey: number;
   pageProxyRef: React.MutableRefObject<Map<number, any>>;
   registerPageRef: (page: number, el: HTMLDivElement | null) => void;
+  onInverseSearch?: (page: number, x: number, y: number) => void;
+  highlightPosition?: { page: number; x: number; y: number } | null;
+  onPageNavigate?: (page: number) => void;
 }
 
 export default function PreviewPane({
@@ -63,6 +66,9 @@ export default function PreviewPane({
   pdfKey,
   pageProxyRef,
   registerPageRef,
+  onInverseSearch,
+  highlightPosition,
+  onPageNavigate,
 }: PreviewPaneProps) {
    const clampZoom = (z: number) =>
      Math.min(2.4, Math.max(0.6, Math.round(z * 10) / 10));
@@ -565,6 +571,9 @@ export default function PreviewPane({
                 zoom={zoom}
                 pageProxyRef={pageProxyRef}
                 registerPageRef={registerPageRef}
+                onInverseSearch={onInverseSearch}
+                highlightPosition={highlightPosition}
+                onPageNavigate={onPageNavigate}
               />
            ) : pdfError ? (
              <div className="flex flex-col items-center justify-center h-full text-error gap-4 animate-in fade-in duration-500">
