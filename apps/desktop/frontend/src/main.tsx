@@ -77,7 +77,7 @@ function isWailsEnvironment(): boolean {
 }
 
 function AppContent() {
-  const { setMode, setSessionToken, setUser, mode } = useAuthStore();
+  const { setMode, setSessionToken, setUser } = useAuthStore();
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
