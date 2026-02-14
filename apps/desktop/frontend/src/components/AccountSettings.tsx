@@ -1,4 +1,3 @@
-import { useNavigate } from "@tanstack/react-router";
 import { motion } from "motion/react";
 import { LogOut, Cloud, HardDrive, Check, ExternalLink, RefreshCw } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
@@ -9,38 +8,16 @@ import { useState, useEffect } from "react";
 
 const log = createLogger('AccountSettings');
 
-declare global {
-  interface Window {
-    go?: {
-      main?: {
-        App?: {
-          OpenAuthURL: () => Promise<void>
-          SignOut: () => Promise<void>
-          GetAuthState: () => Promise<{
-            isAuthenticated: boolean
-            user?: { id: string; email: string; firstName: string }
-          }>
-        }
-      }
-    }
-    runtime?: {
-      EventsOn: (event: string, callback: (data: any) => void) => void
-    }
-  }
-}
-
 export default function AccountSettings() {
-  const navigate = useNavigate();
   const { mode, user, setMode, setUser } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const EventsOn = window.runtime?.EventsOn;
+    const EventsOn = (window as any).runtime?.EventsOn;
     if (EventsOn) {
-      const unsubscribe = EventsOn("auth:callback", (data: any) => {
+      EventsOn("auth:callback", (data: any) => {
         log.info("Auth callback received", data);
         if (data?.success) {
-          // If user info is provided in the callback, use it
           if (data?.user) {
             setMode('supabase');
             setUser({
@@ -50,7 +27,6 @@ export default function AccountSettings() {
             });
             toast.success("Signed in successfully");
           } else {
-            // Otherwise refresh from backend
             refreshAuthState();
             toast.success("Signed in successfully");
           }
@@ -58,15 +34,12 @@ export default function AccountSettings() {
           toast.error(`Sign in failed: ${data.error}`);
         }
       });
-      return () => {
-        if (typeof unsubscribe === 'function') unsubscribe();
-      };
     }
   }, [setMode, setUser]);
 
   const refreshAuthState = async () => {
     try {
-      const getAuthState = window.go?.main?.App?.GetAuthState;
+      const getAuthState = (window as any).go?.main?.App?.GetAuthState;
       if (getAuthState) {
         const state = await getAuthState();
         if (state?.isAuthenticated && state?.user) {
@@ -86,7 +59,7 @@ export default function AccountSettings() {
   const handleSignIn = async () => {
     setIsLoading(true);
     try {
-      const openAuthURL = window.go?.main?.App?.OpenAuthURL;
+      const openAuthURL = (window as any).go?.main?.App?.OpenAuthURL;
       if (openAuthURL) {
         await openAuthURL();
         toast.success("Browser opened for sign-in");
@@ -103,7 +76,7 @@ export default function AccountSettings() {
 
   const handleSignOut = async () => {
     try {
-      const signOut = window.go?.main?.App?.SignOut;
+      const signOut = (window as any).go?.main?.App?.SignOut;
       if (signOut) {
         await signOut();
         setMode('guest');
