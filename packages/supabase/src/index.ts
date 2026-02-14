@@ -1,7 +1,28 @@
 import { createClient } from '@supabase/supabase-js';
+import type { GenericSchema } from '@supabase/supabase-js/dist/module/lib/types';
 
-const supabaseUrl = process.env.SUPABASE_URL || (typeof import !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_URL);
-const supabasePublishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || (typeof import !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY);
+const getSupabaseUrl = (): string => {
+  if (typeof process !== 'undefined' && process.env?.SUPABASE_URL) {
+    return process.env.SUPABASE_URL;
+  }
+  if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) {
+    return import.meta.env.VITE_SUPABASE_URL;
+  }
+  return '';
+};
+
+const getSupabaseKey = (): string => {
+  if (typeof process !== 'undefined' && process.env?.SUPABASE_PUBLISHABLE_KEY) {
+    return process.env.SUPABASE_PUBLISHABLE_KEY;
+  }
+  if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_PUBLISHABLE_KEY) {
+    return import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  }
+  return '';
+};
+
+const supabaseUrl = getSupabaseUrl();
+const supabasePublishableKey = getSupabaseKey();
 
 if (!supabaseUrl || !supabasePublishableKey) {
   console.warn('Missing Supabase environment variables. Using placeholder client.');
@@ -11,6 +32,10 @@ export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabasePublishableKey || 'placeholder-key'
 );
+
+export function createSupabaseClient(url: string, key: string) {
+  return createClient(url, key);
+}
 
 export type Json =
   | string
