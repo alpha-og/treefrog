@@ -9,6 +9,9 @@ interface PDFPreviewProps {
   onNumPagesChange: (numPages: number) => void;
   registerPageRef: (page: number, el: HTMLDivElement | null) => void;
   pageProxyRef: React.MutableRefObject<Map<number, any>>;
+  onInverseSearch?: (page: number, x: number, y: number) => void;
+  onPageNavigate?: (page: number) => void;
+  highlightPosition?: { page: number; x: number; y: number } | null;
 }
 
 export default function PDFPreview({
@@ -18,9 +21,11 @@ export default function PDFPreview({
   onNumPagesChange,
   registerPageRef,
   pageProxyRef,
+  onInverseSearch,
+  onPageNavigate,
+  highlightPosition,
 }: PDFPreviewProps) {
   const [error, setError] = useState("");
-  // Track internal page count to handle the initial load correctly
   const [internalNumPages, setInternalNumPages] = useState<number>(0);
   const [containerWidth, setContainerWidth] = useState<number>(0);
   const [containerHeight, setContainerHeight] = useState<number>(0);
@@ -28,19 +33,16 @@ export default function PDFPreview({
 
   useEffect(() => {
     setError("");
-    setInternalNumPages(0); // Reset when URL changes
+    setInternalNumPages(0);
   }, [url]);
 
-  // Track container dimensions with ResizeObserver
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    // Set initial dimensions
     setContainerWidth(container.offsetWidth);
     setContainerHeight(container.offsetHeight);
 
-    // Use ResizeObserver to track dimension changes
     const resizeObserver = new ResizeObserver(() => {
       setContainerWidth(container.offsetWidth);
       setContainerHeight(container.offsetHeight);
@@ -58,7 +60,6 @@ export default function PDFPreview({
     onNumPagesChange(d.numPages);
   };
 
-  // Use internal page count if available, otherwise fall back to prop
   const pagesToRender = internalNumPages > 0 ? internalNumPages : numPages;
 
   if (error) {
@@ -70,7 +71,7 @@ export default function PDFPreview({
   }
 
   return (
-    <div ref={containerRef} className="flex flex-col items-center gap-4 p-4 h-full w-full">
+    <div ref={containerRef} className="flex flex-col items-center gap-4 p-4 h-full w-full relative">
       <Document
         file={url}
         onLoadSuccess={handleLoadSuccess}
@@ -91,10 +92,22 @@ export default function PDFPreview({
               registerPageRef={registerPageRef}
               containerWidth={containerWidth}
               containerHeight={containerHeight}
+              onInverseSearch={onInverseSearch}
+              onPageNavigate={onPageNavigate}
             />
           ))
         ) : null}
       </Document>
+      {highlightPosition && (
+        <div
+          className="absolute pointer-events-none w-4 h-4 rounded-full bg-primary/50 animate-pulse"
+          style={{
+            left: `calc(${highlightPosition.x}px + 1rem)`,
+            top: `calc(${highlightPosition.y}px + 1rem)`,
+            transform: 'translate(-50%, -50%)',
+          }}
+        />
+      )}
     </div>
   );
 }
