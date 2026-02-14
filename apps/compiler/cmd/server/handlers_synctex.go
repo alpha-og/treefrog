@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/auth"
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/build"
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/synctex"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/auth"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/build"
+	"github.com/alpha-og/treefrog/packages/go/synctex"
 	"github.com/go-chi/chi/v5"
 	"github.com/sirupsen/logrus"
 )
@@ -52,6 +52,11 @@ func SyncTeXViewHandler() http.HandlerFunc {
 
 		if file == "" || lineStr == "" {
 			http.Error(w, "file and line parameters required", http.StatusBadRequest)
+			return
+		}
+
+		if hasPathTraversal(file) {
+			http.Error(w, "Invalid file path", http.StatusBadRequest)
 			return
 		}
 

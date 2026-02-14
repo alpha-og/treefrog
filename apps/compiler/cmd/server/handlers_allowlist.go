@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/auth"
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/billing"
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/user"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/auth"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/billing"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/user"
 	"github.com/go-chi/chi/v5"
 	"github.com/sirupsen/logrus"
 )

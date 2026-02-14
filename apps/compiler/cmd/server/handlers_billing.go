@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/auth"
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/billing"
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/log"
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/user"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/auth"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/billing"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/log"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/user"
 	"github.com/sirupsen/logrus"
 )
 

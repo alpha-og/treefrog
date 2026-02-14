@@ -7,26 +7,22 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/auth"
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/build"
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/log"
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/user"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/auth"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/build"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/log"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/user"
+	httputil "github.com/alpha-og/treefrog/packages/go/http"
+	"github.com/alpha-og/treefrog/packages/go/security"
+	"github.com/alpha-og/treefrog/packages/go/validation"
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
 var buildLog = logrus.WithField("component", "handlers/build")
-
-var uuidRegex = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
-
-func validateUserID(userID string) bool {
-	return uuidRegex.MatchString(strings.ToLower(userID))
-}
 
 func CreateBuildHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -36,7 +32,7 @@ func CreateBuildHandler() http.HandlerFunc {
 			return
 		}
 
-		if !validateUserID(userID) {
+		if !validation.ValidateUUID(userID) {
 			buildLog.WithField("user_id", userID).Warn("Invalid user ID format")
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -63,16 +59,20 @@ func CreateBuildHandler() http.HandlerFunc {
 			return
 		}
 
-		// Shell-escape is a security risk - only allow for enterprise tier
+		// Shell-escape is a significant security risk even for enterprise tier.
+		// It allows arbitrary command execution during LaTeX compilation.
+		// Enterprise users should use this feature with caution and only with trusted documents.
+		// WARNING: Documents using shell-escape can execute arbitrary commands on the server.
 		if shellEscape {
 			userTier := auth.GetUserTier(r)
 			if userTier != "enterprise" {
 				http.Error(w, "Shell-escape feature requires enterprise tier", http.StatusForbidden)
 				return
 			}
+			buildLog.WithField("user_id", userID).Warn("Shell-escape enabled for enterprise user - security risk")
 		}
 
-		if hasPathTraversal(mainFile) {
+		if security.HasPathTraversal(mainFile) {
 			http.Error(w, "Invalid main_file: path traversal not allowed", http.StatusBadRequest)
 			return
 		}
@@ -100,7 +100,7 @@ func CreateBuildHandler() http.HandlerFunc {
 			return
 		}
 
-		buildID := fmt.Sprintf("bld_%d", time.Now().UnixNano())
+		buildID := "bld_" + uuid.New().String()
 
 		workDir := os.Getenv("COMPILER_WORKDIR")
 		if workDir == "" {
@@ -415,13 +415,15 @@ func DeleteBuildHandler() http.HandlerFunc {
 		// Soft delete
 		buildRec.Status = build.StatusDeleted
 		buildRec.ExpiresAt = time.Now()
-		buildStore.Update(buildRec)
+		if err := buildStore.Update(buildRec); err != nil {
+			buildLog.WithError(err).WithField("build_id", buildID).Error("Failed to update build status")
+		}
 
-		// Async hard delete
+		// Async hard delete with context timeout
 		go func() {
 			defer func() {
-				if r := recover(); r != nil {
-					buildLog.WithField("panic", r).Error("Panic in async delete goroutine")
+				if recovered := recover(); recovered != nil {
+					buildLog.WithField("panic", recovered).Error("Panic in async delete goroutine")
 				}
 			}()
 			os.RemoveAll(buildRec.DirPath)
@@ -746,9 +748,4 @@ func getFileExtension(resource string) string {
 	default:
 		return "bin"
 	}
-}
-
-// hasPathTraversal checks if a filename contains path traversal sequences
-func hasPathTraversal(filename string) bool {
-	return strings.Contains(filename, "..") || strings.Contains(filename, "/") || strings.Contains(filename, "\\")
 }

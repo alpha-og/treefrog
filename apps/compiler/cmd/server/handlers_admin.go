@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/build"
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/user"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/build"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/user"
 	"github.com/go-chi/chi/v5"
 	"github.com/sirupsen/logrus"
 )
