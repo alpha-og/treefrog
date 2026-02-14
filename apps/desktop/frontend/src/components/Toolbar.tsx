@@ -1,13 +1,10 @@
-import { useState } from "react";
-import { ArrowLeft, Eye, Sidebar as SidebarIcon, Code, Eye as PreviewIcon } from "lucide-react";
+import { ArrowLeft, Sidebar as SidebarIcon, Code, Eye as PreviewIcon } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { motion, AnimatePresence } from "motion/react";
 import BuildButton from "./BuildButton";
 import { cn } from "@/lib/utils";
 
 interface ToolbarProps {
-  projectRoot: string;
-  onOpenProject: () => void;
   onBuild: () => void;
   engine: string;
   onEngineChange: (engine: string) => void;
@@ -19,8 +16,6 @@ interface ToolbarProps {
 }
 
 export default function Toolbar({
-  projectRoot,
-  onOpenProject,
   onBuild,
   engine,
   onEngineChange,
