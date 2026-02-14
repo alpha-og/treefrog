@@ -8,32 +8,13 @@ import FramelessWindow from '@/components/FramelessWindow'
 import { Button } from '@/components/common'
 import { GlowCard } from '@/components/common'
 import { toast } from 'sonner'
+import { getWailsApp } from '@/services/api'
 
 const log = createLogger('Auth')
 
-declare global {
-  interface Window {
-    go?: {
-      main?: {
-        App?: {
-          OpenAuthURL: () => Promise<void>
-          GetAuthState: () => Promise<{
-            isAuthenticated: boolean
-            user?: { id: string; email: string; firstName: string }
-          }>
-        }
-      }
-    }
-    runtime?: {
-      EventsOn: (event: string, callback: (data: any) => void) => void
-      EventsOff: (event: string) => void
-    }
-  }
-}
-
 export default function AuthPage() {
   const navigate = useNavigate()
-  const { markFirstLaunchComplete, setMode, setUser, isFirstLaunch, mode } = useAuthStore()
+  const { markFirstLaunchComplete, setMode, isFirstLaunch, mode } = useAuthStore()
   const [isLoading, setIsLoading] = useState(false)
 
   const handleContinueAsGuest = () => {
@@ -46,9 +27,9 @@ export default function AuthPage() {
   const handleSignIn = async () => {
     setIsLoading(true)
     try {
-      const openAuthURL = window.go?.main?.App?.OpenAuthURL
-      if (openAuthURL) {
-        await openAuthURL()
+      const app = getWailsApp()
+      if (app?.OpenAuthURL) {
+        await app.OpenAuthURL()
         toast.success("Browser opened for sign-in. Complete authentication and return to Treefrog.")
       } else {
         toast.error("Sign-in not available. Please try again.")
@@ -68,11 +49,12 @@ export default function AuthPage() {
   }, [isFirstLaunch, mode, navigate])
 
   useEffect(() => {
-    const EventsOn = window.runtime?.EventsOn
+    // @ts-ignore - Wails runtime
+    const EventsOn = window.runtime?.EventsOn || window.runtime?.on
     if (EventsOn) {
-      EventsOn("auth:callback", (data: any) => {
+      EventsOn("auth:callback", (data: unknown) => {
         log.info("Auth callback received", data)
-        if (data?.success) {
+        if ((data as { success?: boolean })?.success) {
           markFirstLaunchComplete()
           setMode('supabase')
           toast.success("Signed in successfully!")

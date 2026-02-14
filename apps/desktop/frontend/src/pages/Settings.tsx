@@ -10,7 +10,6 @@ import FramelessWindow from "@/components/FramelessWindow";
 import { Button } from "@/components/common";
 import { GlowCard } from "@/components/common";
 import { cn } from "@/lib/utils";
-import { staggerContainer, staggerItem } from "@/utils/animations";
 import { toast } from "sonner";
 
 type SettingsTab = "compiler" | "appearance" | "account";

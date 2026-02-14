@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
-import { ArrowLeft, Zap, Gift, CloudOff, ExternalLink } from "lucide-react";
+import { ArrowLeft, Gift, CloudOff, ExternalLink } from "lucide-react";
 import { motion } from "motion/react";
 import { Button } from "@/components/common";
 import { PlanComparisonTable, type Plan } from "@/components/PlanComparisonTable";
@@ -8,7 +8,7 @@ import { SubscriptionStatusCard } from "@/components/SubscriptionStatusCard";
 import { Input } from "@/components/common";
 import { useCloudData } from "@/hooks/useCloudData";
 import { useAuthStore } from "@/stores/authStore";
-import { fadeInUp, staggerContainer, staggerItem } from "@/utils/animations";
+import { staggerContainer, staggerItem } from "@/utils/animations";
 import { supabase } from "@/lib/supabase";
 
 const PLAN_FEATURES: Record<string, string[]> = {
@@ -20,7 +20,7 @@ const PLAN_FEATURES: Record<string, string[]> = {
 export default function Billing() {
   const navigate = useNavigate();
   const { isGuest } = useAuthStore();
-  const { usageStats, userData, isLoading } = useCloudData();
+  const { usageStats, userData } = useCloudData();
   const [couponCode, setCouponCode] = useState("");
   const [couponApplied, setCouponApplied] = useState(false);
   const [couponError, setCouponError] = useState("");
@@ -114,7 +114,9 @@ export default function Billing() {
     }
 
     // Coupon validation would go through the backend
+    // For now, redirect to website for coupon handling
     setCouponError("Coupon redemption is handled through the website. Please visit treefrog.app/billing");
+    setCouponApplied(true);
   };
 
   const planName = currentTier.charAt(0).toUpperCase() + currentTier.slice(1);

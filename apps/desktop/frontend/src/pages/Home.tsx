@@ -3,14 +3,13 @@ import { Clock, FolderPlus, Settings } from "lucide-react";
 import { motion } from "motion/react";
 import { useNavigate } from "@tanstack/react-router";
 import { useRecentProjectsStore } from "@/stores/recentProjectsStore";
-import { useAppStore } from "@/stores/appStore";
 import { openProjectDialog } from "@/services/projectService";
 import ProjectCard from "@/components/ProjectCard";
 import FramelessWindow from "@/components/FramelessWindow";
 import { Button } from "@/components/common";
 import { GlowCard } from "@/components/common";
 import { Alert } from "@/components/common";
-import { fadeInUp, staggerContainer, staggerItem } from "@/utils/animations";
+import { staggerContainer, staggerItem } from "@/utils/animations";
 
 interface HomeProps {
   onSelectProject?: (path: string) => Promise<void>;
@@ -20,7 +19,6 @@ interface HomeProps {
 export default function Home({ onSelectProject, loading }: HomeProps) {
   const navigate = useNavigate();
   const { projects, removeProject } = useRecentProjectsStore();
-  const { setCompilerUrl, setCompilerToken } = useAppStore();
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [storeHydrated, setStoreHydrated] = useState(false);
@@ -49,22 +47,7 @@ export default function Home({ onSelectProject, loading }: HomeProps) {
     }
   };
 
-  const handleRecentProjectClick = async (path: string) => {
-    setError("");
-    try {
-      setIsSubmitting(true);
-      if (onSelectProject) {
-        await onSelectProject(path);
-      }
-      navigate({ to: "/editor" });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to open project");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleRemoveProject = (path: string) => {
+const handleRemoveProject = (path: string) => {
     removeProject(path);
   };
 
