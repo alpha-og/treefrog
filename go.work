@@ -1,0 +1,14 @@
+go 1.24.0
+
+use (
+	./apps/compiler
+	./apps/desktop
+	./apps/local-cli
+	./packages/go/config
+	./packages/go/http
+	./packages/go/logging
+	./packages/go/security
+	./packages/go/signer
+	./packages/go/synctex
+	./packages/go/validation
+)
