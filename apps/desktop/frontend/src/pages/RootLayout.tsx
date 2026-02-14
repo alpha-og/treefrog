@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useAppStore } from "@/stores/appStore";
 import { getConfig } from "@/services/configService";
 import { createLogger } from "@/utils/logger";
+import type { RendererMode, ImageSource } from "@/types";
 
 const log = createLogger("RootLayout");
 
@@ -18,29 +19,26 @@ export default function RootLayout() {
         const config = await getConfig();
         log.debug("Loaded config from backend", config);
 
-        // Sync compiler settings
-        if (config.CompilerURL) {
-          setCompilerUrl(config.CompilerURL);
+        if (config.compilerUrl) {
+          setCompilerUrl(config.compilerUrl);
         }
-        if (config.CompilerToken) {
-          setCompilerToken(config.CompilerToken);
+        if (config.compilerToken) {
+          setCompilerToken(config.compilerToken);
         }
 
-        // Sync renderer settings if available
-        if (config.Renderer) {
-          setRendererMode(config.Renderer.Mode || "auto");
-          setRendererPort(config.Renderer.Port || 8080);
-          setRendererAutoStart(config.Renderer.AutoStart || false);
-          setRendererImageSource(config.Renderer.ImageSource || "ghcr");
-          setRendererImageRef(config.Renderer.ImageRef || "");
-          setRendererRemoteUrl(config.Renderer.RemoteURL || "");
-          setRendererRemoteToken(config.Renderer.RemoteToken || "");
-          setRendererCustomRegistry(config.Renderer.CustomRegistry || "");
-          setRendererCustomTarPath(config.Renderer.CustomTarPath || "");
+        if (config.renderer) {
+          setRendererMode((config.renderer.mode || "auto") as RendererMode);
+          setRendererPort(config.renderer.port || 8080);
+          setRendererAutoStart(config.renderer.autoStart || false);
+          setRendererImageSource((config.renderer.imageSource || "ghcr") as ImageSource);
+          setRendererImageRef(config.renderer.imageRef || "");
+          setRendererRemoteUrl(config.renderer.remoteUrl || "");
+          setRendererRemoteToken(config.renderer.remoteToken || "");
+          setRendererCustomRegistry(config.renderer.customRegistry || "");
+          setRendererCustomTarPath(config.renderer.customTarPath || "");
         }
       } catch (err) {
         log.debug("No backend config to load or not in Wails environment", err);
-        // This is expected in web-only mode
       }
     };
 

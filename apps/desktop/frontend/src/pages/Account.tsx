@@ -1,13 +1,13 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
-import { ArrowLeft, Copy, Check, CloudOff } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, Copy, CloudOff } from "lucide-react";
 import { motion } from "motion/react";
 import { useAuthStore } from "@/stores/authStore";
 import { useCloudData } from "@/hooks/useCloudData";
 import { Button } from "@/components/common";
 import { Input } from "@/components/common";
 import { StorageUsageWidget } from "@/components/StorageUsageWidget";
-import { fadeInUp, staggerContainer, staggerItem } from "@/utils/animations";
+import { staggerContainer, staggerItem } from "@/utils/animations";
 import { supabase } from "@/lib/supabase";
 
 export default function Account() {

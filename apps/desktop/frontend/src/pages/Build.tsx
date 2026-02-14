@@ -1,12 +1,11 @@
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { ArrowLeft, Download, Copy, CheckCircle, AlertCircle, Clock, FileText, CloudOff } from "lucide-react";
 import { motion } from "motion/react";
 import { Button } from "@/components/common";
 import { downloadArtifact } from "@/services/buildService";
-import { useCloudBuild } from "@/hooks/useCloudData";
 import { useAuthStore } from "@/stores/authStore";
-import { fadeInUp, staggerContainer, staggerItem } from "@/utils/animations";
+import { staggerContainer, staggerItem } from "@/utils/animations";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 
@@ -31,8 +30,7 @@ interface BuildDetail {
 
 export default function Build() {
   const navigate = useNavigate();
-  const search = useSearch({ from: "/build" });
-  const buildId = search.id as string | undefined;
+  const { buildId } = useParams({ from: "/build/$buildId" });
   const { isGuest } = useAuthStore();
   
   const [build, setBuild] = useState<BuildDetail | null>(null);
@@ -49,7 +47,9 @@ export default function Build() {
 
     const fetchBuild = async () => {
       setIsLoading(true);
-      const { data, error } = await supabase
+      const client = supabase;
+      if (!client) return;
+      const { data, error } = await client
         .from('builds')
         .select('*')
         .eq('id', buildId)
@@ -138,14 +138,6 @@ export default function Build() {
       default:
         return "text-[var(--muted-foreground)]";
     }
-  };
-
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
   };
 
   const formatDate = (dateStr: string) => {
