@@ -17,156 +17,134 @@ Treefrog is a desktop application providing a complete LaTeX editing and compila
 
 ### Prerequisites
 
-- Go 1.21+
-- Node.js 15+ and pnpm
+- Go 1.23+
+- Node.js 20+ and pnpm 9+
 - Wails CLI: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
-- Compiler API Token (optional, for remote compilation)
 - Docker (optional, for local rendering)
 
 ### Development
 
 ```bash
-make dev              # Start development server with hot reload
-make doctor           # Verify Wails setup
+pnpm install           # Install all dependencies
+make dev               # Start development server with hot reload
+make doctor            # Verify Wails setup
 ```
-
-The application opens at the local dev server URL. Configure Compiler URL and Token in Settings if using remote compilation.
 
 ### Build for Distribution
 
 ```bash
-make build            # Build for current platform
-make build-all        # Build for macOS, Windows, Linux
+make build             # Build for current platform
+make build-all         # Build for macOS, Windows, Linux
 ```
 
-Built binaries are in `wails/build/bin/`
-
-## Usage
-
-1. Launch the application
-2. Configure settings (optional):
-   - Compiler Settings: Remote compiler URL and API token
-   - Renderer Settings: Local Docker renderer port and auto-start
-3. Open project folder via File menu
-4. Edit `.tex` files in the editor
-5. Build to compile and view PDF
-
-### Local Docker Renderer
-
-Local LaTeX compilation via Docker container:
-
-**Setup:**
-
-1. Go to Settings → Renderer Settings
-2. Click Start Renderer to launch Docker container
-3. Configure port if needed (default: 8080)
-4. Enable Auto-start to launch on application startup
-
-**Features:**
-
-- Start/stop/restart container management
-- Port configuration with conflict detection
-- Real-time status monitoring
-- Integrated log viewer
-- Automatic shutdown on application exit
-
-**Requirements:**
-
-- Docker installed and running
-
-## Configuration
-
-Settings are stored at:
-
-- macOS: `~/Library/Application Support/treefrog/config.json`
-- Linux: `~/.config/treefrog/config.json`
-- Windows: `%APPDATA%/treefrog/config.json`
-
-### Compiler Settings (Optional)
-
-- **Compiler URL** - Remote LaTeX compiler endpoint
-- **Compiler Token** - API authentication token
-
-### Renderer Settings (Optional)
-
-- **Port** - Container port (default: 8080, range: 1024-65535)
-- **Auto-start** - Launch renderer on application startup
-- **Status** - Current container state (Running/Stopped/Building/Error)
+Built binaries are in `apps/desktop/build/bin/`
 
 ## Project Structure
 
 ```
 treefrog/
-├── frontend/                 # React UI application
-│   ├── src/components/      # UI components
-│   ├── src/pages/           # Page layouts
-│   ├── src/hooks/           # React hooks
-│   ├── src/services/        # Go binding layer
-│   └── src/stores/          # State management
-├── wails/                    # Desktop application (Wails v2)
-│   ├── app.go               # Application configuration
-│   ├── bindings.go          # Go to frontend bindings
-│   ├── docker.go            # Docker lifecycle management
-│   ├── docker_config.go     # Docker configuration
-│   ├── menu.go              # Native menu bar
-│   └── main.go              # Application entry point
-├── latex-compiler/          # LaTeX compilation service
-│   ├── cmd/server/          # Compiler server code
-│   ├── pkg/                 # Compiler packages
-│   └── Dockerfile           # Container image
-├── .github/docs/            # GitHub Actions documentation
-├── Makefile                 # Build targets
-└── README.md                # This file
+├── apps/
+│   ├── compiler/           # LaTeX compiler server (Go)
+│   │   ├── cmd/server/     # HTTP server entry point
+│   │   ├── internal/       # Private packages (auth, billing, build, etc.)
+│   │   ├── migrations/     # SQL migrations
+│   │   └── Dockerfile      # Server container
+│   │
+│   ├── local-cli/          # Standalone local LaTeX compiler CLI
+│   │   └── cmd/main.go     # CLI entry point
+│   │
+│   ├── desktop/            # Wails desktop application
+│   │   ├── frontend/       # React frontend (React 19)
+│   │   ├── app.go          # Application configuration
+│   │   ├── bindings.go     # Go to frontend bindings
+│   │   ├── docker.go       # Docker lifecycle management
+│   │   └── wails.json      # Wails configuration
+│   │
+│   └── website/            # Marketing website (React 19)
+│
+├── packages/
+│   ├── types/              # @treefrog/types - Shared TypeScript types
+│   ├── services/           # @treefrog/services - API clients
+│   ├── supabase/           # @treefrog/supabase - Database client
+│   ├── ui/                 # @treefrog/ui - Shared React components
+│   └── go/                 # Shared Go packages
+│       ├── synctex/        # SyncTeX parser
+│       └── signer/         # URL signing utility
+│
+├── go.work                 # Go workspace configuration
+├── pnpm-workspace.yaml     # pnpm monorepo configuration
+├── Makefile                # Build targets
+└── docker-compose.yml      # Docker services (compiler, redis, db)
 ```
 
-## Build System
-
-Remote compilation flow:
-
-1. Project is zipped with compilation options (engine, shell-escape, etc.)
-2. Archive uploaded to remote compiler via HTTP
-3. Status polled every 2 seconds via `/build/{id}/status`
-4. PDF downloaded from `/build/{id}/artifacts/pdf` on success
-5. PDF displayed in viewer
-
-Technical details:
-
-- PDF transferred as base64-encoded string for binary safety
-- Authentication via `X-Compiler-Token` HTTP header
-- Build status values: `running`, `success`, `error`
-- PDF validated before display using magic bytes
-
-## Development
-
-### Make Commands
+## Make Commands
 
 ```bash
-make dev              # Start dev server with hot reload
-make build            # Build for current platform
-make build-all        # Build for macOS, Windows, Linux
-make compiler         # Start remote compiler service
-make stop             # Stop Docker services
-make doctor           # Check Wails setup
+# Development
+make dev                # Start desktop app with hot reload
+make dev-debug          # Dev with DEBUG logging
+make website-dev        # Start website dev server
+
+# Building
+make build              # Build desktop app for current platform
+make build-all          # Build for macOS, Windows, Linux
+make build-backend      # Build compiler server binary
+make build-cli          # Build local CLI
+
+# Docker
+make compiler           # Start compiler with Docker Compose
+make stop               # Stop Docker services
+make logs               # View Docker logs
+
+# Testing
+make test               # Run all tests
+make test-backend       # Run Go tests
+make test-frontend      # Run frontend tests
+
+# Code Quality
+make lint               # Lint all code
+make fmt                # Format all code
+make typecheck          # Type check frontend
+
+# Diagnostics
+make doctor             # Check Wails setup
+make clean              # Clean build artifacts
+make clean-all          # Deep clean (removes node_modules)
 ```
 
-### Wails Development
+## Configuration
 
-- Frontend auto-reloads on code changes
-- Go code changes require manual restart
-- Dev server URL displayed in terminal output
+### Environment Variables
 
-### Compiler Service
+Copy `.env.example` to `.env.local` in each directory:
 
-Start remote compiler for local development:
+**Backend (`apps/compiler/.env.local`):**
+- `DATABASE_URL` - PostgreSQL connection string
+- `SUPABASE_URL` - Supabase project URL
+- `SUPABASE_SECRET_KEY` - Supabase service role key
+- `REDIS_URL` - Redis connection string
+- `RAZORPAY_*` - Payment configuration
+
+**Desktop (`apps/desktop/frontend/.env.local`):**
+- `VITE_SUPABASE_URL` - Supabase project URL
+- `VITE_SUPABASE_PUBLISHABLE_KEY` - Supabase anon key
+- `VITE_API_URL` - Backend API URL
+
+**Website (`apps/website/.env.local`):**
+- Same as Desktop
+
+### Docker Compose
+
+Start the full development stack:
 
 ```bash
 make compiler
-
-# Or manually:
-cd latex-compiler
-docker build -t treefrog-compiler .
-docker run -p 9000:9000 treefrog-compiler
 ```
+
+This starts:
+- LaTeX renderer on port 9000
+- Redis on port 6379
+- PostgreSQL on port 5432
 
 ## Features
 
@@ -174,66 +152,35 @@ docker run -p 9000:9000 treefrog-compiler
 - Live PDF viewer with SyncTeX support
 - Native file browser
 - Git integration (status, commit, push, pull)
-- Automatic build triggers on file changes
-- Shell escape option for LaTeX builds
 - Multiple TeX engines: pdflatex, xelatex, lualatex
-- Local Docker rendering:
-  - Container health checks
-  - Automatic port conflict detection
-  - Real-time status monitoring
-  - Configurable auto-start
-
-## Documentation
-
-- [Docker Compiler Optimization](latex-compiler/docs/DOCKER_OPTIMIZATION.md) - Build process, resource management, memory constraints
-- [Backend Logging](wails/LOGGING.md) - Backend logging configuration
-- [Frontend Logging](frontend/LOGGING.md) - Frontend logging configuration
-- [GitHub Actions Setup](.github/docs/GITHUB_ACTIONS_SETUP.md) - CI/CD workflow documentation
-- [Release Workflow](.github/docs/RELEASE_WORKFLOW.md) - Release process and automation
+- Local Docker rendering with health checks
+- Delta-sync caching for faster builds
 
 ## Troubleshooting
 
 ### Application fails to start
 
 ```bash
-make doctor           # Verify dependencies
-pnpm install          # Reinstall frontend dependencies
-cd wails && wails build  # Rebuild binary
+make doctor             # Verify dependencies
+pnpm install            # Reinstall dependencies
 ```
 
 ### Build compilation fails
 
-- Verify Compiler URL is accessible (if using remote compiler)
-- Validate API token in Settings
-- Ensure main `.tex` file is selected
-- Enable shell-escape if required by document
-- Check remote compiler logs for error details
+- Verify Compiler URL is accessible
+- Check API token in Settings
+- Enable shell-escape if required
+- Check compiler logs: `make logs`
 
 ### Docker Renderer issues
 
-**Renderer fails to start:**
+- Verify Docker is running
+- Check port availability
+- Review error logs in Settings
 
-- Verify Docker is installed and running
-- Check port availability via Settings (change port if needed)
-- Review error logs in Settings → Renderer Settings
-- Rebuild Docker image via Settings → Build Renderer button
+## Security
 
-**Port already in use:**
-
-- Change port number in Settings (range: 1024-65535)
-- Stop service using the port and retry
-
-**Docker not installed:**
-
-- Download [Docker Desktop](https://www.docker.com/products/docker-desktop)
-- Restart application after installation
-
-### PDF fails to display
-
-- Verify remote compiler successfully compiled document
-- Check build `.log` file for compilation errors
-- Validate PDF file is not empty
-- Rebuild project
+See `.env.example` files for required environment variables. Never commit `.env.local` files.
 
 ## License
 
