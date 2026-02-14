@@ -11,26 +11,22 @@ LOG_LEVEL ?= DEBUG
 LOG_FORMAT ?= text
 VITE_LOG_LEVEL ?= debug
 
-# ==================== Installation ====================
-
 install deps:
 	@echo "Installing all dependencies..."
 	pnpm install
 	@echo "Dependencies installed!"
 
-# ==================== Desktop App ====================
-
 dev:
 	@echo "Running Treefrog desktop app in development mode..."
 	@echo "Generating Wails bindings..."
-	@cd desktop && wails build -s
+	@cd apps/desktop && wails build -s
 	@echo "Installing frontend dependencies..."
-	@cd desktop/frontend && pnpm install
+	@cd apps/desktop/frontend && pnpm install
 	@echo "Starting Wails dev server..."
 	@echo "  Backend:  LOG_LEVEL=$(LOG_LEVEL), LOG_FORMAT=$(LOG_FORMAT)"
 	@echo "  Frontend: VITE_LOG_LEVEL=$(VITE_LOG_LEVEL)"
 	@echo "To change logging, use: make dev LOG_LEVEL=INFO VITE_LOG_LEVEL=warn"
-	LOG_LEVEL=$(LOG_LEVEL) LOG_FORMAT=$(LOG_FORMAT) VITE_LOG_LEVEL=$(VITE_LOG_LEVEL) cd desktop && wails dev
+	LOG_LEVEL=$(LOG_LEVEL) LOG_FORMAT=$(LOG_FORMAT) VITE_LOG_LEVEL=$(VITE_LOG_LEVEL) cd apps/desktop && wails dev
 
 dev-debug:
 	@$(MAKE) dev LOG_LEVEL=DEBUG VITE_LOG_LEVEL=debug
@@ -47,30 +43,28 @@ dev-error:
 build:
 	@echo "Building Treefrog desktop app for current platform..."
 	@echo "Generating Wails bindings..."
-	@cd desktop && wails build -s
+	@cd apps/desktop && wails build -s
 	@echo "Building frontend..."
-	@cd desktop/frontend && pnpm install && pnpm build
+	@cd apps/desktop/frontend && pnpm install && pnpm build
 	@echo "Building desktop app..."
-	@cd desktop && wails build
-	@echo "Build complete: desktop/build/bin/"
+	@cd apps/desktop && wails build
+	@echo "Build complete: apps/desktop/build/bin/"
 
 build-all:
 	@echo "Building Treefrog desktop app for all platforms..."
 	@echo "Generating Wails bindings..."
-	@cd desktop && wails build -s
+	@cd apps/desktop && wails build -s
 	@echo "Building frontend..."
-	@cd desktop/frontend && pnpm install && pnpm build
+	@cd apps/desktop/frontend && pnpm install && pnpm build
 	@echo "Building for macOS (Intel)..."
-	@cd desktop && wails build -platform darwin/amd64
+	@cd apps/desktop && wails build -platform darwin/amd64
 	@echo "Building for macOS (Apple Silicon)..."
-	@cd desktop && wails build -platform darwin/arm64
+	@cd apps/desktop && wails build -platform darwin/arm64
 	@echo "Building for Windows..."
-	@cd desktop && wails build -platform windows/amd64
+	@cd apps/desktop && wails build -platform windows/amd64
 	@echo "Building for Linux..."
-	@cd desktop && wails build -platform linux/amd64
+	@cd apps/desktop && wails build -platform linux/amd64
 	@echo "All builds complete!"
-
-# ==================== Backend (LaTeX Compiler) ====================
 
 compiler:
 	@echo "Starting LaTeX compiler backend with Docker..."
@@ -85,75 +79,72 @@ logs:
 
 build-backend:
 	@echo "Building LaTeX compiler backend..."
-	@cd latex-compiler && go build -o server ./cmd/server
+	@cd apps/compiler && go build -o server ./cmd/server
 
-# ==================== Testing ====================
+build-cli:
+	@echo "Building local CLI..."
+	@cd apps/local-cli && go build -o latex-local ./cmd
 
 test: test-backend test-frontend
 	@echo "All tests completed!"
 
 test-backend:
 	@echo "Running Go backend tests..."
-	@cd latex-compiler && go test ./...
+	@cd apps/compiler && go test ./...
 
 test-backend-verbose:
 	@echo "Running Go backend tests (verbose)..."
-	@cd latex-compiler && go test ./... -v -race -coverprofile=coverage.out
+	@cd apps/compiler && go test ./... -v -race -coverprofile=coverage.out
 
 test-frontend:
 	@echo "Running frontend tests..."
-	@cd desktop/frontend && pnpm test
-
-# ==================== Code Quality ====================
+	@cd apps/desktop/frontend && pnpm test
 
 lint: lint-backend lint-frontend
 	@echo "Linting complete!"
 
 lint-backend:
 	@echo "Linting backend..."
-	@cd latex-compiler && golangci-lint run --timeout=5m
+	@cd apps/compiler && golangci-lint run --timeout=5m
 
 lint-frontend:
 	@echo "Linting frontend..."
-	@cd desktop/frontend && pnpm lint
+	@cd apps/desktop/frontend && pnpm lint
 
 fmt: fmt-backend fmt-frontend
 	@echo "Formatting complete!"
 
 fmt-backend:
 	@echo "Formatting backend code..."
-	@cd latex-compiler && go fmt ./...
+	@cd apps/compiler && go fmt ./...
+	@cd apps/desktop && go fmt ./...
 
 fmt-frontend:
 	@echo "Formatting frontend code..."
-	@cd desktop/frontend && pnpm format
+	@cd apps/desktop/frontend && pnpm format
 
 typecheck: typecheck-frontend
 	@echo "Type checking complete!"
 
 typecheck-frontend:
 	@echo "Type checking frontend..."
-	@cd desktop/frontend && pnpm typecheck
-
-# ==================== Website ====================
+	@cd apps/desktop/frontend && pnpm typecheck
 
 website-dev:
 	@echo "Starting website development server..."
-	@cd website && pnpm dev
+	@cd apps/website && pnpm dev
 
 website-build:
 	@echo "Building website..."
-	@cd website && pnpm build
+	@cd apps/website && pnpm build
 
 website-preview:
-	@cd website && pnpm preview
-
-# ==================== Diagnostics ====================
+	@cd apps/website && pnpm preview
 
 doctor:
 	@echo "Checking development environment..."
 	@echo "Checking Wails setup..."
-	@cd desktop && wails doctor
+	@cd apps/desktop && wails doctor
 	@echo ""
 	@echo "Checking Go setup..."
 	@go version
@@ -167,13 +158,12 @@ doctor:
 	@echo ""
 	@echo "Environment check complete!"
 
-# ==================== Cleanup ====================
-
 clean:
 	@echo "Cleaning build artifacts..."
-	@rm -rf desktop/build/bin/*
-	@rm -rf latex-compiler/server
-	@rm -rf latex-compiler/coverage.out
+	@rm -rf apps/desktop/build/bin/*
+	@rm -rf apps/compiler/server
+	@rm -rf apps/local-cli/latex-local
+	@rm -rf apps/compiler/coverage.out
 	@rm -rf **/dist/
 	@rm -rf **/node_modules/.cache/
 	@echo "Clean complete!"
@@ -181,7 +171,7 @@ clean:
 clean-all: clean
 	@echo "Removing all node_modules..."
 	@rm -rf node_modules
-	@rm -rf desktop/frontend/node_modules
-	@rm -rf website/node_modules
+	@rm -rf apps/desktop/frontend/node_modules
+	@rm -rf apps/website/node_modules
 	@rm -rf packages/*/node_modules
 	@echo "Deep clean complete!"
