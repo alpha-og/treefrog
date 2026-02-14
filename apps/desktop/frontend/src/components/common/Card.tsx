@@ -1,17 +1,15 @@
 import * as React from "react";
-import { motion } from "motion/react";
+import { motion, type HTMLMotionProps } from "motion/react";
 import { cn } from "@/lib/utils";
 import {
   cardHover,
   cardHoverGlow,
-  fadeInUp,
   tightStaggerContainer,
   tightStaggerItem,
-  ANIMATION_DURATIONS,
 } from "@/utils/animations";
 import { useAnimation, useReducedMotion } from "@/utils/animation-context";
 
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+interface CardProps extends Partial<HTMLMotionProps<"div">> {
   glow?: boolean;
   lift?: boolean;
   animated?: boolean;
@@ -72,7 +70,7 @@ Card.displayName = "Card";
 
 const CardHeader = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { animated?: boolean }
+  Partial<HTMLMotionProps<"div">> & { animated?: boolean }
 >(({ className, animated = true, ...props }, ref) => {
   const { animationsEnabled } = useAnimation();
   const prefersReducedMotion = useReducedMotion();
@@ -93,7 +91,7 @@ CardHeader.displayName = "CardHeader";
 
 const CardTitle = React.forwardRef<
   HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement> & { animated?: boolean }
+  Partial<HTMLMotionProps<"h3">> & { animated?: boolean }
 >(({ className, animated = true, ...props }, ref) => {
   const { animationsEnabled } = useAnimation();
   const prefersReducedMotion = useReducedMotion();
@@ -114,7 +112,7 @@ CardTitle.displayName = "CardTitle";
 
 const CardDescription = React.forwardRef<
   HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement> & { animated?: boolean }
+  Partial<HTMLMotionProps<"p">> & { animated?: boolean }
 >(({ className, animated = true, ...props }, ref) => {
   const { animationsEnabled } = useAnimation();
   const prefersReducedMotion = useReducedMotion();
@@ -135,7 +133,7 @@ CardDescription.displayName = "CardDescription";
 
 const CardContent = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { animated?: boolean }
+  Partial<HTMLMotionProps<"div">> & { animated?: boolean }
 >(({ className, animated = true, ...props }, ref) => {
   const { animationsEnabled } = useAnimation();
   const prefersReducedMotion = useReducedMotion();
@@ -156,7 +154,7 @@ CardContent.displayName = "CardContent";
 
 const CardFooter = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { animated?: boolean }
+  Partial<HTMLMotionProps<"div">> & { animated?: boolean }
 >(({ className, animated = true, ...props }, ref) => {
   const { animationsEnabled } = useAnimation();
   const prefersReducedMotion = useReducedMotion();

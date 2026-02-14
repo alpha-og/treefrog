@@ -3,18 +3,12 @@ import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { spinner } from "@/utils/animations";
 
-interface LoadingSpinnerProps extends React.HTMLAttributes<HTMLDivElement> {
-  /** Size of the spinner */
+interface LoadingSpinnerProps {
   size?: "xs" | "sm" | "md" | "lg";
-  
-  /** Color variant */
   variant?: "primary" | "secondary" | "destructive" | "muted" | "inherit";
-  
-  /** Show label text next to spinner */
   label?: string;
-  
-  /** Whether spinner is inline or centered */
   inline?: boolean;
+  className?: string;
 }
 
 const sizeClasses = {
@@ -40,11 +34,9 @@ const LoadingSpinner = React.forwardRef<HTMLDivElement, LoadingSpinnerProps>(
       label,
       inline = true,
       className,
-      ...props
     },
     ref
   ) => {
-    // If there's a label, wrap in flex container
     if (label) {
       return (
         <div
@@ -54,7 +46,6 @@ const LoadingSpinner = React.forwardRef<HTMLDivElement, LoadingSpinnerProps>(
             !inline && "justify-center",
             className
           )}
-          {...props}
         >
           <motion.div
             className={cn(
@@ -73,7 +64,6 @@ const LoadingSpinner = React.forwardRef<HTMLDivElement, LoadingSpinnerProps>(
       );
     }
 
-    // Without label, just return the spinner element
     return (
       <motion.div
         ref={ref}
@@ -86,7 +76,6 @@ const LoadingSpinner = React.forwardRef<HTMLDivElement, LoadingSpinnerProps>(
         )}
         animate="animate"
         variants={spinner}
-        {...props}
       />
     );
   }

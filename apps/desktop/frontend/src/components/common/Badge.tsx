@@ -1,8 +1,8 @@
 import * as React from "react";
-import { motion } from "motion/react";
+import { motion, type HTMLMotionProps, type Variants } from "motion/react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { scaleIn, subtlePulse, ANIMATION_DURATIONS } from "@/utils/animations";
+import { ANIMATION_DURATIONS } from "@/utils/animations";
 import { useAnimation, useReducedMotion } from "@/utils/animation-context";
 
 const badgeVariants = cva(
@@ -26,7 +26,7 @@ const badgeVariants = cva(
 );
 
 export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends Partial<HTMLMotionProps<"div">>,
     VariantProps<typeof badgeVariants> {
   pulse?: boolean;
   animated?: boolean;
@@ -50,14 +50,14 @@ const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
     const shouldAnimate = animated && animationsEnabled && !prefersReducedMotion;
 
     // Combine entrance animation with pulse for better effect
-    const badgeMotionVariants = {
+    const badgeMotionVariants: Variants = {
       initial: { opacity: 0, scale: 0.8 },
       animate: {
         opacity: 1,
         scale: 1,
         transition: {
           duration: ANIMATION_DURATIONS.normal,
-          ease: [0.33, 1, 0.68, 1],
+          ease: [0.33, 1, 0.68, 1] as const,
         },
       },
     };
@@ -68,7 +68,11 @@ const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
         className={cn(badgeVariants({ variant }), className)}
         initial={shouldAnimate && animateOnMount ? "initial" : undefined}
         animate={
-          shouldAnimate && (animateOnMount || pulse) ? "animate" : undefined
+          shouldAnimate && pulse
+            ? { scale: [1, 1.04, 1] }
+            : shouldAnimate && animateOnMount
+            ? "animate"
+            : undefined
         }
         whileHover={
           shouldAnimate && !pulse
@@ -90,7 +94,6 @@ const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
               }
             : undefined
         }
-        {...(pulse && shouldAnimate ? { animate: { scale: [1, 1.04, 1] } } : {})}
         {...props}
       />
     );

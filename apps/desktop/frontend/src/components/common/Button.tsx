@@ -1,11 +1,8 @@
 import * as React from "react";
-import { motion } from "motion/react";
+import { motion, type HTMLMotionProps, type Variants } from "motion/react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import {
-  fadeIn,
-  ANIMATION_DURATIONS,
-} from "@/utils/animations";
+import { ANIMATION_DURATIONS } from "@/utils/animations";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { useAnimation, useReducedMotion } from "@/utils/animation-context";
 
@@ -36,7 +33,7 @@ const buttonVariants = cva(
 );
 
 export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+  extends Partial<HTMLMotionProps<"button">>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   loading?: boolean;
@@ -65,7 +62,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const shouldAnimate = !animationDisabled && animationsEnabled;
 
     // Motion animation variants for button states
-    const motionVariants = {
+    const motionVariants: Variants = {
       rest: {
         scale: 1,
         boxShadow: "0 4px 12px -4px oklch(0 0 0 / 0.1)",
@@ -75,14 +72,14 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         boxShadow: "0 8px 20px -6px oklch(0 0 0 / 0.15)",
         transition: {
           duration: ANIMATION_DURATIONS.normal,
-          ease: [0.23, 1, 0.32, 1],
+          ease: [0.23, 1, 0.32, 1] as const,
         },
       },
       press: {
         scale: 0.98,
         transition: {
           duration: ANIMATION_DURATIONS.fast,
-          ease: [0.23, 1, 0.32, 1],
+          ease: [0.23, 1, 0.32, 1] as const,
         },
       },
       disabled: {
