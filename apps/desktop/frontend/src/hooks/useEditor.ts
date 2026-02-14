@@ -69,7 +69,7 @@ export function useEditor(
   theme: "light" | "dark",
   fileContent: string,
   isBinary: boolean,
-  currentFile: string,
+  _currentFile: string,
   projectRoot: string,
   onSave: (val: string) => void,
   options?: UseEditorOptions
