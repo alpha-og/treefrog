@@ -14,6 +14,7 @@ make dev-info                     # INFO level logging
 make build                        # Build for current platform
 make build-all                    # Build for all platforms (macOS, Linux, Windows)
 make build-backend                # Build Go backend binary
+make build-cli                    # Build local CLI
 
 # Docker
 make compiler                     # Start Docker compiler (with Redis, Postgres)
@@ -21,11 +22,14 @@ make stop                         # Stop Docker services
 make logs                         # View Docker logs
 
 # Frontend only
-cd desktop/frontend && pnpm dev   # Frontend dev server
-cd desktop/frontend && pnpm build # Production build
+cd apps/desktop/frontend && pnpm dev   # Frontend dev server
+cd apps/desktop/frontend && pnpm build # Production build
 
 # Backend only
-cd latex-compiler && go build -o server ./cmd/server
+cd apps/compiler && go build -o server ./cmd/server
+
+# CLI
+cd apps/local-cli && go build -o latex-local ./cmd
 
 # Website
 make website-dev                  # Start website dev server
@@ -46,11 +50,11 @@ make test                         # Run all tests
 # Go tests
 make test-backend                 # Run Go tests
 make test-backend-verbose         # Verbose Go tests with coverage
-cd latex-compiler && go test ./pkg/build -run TestCreateBuild  # Single test
+cd apps/compiler && go test ./internal/build -run TestCreateBuild  # Single test
 
 # Frontend tests
 make test-frontend                # Run frontend tests (placeholder)
-cd desktop/frontend && pnpm test  # Direct frontend test
+cd apps/desktop/frontend && pnpm test  # Direct frontend test
 ```
 
 ## Linting and Formatting
@@ -79,10 +83,11 @@ make typecheck                    # Type check frontend
 - Import order: React → External libs → Internal aliases → Relative imports
 - Zustand for state management
 - React Query/Tanstack Router for data/routing
+- React 19 for desktop and website
 
 ### Go
 - Standard Go formatting (gofmt)
-- Package structure: `pkg/` for libraries, `cmd/` for binaries
+- Package structure: `internal/` for app-private code, `cmd/` for binaries
 - Handler functions return `http.HandlerFunc`
 - Errors wrapped with context: `fmt.Errorf("context: %w", err)`
 - HTTP status codes: `http.StatusBadRequest`, not 400
@@ -101,30 +106,83 @@ make typecheck                    # Type check frontend
 ## Monorepo Structure
 
 ```
-packages/               # Shared packages
-  types/               # API types
-  services/            # HTTP clients
-  hooks/               # React hooks
-  ui/                  # Shared components
+apps/
+  compiler/            # LaTeX compiler server (Go)
+    cmd/server/        # HTTP server entry point
+    internal/          # Private packages (auth, billing, build, etc.)
+    migrations/        # SQL migrations
+    Dockerfile         # Server container
 
-desktop/frontend/      # Desktop app (Wails + React)
-latex-compiler/        # Go backend
-website/               # Marketing site
+  local-cli/           # Standalone local LaTeX compiler CLI
+    cmd/main.go        # CLI entry point
+
+  desktop/             # Wails desktop application
+    frontend/          # React frontend (React 19)
+    *.go               # Go backend (app.go, bindings.go, etc.)
+    wails.json         # Wails configuration
+
+  website/             # Marketing website (React 19)
+
+packages/
+  types/               # @treefrog/types - Shared TypeScript types + constants
+  services/            # @treefrog/services - API clients
+  supabase/            # @treefrog/supabase - Database client + types
+  ui/                  # @treefrog/ui - Shared React components
+  eslint-config/       # @treefrog/eslint-config - Shared ESLint config
+
+  go/                  # Shared Go packages
+    config/            # Environment variable helpers
+    http/              # HTTP client factory, JSON helpers
+    logging/           # Shared logger initialization
+    security/          # Path traversal validation
+    signer/            # URL signing utility
+    synctex/           # SyncTeX parser
+    validation/        # UUID validation
 ```
 
 Use `workspace:*` for internal dependencies. Run `pnpm install` from root.
+
+## Go Workspace
+
+The project uses Go workspaces (`go.work`) to manage multiple modules:
+
+```go
+go 1.23
+
+use (
+    ./apps/compiler
+    ./apps/desktop
+    ./apps/local-cli
+    ./packages/go/config
+    ./packages/go/http
+    ./packages/go/logging
+    ./packages/go/security
+    ./packages/go/signer
+    ./packages/go/synctex
+    ./packages/go/validation
+)
+```
+
+Shared Go packages in `packages/go/` can be imported using their module paths:
+- `github.com/alpha-og/treefrog/packages/go/config`
+- `github.com/alpha-og/treefrog/packages/go/http`
+- `github.com/alpha-og/treefrog/packages/go/logging`
+- `github.com/alpha-og/treefrog/packages/go/security`
+- `github.com/alpha-og/treefrog/packages/go/signer`
+- `github.com/alpha-og/treefrog/packages/go/synctex`
+- `github.com/alpha-og/treefrog/packages/go/validation`
 
 ## Environment Variables
 
 Each component has its own `.env.local` file:
 
-### Website (`website/.env.local`)
+### Website (`apps/website/.env.local`)
 - `VITE_SUPABASE_URL` - Supabase project URL
 - `VITE_SUPABASE_PUBLISHABLE_KEY` - Supabase anon/public key
 - `VITE_API_URL` - Backend API URL
 - `VITE_WEBSITE_URL` - Website URL (for redirects)
 
-### Backend (`latex-compiler/.env.local`)
+### Backend (`apps/compiler/.env.local`)
 - `DATABASE_URL` - PostgreSQL connection string (SECRET)
 - `SUPABASE_URL` - Supabase project URL (for JWKS token verification)
 - `SUPABASE_SECRET_KEY` - Supabase service_role key for admin ops (SECRET)
@@ -132,7 +190,7 @@ Each component has its own `.env.local` file:
 - `REDIS_URL` - Redis for rate limiting
 - `COMPILER_*` - Compiler settings
 
-### Desktop (`desktop/frontend/.env.local`)
+### Desktop (`apps/desktop/frontend/.env.local`)
 - `VITE_SUPABASE_URL` - Supabase project URL
 - `VITE_SUPABASE_PUBLISHABLE_KEY` - Supabase anon/public key
 - `VITE_API_URL` - Backend API URL
@@ -148,3 +206,4 @@ Copy `.env.example` to `.env.local` in each directory and fill in values.
 - Build artifacts expire after 24 hours
 - Frontend uses Tailwind 4 with oklch colors
 - No breaking changes to existing stores (appStore, fileStore)
+- Desktop and website both use React 19 for shared UI components
