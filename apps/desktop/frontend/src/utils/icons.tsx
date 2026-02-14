@@ -127,7 +127,7 @@ export function getFileIcon(name: string, isDir: boolean): React.ReactNode {
   // Check special files first
   const specialConfig = specialFileMap[name];
   if (specialConfig) {
-    return React.cloneElement(specialConfig.icon as React.ReactElement, {
+    return React.cloneElement(specialConfig.icon as React.ReactElement<{ className?: string }>, {
       className: specialConfig.color,
     });
   }
@@ -137,7 +137,7 @@ export function getFileIcon(name: string, isDir: boolean): React.ReactNode {
   const config = fileTypeMap[ext];
 
   if (config) {
-    return React.cloneElement(config.icon as React.ReactElement, {
+    return React.cloneElement(config.icon as React.ReactElement<{ className?: string }>, {
       className: config.color,
     });
   }
