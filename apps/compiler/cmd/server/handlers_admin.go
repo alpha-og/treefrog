@@ -197,9 +197,24 @@ func GetAdminStatsHandler() http.HandlerFunc {
 			}
 		}
 
-		allBuildIDs, err := buildStore.GetAllIDs()
+		totalBuilds, err := buildStore.CountAll()
 		if err == nil {
-			stats.TotalBuilds = int64(len(allBuildIDs))
+			stats.TotalBuilds = totalBuilds
+		}
+
+		monthlyBuilds, err := buildStore.CountAllMonthly()
+		if err == nil {
+			stats.MonthlyBuilds = monthlyBuilds
+		}
+
+		activeBuilds, err := buildStore.CountAllActive()
+		if err == nil {
+			stats.ActiveBuilds = activeBuilds
+		}
+
+		totalStorage, err := buildStore.GetTotalStorageAll()
+		if err == nil {
+			stats.TotalStorageGB = float64(totalStorage) / (1024 * 1024 * 1024)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
