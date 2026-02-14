@@ -13,6 +13,14 @@ import (
 
 var log = logrus.WithField("component", "rate/limiter")
 
+var incrExpireScript = redis.NewScript(`
+	local count = redis.call('INCR', KEYS[1])
+	if count == 1 then
+		redis.call('EXPIRE', KEYS[1], ARGV[1])
+	end
+	return count
+`)
+
 // Limiter provides rate limiting using Redis as a backend
 type Limiter struct {
 	client *redis.Client
@@ -120,15 +128,11 @@ func (l *Limiter) Middleware(action string) func(http.Handler) http.Handler {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()
 
-			count, err := l.client.Incr(ctx, key).Result()
+			count, err := incrExpireScript.Run(ctx, l.client, []string{key}, int(limit.Window.Seconds())).Int64()
 			if err != nil {
 				log.WithError(err).Warn("Redis error during rate limiting, allowing request")
 				next.ServeHTTP(w, r)
 				return
-			}
-
-			if count == 1 {
-				l.client.Expire(ctx, key, limit.Window)
 			}
 
 			if count > int64(limit.Requests) {
@@ -175,13 +179,9 @@ func (l *Limiter) Allow(userID, action, tier string) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	count, err := l.client.Incr(ctx, key).Result()
+	count, err := incrExpireScript.Run(ctx, l.client, []string{key}, int(limit.Window.Seconds())).Int64()
 	if err != nil {
 		return false, err
-	}
-
-	if count == 1 {
-		l.client.Expire(ctx, key, limit.Window)
 	}
 
 	return count <= int64(limit.Requests), nil
@@ -225,14 +225,5 @@ func (l *Limiter) GetRemaining(userID, action, tier string) (int, error) {
 
 // Increment increments a counter for the given key and returns the new value
 func (l *Limiter) Increment(ctx context.Context, key string, ttl time.Duration) (int64, error) {
-	count, err := l.client.Incr(ctx, key).Result()
-	if err != nil {
-		return 0, err
-	}
-
-	if count == 1 {
-		l.client.Expire(ctx, key, ttl)
-	}
-
-	return count, nil
+	return incrExpireScript.Run(ctx, l.client, []string{key}, int(ttl.Seconds())).Int64()
 }

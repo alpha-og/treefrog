@@ -3,8 +3,8 @@ package cleanup
 import (
 	"time"
 
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/build"
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/user"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/build"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/user"
 	"github.com/sirupsen/logrus"
 )
 
