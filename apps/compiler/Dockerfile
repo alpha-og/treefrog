@@ -5,7 +5,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 # Copy source code
 COPY cmd/server/ ./cmd/server/
-COPY pkg/ ./pkg/
+COPY internal/ ./internal/
 # Build the binary with security flags and strip debug symbols
 RUN CGO_ENABLED=0 go build -o /latex-server -ldflags="-s -w" ./cmd/server
 
