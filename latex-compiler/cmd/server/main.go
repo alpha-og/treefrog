@@ -152,6 +152,8 @@ func main() {
 		r.With(rateLimiter.Middleware("default")).Get("/build/{id}/pdf/url", GetSignedPDFURLHandler())
 		r.With(rateLimiter.Middleware("download")).Get("/build/{id}/pdf", ServePDFHandler())
 		r.With(rateLimiter.Middleware("download")).Get("/build/{id}/synctex", ServeSyncTeXHandler())
+		r.With(rateLimiter.Middleware("default")).Get("/build/{id}/synctex/view", SyncTeXViewHandler())
+		r.With(rateLimiter.Middleware("default")).Get("/build/{id}/synctex/edit", SyncTeXEditHandler())
 
 		r.Post("/subscription/create", CreateSubscriptionHandler())
 		r.Post("/subscription/cancel", CancelSubscriptionHandler())
