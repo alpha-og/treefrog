@@ -1,25 +1,21 @@
-import { useState } from "react";
 import {
   viewSync,
-  editSync
+  editSync,
+  ViewResult,
+  EditResult
 } from "../services/synctexService";
 
-export function useSyncTeX() {
+export function useSyncTeX(buildId: string | null = null) {
 
-  const [target, setTarget] = useState<any>(null);
-
-  async function fromCursor(file: string, line: number, col: number) {
-    const data = await viewSync(file, line, col);
-    setTarget(data);
-    return data;
+  async function fromCursor(file: string, line: number, col: number = 0): Promise<ViewResult | null> {
+    return viewSync(buildId, file, line, col);
   }
 
-  async function fromClick(page: number, x: number, y: number) {
-    return editSync(page, x, y);
+  async function fromClick(page: number, x: number, y: number): Promise<EditResult | null> {
+    return editSync(buildId, page, x, y);
   }
 
   return {
-    target,
     fromCursor,
     fromClick
   };
