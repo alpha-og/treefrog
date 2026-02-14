@@ -124,15 +124,24 @@ type LimitCheck struct {
 func (s *LimitService) GetUserUsage(userID string) (*UsageStats, error) {
 	userRec, err := s.userStore.GetByID(userID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
 	tier := userRec.Tier
 	config := billing.Plans[tier]
 
-	monthlyCount, _ := s.buildStore.CountMonthly(userID)
-	concurrentCount, _ := s.buildStore.CountActive(userID)
-	totalStorage, _ := s.buildStore.GetTotalStorage(userID)
+	monthlyCount, err := s.buildStore.CountMonthly(userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count monthly builds: %w", err)
+	}
+	concurrentCount, err := s.buildStore.CountActive(userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count active builds: %w", err)
+	}
+	totalStorage, err := s.buildStore.GetTotalStorage(userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get total storage: %w", err)
+	}
 
 	var monthlyLimit int
 	if config.MonthlyBuilds == -1 {
