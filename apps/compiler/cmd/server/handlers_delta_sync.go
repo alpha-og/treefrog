@@ -9,23 +9,19 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/auth"
-	"github.com/alpha-og/treefrog-latex-compiler/pkg/build"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/auth"
+	"github.com/alpha-og/treefrog/apps/compiler/internal/build"
+	httputil "github.com/alpha-og/treefrog/packages/go/http"
+	"github.com/alpha-og/treefrog/packages/go/security"
+	"github.com/alpha-og/treefrog/packages/go/validation"
 	"github.com/go-chi/chi/v5"
 	"github.com/sirupsen/logrus"
 )
 
 var deltaLog = logrus.WithField("component", "handlers/delta-sync")
-
-var deltaUUIDRegex = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
-
-func validateDeltaUserID(userID string) bool {
-	return deltaUUIDRegex.MatchString(strings.ToLower(userID))
-}
 
 // DeltaSyncInitRequest initializes delta-sync for a build
 type DeltaSyncInitRequest struct {
@@ -69,7 +65,7 @@ func InitDeltaSyncHandler() http.HandlerFunc {
 			return
 		}
 
-		if !validateDeltaUserID(userID) {
+		if !validation.ValidateUUID(userID) {
 			deltaLog.WithField("user_id", userID).Warn("Invalid user ID format")
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -86,7 +82,7 @@ func InitDeltaSyncHandler() http.HandlerFunc {
 			return
 		}
 
-		if hasPathTraversal(req.MainFile) {
+		if security.HasPathTraversal(req.MainFile) {
 			http.Error(w, "Invalid main file path", http.StatusBadRequest)
 			return
 		}
@@ -121,7 +117,7 @@ func InitDeltaSyncHandler() http.HandlerFunc {
 		var filesToUpload []string
 
 		for clientPath, clientChecksum := range req.FileChecksums {
-			if hasPathTraversal(clientPath) {
+			if security.HasPathTraversal(clientPath) {
 				continue
 			}
 
@@ -189,7 +185,7 @@ func UploadDeltaSyncFilesHandler() http.HandlerFunc {
 			return
 		}
 
-		if !validateDeltaUserID(userID) {
+		if !validation.ValidateUUID(userID) {
 			deltaLog.WithField("user_id", userID).Warn("Invalid user ID format")
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -243,7 +239,7 @@ func UploadDeltaSyncFilesHandler() http.HandlerFunc {
 
 			// Preserve directory structure from filename
 			relPath := fileHeader.Filename
-			if hasPathTraversal(relPath) {
+			if security.HasPathTraversal(relPath) {
 				deltaLog.WithField("path", relPath).Warn("Skipping file with path traversal")
 				continue
 			}
@@ -307,12 +303,19 @@ func UploadDeltaSyncFilesHandler() http.HandlerFunc {
 		// Copy cached files from previous build
 		if buildContext.ExistingDir != "" && len(metadata.CachedFiles) > 0 {
 			for relPath, expectedChecksum := range metadata.CachedFiles {
-				if hasPathTraversal(relPath) {
+				if security.HasPathTraversal(relPath) {
 					continue
 				}
 
 				srcPath := filepath.Join(buildContext.ExistingDir, relPath)
 				dstPath := filepath.Join(buildDir, relPath)
+
+				srcPath = filepath.Clean(srcPath)
+				existingDirClean := filepath.Clean(buildContext.ExistingDir)
+				if !strings.HasPrefix(srcPath, existingDirClean+string(os.PathSeparator)) && srcPath != existingDirClean {
+					deltaLog.WithField("path", relPath).Warn("Skipping file with path traversal outside existing dir")
+					continue
+				}
 
 				if data, err := os.ReadFile(srcPath); err == nil {
 					actualChecksum := computeFileChecksum(data)
@@ -417,11 +420,4 @@ func sanitizeProjectID(id string) string {
 		}
 		return '_'
 	}, id)
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
