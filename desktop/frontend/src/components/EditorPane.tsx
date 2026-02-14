@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { FileText } from "lucide-react";
 import { motion } from "motion/react";
 import { useEditor } from "@/hooks/useEditor";
@@ -10,19 +10,51 @@ interface EditorPaneProps {
   currentFile: string;
   projectRoot: string;
   onSave: (content: string) => Promise<void>;
+  onForwardSearch?: (line: number, col: number) => void;
+  onEditorReady?: (revealLine: (line: number, col?: number) => void) => void;
+  highlightedLine?: number | null;
 }
 
-export function EditorPane({ theme, fileContent, isBinary, currentFile, projectRoot, onSave }: EditorPaneProps) {
+export function EditorPane({ 
+  theme, 
+  fileContent, 
+  isBinary, 
+  currentFile, 
+  projectRoot, 
+  onSave, 
+  onForwardSearch,
+  onEditorReady,
+  highlightedLine 
+}: EditorPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const hasFile = currentFile && currentFile.length > 0;
 
-  // Always initialize editor, but hide it when no file or binary
-  useEditor(containerRef, theme, fileContent, isBinary, currentFile, projectRoot, onSave);
+  const { revealLine, editorRef } = useEditor(containerRef, theme, fileContent, isBinary, currentFile, projectRoot, onSave, {
+    onForwardSearch
+  });
+
+  useEffect(() => {
+    if (onEditorReady && revealLine) {
+      onEditorReady(revealLine);
+    }
+  }, [onEditorReady, revealLine]);
+
+  useEffect(() => {
+    if (highlightedLine && highlightedLine > 0 && editorRef.current) {
+      editorRef.current.revealLineInCenter(highlightedLine);
+      editorRef.current.setSelection({
+        startLineNumber: highlightedLine,
+        startColumn: 1,
+        endLineNumber: highlightedLine,
+        endColumn: 1000,
+      });
+    }
+  }, [highlightedLine, editorRef]);
 
   const showEditor = hasFile && !isBinary;
 
-   return (
-     <section className="editor flex-1 h-full flex flex-col bg-card overflow-hidden">
+  return (
+    <section className="editor flex-1 h-full flex flex-col bg-card overflow-hidden">
       <div className="border-b border-border px-4 py-3 font-semibold text-sm shrink-0">
         {hasFile ? currentFile.split("/").pop() : "Editor"}
       </div>
