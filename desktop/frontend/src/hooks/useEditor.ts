@@ -1,16 +1,13 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import * as monaco from "monaco-editor";
 import { setupLatexLanguage } from "../utils/latex";
 
-// Initialize LaTeX support once
 let latexSetupDone = false;
 let customThemesRegistered = false;
 
-// Register custom themes that match the application color scheme
 function registerCustomThemes() {
   if (customThemesRegistered) return;
   
-  // Light theme
   monaco.editor.defineTheme("treefrog-light", {
     base: "vs",
     inherit: true,
@@ -35,7 +32,6 @@ function registerCustomThemes() {
     },
   });
 
-  // Dark theme - matching globals.css dark mode colors
   monaco.editor.defineTheme("treefrog-dark", {
     base: "vs-dark",
     inherit: true,
@@ -64,6 +60,10 @@ function registerCustomThemes() {
   customThemesRegistered = true;
 }
 
+interface UseEditorOptions {
+  onForwardSearch?: (line: number, col: number) => void;
+}
+
 export function useEditor(
   containerRef: React.RefObject<HTMLDivElement>,
   theme: "light" | "dark",
@@ -71,47 +71,47 @@ export function useEditor(
   isBinary: boolean,
   currentFile: string,
   projectRoot: string,
-  onSave: (val: string) => void
+  onSave: (val: string) => void,
+  options?: UseEditorOptions
 ) {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const saveTimer = useRef<number | null>(null);
   const ignoreChange = useRef(false);
   const lastProjectRef = useRef<string>("");
   const onSaveRef = useRef(onSave);
+  const onForwardSearchRef = useRef(options?.onForwardSearch);
+  const editorInstanceRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
 
-  // Keep onSave ref updated
   useEffect(() => {
     onSaveRef.current = onSave;
   }, [onSave]);
 
-  // Get Monaco theme based on system theme
+  useEffect(() => {
+    onForwardSearchRef.current = options?.onForwardSearch;
+  }, [options?.onForwardSearch]);
+
   const getMonacoTheme = (themeMode: "light" | "dark") => {
     return themeMode === "dark" ? "treefrog-dark" : "treefrog-light";
   };
 
-  // Detect project changes and dispose editor
   useEffect(() => {
     if (lastProjectRef.current && projectRoot !== lastProjectRef.current) {
-      // Project changed, dispose editor and reset content
       if (editorRef.current) {
         editorRef.current.dispose();
         editorRef.current = null;
+        editorInstanceRef.current = null;
       }
     }
     lastProjectRef.current = projectRoot;
   }, [projectRoot]);
 
-   // Create editor on mount or when project changes
   useEffect(() => {
     if (!containerRef.current || isBinary) return;
 
-    // Don't create if editor already exists
     if (editorRef.current) return;
 
-    // Register custom themes on first use
     registerCustomThemes();
 
-    // Setup LaTeX support once
     if (!latexSetupDone) {
       setupLatexLanguage();
       latexSetupDone = true;
@@ -127,8 +127,8 @@ export function useEditor(
       fontSize: 14,
       fontFamily: "IBM Plex Mono, monospace",
     });
+    editorInstanceRef.current = editorRef.current;
 
-    // Handle content changes
     editorRef.current.onDidChangeModelContent(() => {
       if (ignoreChange.current) return;
 
@@ -139,7 +139,6 @@ export function useEditor(
       }, 300);
     });
 
-    // Keyboard shortcuts
     editorRef.current.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
       onSaveRef.current(editorRef.current?.getValue() || "");
     });
@@ -151,7 +150,22 @@ export function useEditor(
       }
     );
 
-    // Resize observer
+    editorRef.current.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyJ,
+      () => {
+        const position = editorRef.current?.getPosition();
+        if (position && onForwardSearchRef.current) {
+          onForwardSearchRef.current(position.lineNumber, position.column);
+        }
+      }
+    );
+
+    editorRef.current.onMouseDown((e) => {
+      if ((e.event.ctrlKey || e.event.metaKey) && e.target.position && onForwardSearchRef.current) {
+        onForwardSearchRef.current(e.target.position.lineNumber, e.target.position.column);
+      }
+    });
+
     const resizeObserver = new ResizeObserver(() => {
       editorRef.current?.layout();
     });
@@ -165,14 +179,12 @@ export function useEditor(
     };
   }, [isBinary, theme, projectRoot]);
 
-  // Update theme
   useEffect(() => {
     if (editorRef.current) {
       monaco.editor.setTheme(getMonacoTheme(theme));
     }
   }, [theme]);
 
-  // Update content when file changes
   useEffect(() => {
     if (editorRef.current && !isBinary) {
       ignoreChange.current = true;
@@ -184,6 +196,13 @@ export function useEditor(
     }
   }, [fileContent, isBinary]);
 
-  return editorRef;
+  const revealLine = useCallback((line: number, col: number = 1) => {
+    if (!editorRef.current) return;
+    editorRef.current.revealLineInCenter(line);
+    editorRef.current.setPosition({ lineNumber: line, column: col });
+    editorRef.current.focus();
+  }, []);
+
+  return { editorRef: editorInstanceRef, revealLine };
 }
 
