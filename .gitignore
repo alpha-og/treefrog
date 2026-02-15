@@ -12,7 +12,8 @@ apps/desktop/treefrog
 apps/desktop/*.app/
 apps/desktop/*.exe/
 apps/desktop/*.dmg
-apps/compiler/server
+apps/remote-latex-compiler/server
+apps/local-latex-compiler/server
 apps/local-cli/latex-local
 
 # TypeScript build artifacts in packages
