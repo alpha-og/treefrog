@@ -96,34 +96,16 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
-      - name: Generate Wails bindings
-        run: |
-          cd apps/desktop
-          BUILD_FLAGS=""
-          if [[ "$DISTRO" == "24.04" && "${{ runner.os }}" == "Linux" ]]; then
-            BUILD_FLAGS="-tags webkit2_41"
-          fi
-          wails build -s $BUILD_FLAGS
-        shell: bash
-
-      - name: Install frontend dependencies
-        run: |
-          cd apps/desktop/frontend
-          pnpm install --frozen-lockfile
-
-      - name: Build frontend
-        run: |
-          cd apps/desktop/frontend
-          pnpm build
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Build Treefrog for ${{ matrix.platform }}
         run: |
-          cd apps/desktop
           BUILD_FLAGS=""
           if [[ "$DISTRO" == "24.04" && "${{ runner.os }}" == "Linux" ]]; then
-            BUILD_FLAGS="-tags webkit2_41"
+            BUILD_FLAGS="--platform webkit2_41"
           fi
-          wails build -platform ${{ matrix.platform }} $BUILD_FLAGS
+          pnpm build --platform ${{ matrix.platform }} $BUILD_FLAGS
         shell: bash
 
       - name: Create macOS DMG (Universal)
