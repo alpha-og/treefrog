@@ -1,5 +1,6 @@
 .PHONY: dev dev-debug dev-info dev-warn dev-error build build-all build-backend \
         compiler compiler-dev compiler-prod stop logs \
+        local-compiler local-compiler-stop \
         test test-backend test-frontend test-backend-verbose \
         lint lint-backend lint-frontend \
         fmt fmt-backend fmt-frontend \
@@ -67,29 +68,37 @@ build-all:
 	@echo "All builds complete!"
 
 compiler:
-	@echo "Starting LaTeX compiler backend with Docker..."
-	cd apps/compiler && docker compose up --build -d
+	@echo "Starting remote LaTeX compiler backend with Docker..."
+	cd apps/remote-latex-compiler && docker compose up --build -d
 
 compiler-dev:
-	@echo "Starting LaTeX compiler in development mode..."
+	@echo "Starting remote LaTeX compiler in development mode..."
 	@echo "Using .env.development"
-	cd apps/compiler && docker compose --env-file .env.development up --build -d
+	cd apps/remote-latex-compiler && docker compose --env-file .env.development up --build -d
 
 compiler-prod:
-	@echo "Starting LaTeX compiler in production mode..."
+	@echo "Starting remote LaTeX compiler in production mode..."
 	@echo "Using .env.production"
-	cd apps/compiler && docker compose --env-file .env.production up --build -d
+	cd apps/remote-latex-compiler && docker compose --env-file .env.production up --build -d
 
 stop:
 	@echo "Stopping services..."
-	cd apps/compiler && docker compose down
+	cd apps/remote-latex-compiler && docker compose down
 
 logs:
-	cd apps/compiler && docker compose logs -f latex-renderer
+	cd apps/remote-latex-compiler && docker compose logs -f remote-latex-compiler
+
+local-compiler:
+	@echo "Starting local LaTeX compiler with Docker..."
+	cd apps/local-latex-compiler && docker compose up --build -d
+
+local-compiler-stop:
+	@echo "Stopping local LaTeX compiler..."
+	cd apps/local-latex-compiler && docker compose down
 
 build-backend:
-	@echo "Building LaTeX compiler backend..."
-	@cd apps/compiler && go build -o server ./cmd/server
+	@echo "Building remote LaTeX compiler backend..."
+	@cd apps/remote-latex-compiler && go build -o server ./cmd/server
 
 build-cli:
 	@echo "Building local CLI..."
@@ -100,11 +109,11 @@ test: test-backend test-frontend
 
 test-backend:
 	@echo "Running Go backend tests..."
-	@cd apps/compiler && go test ./...
+	@cd apps/remote-latex-compiler && go test ./...
 
 test-backend-verbose:
 	@echo "Running Go backend tests (verbose)..."
-	@cd apps/compiler && go test ./... -v -race -coverprofile=coverage.out
+	@cd apps/remote-latex-compiler && go test ./... -v -race -coverprofile=coverage.out
 
 test-frontend:
 	@echo "Running frontend tests..."
@@ -115,7 +124,7 @@ lint: lint-backend lint-frontend
 
 lint-backend:
 	@echo "Linting backend..."
-	@cd apps/compiler && golangci-lint run --timeout=5m
+	@cd apps/remote-latex-compiler && golangci-lint run --timeout=5m
 
 lint-frontend:
 	@echo "Linting frontend..."
@@ -126,7 +135,7 @@ fmt: fmt-backend fmt-frontend
 
 fmt-backend:
 	@echo "Formatting backend code..."
-	@cd apps/compiler && go fmt ./...
+	@cd apps/remote-latex-compiler && go fmt ./...
 	@cd apps/desktop && go fmt ./...
 
 fmt-frontend:
@@ -171,9 +180,10 @@ doctor:
 clean:
 	@echo "Cleaning build artifacts..."
 	@rm -rf apps/desktop/build/bin/*
-	@rm -rf apps/compiler/server
+	@rm -rf apps/remote-latex-compiler/server
+	@rm -rf apps/local-latex-compiler/server
 	@rm -rf apps/local-cli/latex-local
-	@rm -rf apps/compiler/coverage.out
+	@rm -rf apps/remote-latex-compiler/coverage.out
 	@rm -rf **/dist/
 	@rm -rf **/node_modules/.cache/
 	@echo "Clean complete!"
@@ -187,27 +197,27 @@ clean-all: clean
 	@echo "Deep clean complete!"
 
 env-dev:
-	@if [ ! -f apps/compiler/.env.development ]; then \
-		echo "Error: apps/compiler/.env.development not found"; \
+	@if [ ! -f apps/remote-latex-compiler/.env.development ]; then \
+		echo "Error: apps/remote-latex-compiler/.env.development not found"; \
 		exit 1; \
 	fi
 	@echo "Copying .env.development to .env.local..."
-	@cp apps/compiler/.env.development apps/compiler/.env.local
+	@cp apps/remote-latex-compiler/.env.development apps/remote-latex-compiler/.env.local
 	@echo "Development environment configured!"
-	@echo "Edit apps/compiler/.env.local with your actual values."
+	@echo "Edit apps/remote-latex-compiler/.env.local with your actual values."
 
 env-prod:
-	@if [ ! -f apps/compiler/.env.production ]; then \
-		echo "Error: apps/compiler/.env.production not found"; \
+	@if [ ! -f apps/remote-latex-compiler/.env.production ]; then \
+		echo "Error: apps/remote-latex-compiler/.env.production not found"; \
 		exit 1; \
 	fi
 	@echo "Copying .env.production to .env.local..."
-	@cp apps/compiler/.env.production apps/compiler/.env.local
+	@cp apps/remote-latex-compiler/.env.production apps/remote-latex-compiler/.env.local
 	@echo "Production environment configured!"
-	@echo "Edit apps/compiler/.env.local with your actual values."
+	@echo "Edit apps/remote-latex-compiler/.env.local with your actual values."
 
 env-check:
 	@echo "Checking environment configuration..."
-	@test -f apps/compiler/.env.local && echo "✓ apps/compiler/.env.local exists" || echo "✗ apps/compiler/.env.local missing (run 'make env-dev' or 'make env-prod')"
-	@test -f apps/compiler/.env.development && echo "✓ apps/compiler/.env.development exists" || echo "✗ apps/compiler/.env.development missing"
-	@test -f apps/compiler/.env.production && echo "✓ apps/compiler/.env.production exists" || echo "✗ apps/compiler/.env.production missing"
+	@test -f apps/remote-latex-compiler/.env.local && echo "✓ apps/remote-latex-compiler/.env.local exists" || echo "✗ apps/remote-latex-compiler/.env.local missing (run 'make env-dev' or 'make env-prod')"
+	@test -f apps/remote-latex-compiler/.env.development && echo "✓ apps/remote-latex-compiler/.env.development exists" || echo "✗ apps/remote-latex-compiler/.env.development missing"
+	@test -f apps/remote-latex-compiler/.env.production && echo "✓ apps/remote-latex-compiler/.env.production exists" || echo "✗ apps/remote-latex-compiler/.env.production missing"
