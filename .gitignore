@@ -1,11 +1,14 @@
 node_modules/
 dist/
 .treefrog-cache/
+
+# Environment files
 .env
 .env.local
 .env.*.local
-.env.development
-.env.production
+# Note: .env.development and .env.production are committed (safe placeholders)
+# Override secrets in .env.local or .env.[environment].local
+
 .DS_Store
 
 # Build artifacts
