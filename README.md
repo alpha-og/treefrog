@@ -17,8 +17,8 @@ Treefrog is a desktop application providing a complete LaTeX editing and compila
 
 ### Prerequisites
 
-- Go 1.23+
-- Node.js 20+ and pnpm 9+
+- Go 1.24+
+- Node.js 22+ and pnpm 9+
 - Wails CLI: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
 - Docker (optional, for local rendering)
 
@@ -44,37 +44,48 @@ Built binaries are in `apps/desktop/build/bin/`
 ```
 treefrog/
 ├── apps/
-│   ├── compiler/           # LaTeX compiler server (Go)
-│   │   ├── cmd/server/     # HTTP server entry point
-│   │   ├── internal/       # Private packages (auth, billing, build, etc.)
-│   │   ├── migrations/     # SQL migrations
-│   │   └── Dockerfile      # Server container
+│   ├── local-latex-compiler/  # Local LaTeX compiler (no auth, pure rendering)
+│   │   ├── cmd/server/        # HTTP server entry point
+│   │   ├── internal/          # Private packages (storage, cleanup)
+│   │   └── Dockerfile         # Server container
 │   │
-│   ├── local-cli/          # Standalone local LaTeX compiler CLI
-│   │   └── cmd/main.go     # CLI entry point
+│   ├── remote-latex-compiler/ # Remote SaaS compiler (auth, billing)
+│   │   ├── cmd/server/        # HTTP server entry point
+│   │   ├── internal/          # Private packages (auth, billing, build, etc.)
+│   │   ├── migrations/        # SQL migrations
+│   │   └── Dockerfile         # Server container
 │   │
-│   ├── desktop/            # Wails desktop application
-│   │   ├── frontend/       # React frontend (React 19)
-│   │   ├── app.go          # Application configuration
-│   │   ├── bindings.go     # Go to frontend bindings
-│   │   ├── docker.go       # Docker lifecycle management
-│   │   └── wails.json      # Wails configuration
+│   ├── local-cli/             # Standalone local LaTeX compiler CLI
+│   │   └── cmd/main.go        # CLI entry point
 │   │
-│   └── website/            # Marketing website (React 19)
+│   ├── desktop/               # Wails desktop application
+│   │   ├── frontend/          # React frontend (React 19)
+│   │   ├── app.go             # Application configuration
+│   │   ├── bindings.go        # Go to frontend bindings
+│   │   ├── docker.go          # Docker lifecycle management
+│   │   └── wails.json         # Wails configuration
+│   │
+│   └── website/               # Marketing website (React 19)
 │
 ├── packages/
-│   ├── types/              # @treefrog/types - Shared TypeScript types
-│   ├── services/           # @treefrog/services - API clients
-│   ├── supabase/           # @treefrog/supabase - Database client
-│   ├── ui/                 # @treefrog/ui - Shared React components
-│   └── go/                 # Shared Go packages
-│       ├── synctex/        # SyncTeX parser
-│       └── signer/         # URL signing utility
+│   ├── types/                 # @treefrog/types - Shared TypeScript types
+│   ├── services/              # @treefrog/services - API clients
+│   ├── supabase/              # @treefrog/supabase - Database client
+│   ├── ui/                    # @treefrog/ui - Shared React components
+│   └── go/                    # Shared Go packages
+│       ├── build/             # DockerCompiler, Build types
+│       ├── config/            # Environment variable helpers
+│       ├── http/              # HTTP client factory
+│       ├── logging/           # Shared logger initialization
+│       ├── security/          # Path traversal validation
+│       ├── signer/            # URL signing utility
+│       ├── synctex/           # SyncTeX parser
+│       └── validation/        # UUID validation
 │
-├── go.work                 # Go workspace configuration
-├── pnpm-workspace.yaml     # pnpm monorepo configuration
-├── Makefile                # Build targets
-└── docker-compose.yml      # Docker services (compiler, redis, db)
+├── go.work                    # Go workspace configuration
+├── pnpm-workspace.yaml        # pnpm monorepo configuration
+├── Makefile                   # Build targets
+└── docker-compose.yml         # Docker services (compiler, redis, db)
 ```
 
 ## Make Commands
@@ -88,13 +99,19 @@ make website-dev        # Start website dev server
 # Building
 make build              # Build desktop app for current platform
 make build-all          # Build for macOS, Windows, Linux
-make build-backend      # Build compiler server binary
+make build-backend      # Build remote compiler server binary
 make build-cli          # Build local CLI
 
-# Docker
-make compiler           # Start compiler with Docker Compose
+# Docker - Remote Compiler (SaaS)
+make compiler           # Start remote compiler with Docker Compose
+make compiler-dev       # Start with .env.development
+make compiler-prod      # Start with .env.production
 make stop               # Stop Docker services
 make logs               # View Docker logs
+
+# Docker - Local Compiler (No auth)
+make local-compiler     # Start local LaTeX compiler
+make local-compiler-stop # Stop local compiler
 
 # Testing
 make test               # Run all tests
@@ -118,7 +135,7 @@ make clean-all          # Deep clean (removes node_modules)
 
 Copy `.env.example` to `.env.local` in each directory:
 
-**Backend (`apps/compiler/.env.local`):**
+**Remote Compiler (`apps/remote-latex-compiler/.env.local`):**
 - `DATABASE_URL` - PostgreSQL connection string
 - `SUPABASE_URL` - Supabase project URL
 - `SUPABASE_SECRET_KEY` - Supabase service role key
@@ -135,16 +152,24 @@ Copy `.env.example` to `.env.local` in each directory:
 
 ### Docker Compose
 
-Start the full development stack:
+Start the remote compiler stack:
 
 ```bash
 make compiler
 ```
 
 This starts:
-- LaTeX renderer on port 9000
+- Remote LaTeX compiler on port 9000
 - Redis on port 6379
-- PostgreSQL on port 5432
+
+Start the local compiler:
+
+```bash
+make local-compiler
+```
+
+This starts:
+- Local LaTeX compiler on port 8080
 
 ## Features
 

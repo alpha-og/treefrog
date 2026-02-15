@@ -100,8 +100,8 @@ The service uses Docker containers for secure, isolated LaTeX compilation:
 
 ```yaml
 # docker-compose.yml integration
-latex-renderer:
-  build: ./latex-compiler
+local-latex-compiler:
+  build: ./apps/local-latex-compiler
   volumes:
     - ./builds:/tmp/treefrog-builds
   environment:
