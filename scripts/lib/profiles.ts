@@ -36,7 +36,7 @@ export const PROFILES: Record<string, Profile> = {
   },
   'compiler-only': {
     name: 'Remote Compiler Only',
-    description: 'Just the remote compiler with Redis',
+    description: 'Just the remote compiler (Redis managed by compose)',
     services: ['remote-compiler'],
     startupOrder: ['remote-compiler'],
   },

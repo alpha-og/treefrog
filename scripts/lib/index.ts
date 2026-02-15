@@ -7,11 +7,11 @@ export {
   getContainerLogs, 
   getContainerPort,
   waitForHealthyContainer,
+  containerExists,
   type DockerContainerInfo 
 } from './docker.js';
 export {
   checkHttpHealth,
-  checkRedisHealth,
   checkPortHealth,
   waitForHealth,
   type HealthCheckResult,

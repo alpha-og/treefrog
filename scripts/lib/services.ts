@@ -1,4 +1,4 @@
-export type ServiceType = 'wails' | 'vite' | 'docker' | 'process';
+export type ServiceType = 'docker' | 'process';
 
 export interface Service {
   name: string;
@@ -6,32 +6,33 @@ export interface Service {
   port: number | null;
   healthCheck: string | null;
   healthCheckTimeout: number;
-  startCommand: string | null;
-  stopCommand: string | null;
+  startCommand?: string;
+  stopCommand?: string;
+  cwd?: string;
   dependsOn: string[];
   dockerContainer?: string;
-  env?: Record<string, string>;
+  envFile?: string;
 }
 
 export const SERVICES: Record<string, Service> = {
   desktop: {
     name: 'Desktop App',
-    type: 'wails',
+    type: 'process',
     port: null,
     healthCheck: null,
     healthCheckTimeout: 0,
-    startCommand: 'cd apps/desktop && wails dev',
-    stopCommand: null,
+    startCommand: 'wails dev',
+    cwd: 'apps/desktop',
     dependsOn: [],
   },
   website: {
     name: 'Website',
-    type: 'vite',
+    type: 'process',
     port: 3000,
     healthCheck: 'http://localhost:3000',
     healthCheckTimeout: 30000,
-    startCommand: 'cd apps/website && pnpm dev',
-    stopCommand: null,
+    startCommand: 'pnpm dev',
+    cwd: 'apps/website',
     dependsOn: [],
   },
   'local-compiler': {
@@ -39,9 +40,10 @@ export const SERVICES: Record<string, Service> = {
     type: 'docker',
     port: 8080,
     healthCheck: 'http://localhost:8080/health',
-    healthCheckTimeout: 60000,
-    startCommand: 'cd apps/local-latex-compiler && docker compose up --build',
-    stopCommand: 'cd apps/local-latex-compiler && docker compose down',
+    healthCheckTimeout: 120000,
+    startCommand: 'docker compose up --build -d',
+    stopCommand: 'docker compose down',
+    cwd: 'apps/local-latex-compiler',
     dependsOn: [],
     dockerContainer: 'treefrog-local-latex-compiler',
   },
@@ -50,20 +52,22 @@ export const SERVICES: Record<string, Service> = {
     type: 'docker',
     port: 9000,
     healthCheck: 'http://localhost:9000/health',
-    healthCheckTimeout: 90000,
-    startCommand: 'cd apps/remote-latex-compiler && docker compose up --build',
-    stopCommand: 'cd apps/remote-latex-compiler && docker compose down',
-    dependsOn: ['redis'],
+    healthCheckTimeout: 120000,
+    startCommand: 'docker compose up --build -d',
+    stopCommand: 'docker compose down',
+    cwd: 'apps/remote-latex-compiler',
+    dependsOn: [],  // Redis is handled by compose.yml
     dockerContainer: 'treefrog-remote-latex-compiler',
+    envFile: '.env.local',
   },
   redis: {
     name: 'Redis',
     type: 'docker',
     port: 6379,
-    healthCheck: 'redis-cli ping',
-    healthCheckTimeout: 10000,
-    startCommand: null,
-    stopCommand: null,
+    healthCheck: null,
+    healthCheckTimeout: 30000,
+    // No startCommand - only used for status checking
+    // Redis is started via compose.yml when using remote-compiler
     dependsOn: [],
     dockerContainer: 'treefrog-redis',
   },

@@ -104,7 +104,6 @@ export async function waitForHealthyContainer(
           return true;
         }
       } catch {
-        // Container might not have health check
         return status === 'running';
       }
     }
@@ -112,4 +111,13 @@ export async function waitForHealthyContainer(
   }
   
   return false;
+}
+
+export async function containerExists(containerName: string): Promise<boolean> {
+  try {
+    await execa('docker', ['inspect', containerName], { timeout: 5000 });
+    return true;
+  } catch {
+    return false;
+  }
 }

@@ -1,4 +1,3 @@
-import { execa } from 'execa';
 import http from 'http';
 
 export interface HealthCheckResult {
@@ -12,7 +11,7 @@ export async function checkHttpHealth(url: string, timeout = 5000): Promise<Heal
   
   return new Promise((resolve) => {
     const req = http.request(url, {
-      method: 'GET',
+      method: 'HEAD',
       timeout,
     }, (res) => {
       const responseTime = Date.now() - start;
@@ -48,33 +47,11 @@ export async function checkHttpHealth(url: string, timeout = 5000): Promise<Heal
   });
 }
 
-export async function checkRedisHealth(host = 'localhost', port = 6379): Promise<HealthCheckResult> {
-  const start = Date.now();
-  
-  try {
-    const { stdout } = await execa('redis-cli', ['-h', host, '-p', String(port), 'ping'], {
-      timeout: 5000,
-      reject: false,
-    });
-    
-    const responseTime = Date.now() - start;
-    if (stdout.includes('PONG')) {
-      return { healthy: true, responseTime };
-    }
-    return { healthy: false, responseTime, error: stdout || 'no response' };
-  } catch (err) {
-    return { 
-      healthy: false, 
-      responseTime: Date.now() - start, 
-      error: err instanceof Error ? err.message : 'unknown error' 
-    };
-  }
-}
-
 export async function checkPortHealth(port: number): Promise<HealthCheckResult> {
   const start = Date.now();
   
   try {
+    const { execa } = await import('execa');
     const { stdout } = await execa('lsof', ['-i', `:${port}`], {
       timeout: 5000,
       reject: false,
