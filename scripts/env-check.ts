@@ -1,16 +1,22 @@
 import chalk from 'chalk';
 import fs from 'fs';
-import path from 'path';
 
 const ENV_FILES = [
-  { path: 'apps/remote-latex-compiler/.env.local', required: false, description: 'Active config (gitignored)' },
-  { path: 'apps/remote-latex-compiler/.env.development', required: true, description: 'Development template' },
-  { path: 'apps/remote-latex-compiler/.env.production', required: true, description: 'Production template' },
-  { path: 'apps/remote-latex-compiler/.env.example', required: true, description: 'Example template' },
-  { path: 'apps/desktop/frontend/.env.development', required: false, description: 'Desktop dev config' },
-  { path: 'apps/desktop/frontend/.env.production', required: false, description: 'Desktop prod config' },
-  { path: 'apps/website/.env.local', required: false, description: 'Website config' },
-  { path: 'apps/website/.env.example', required: true, description: 'Website example' },
+  // Remote compiler - secrets in .env.local, config in .env.development/.env.production
+  { path: 'apps/remote-latex-compiler/.env.local', required: true, description: 'Secrets (gitignored)', secrets: true },
+  { path: 'apps/remote-latex-compiler/.env.development', required: true, description: 'Dev config (committed)' },
+  { path: 'apps/remote-latex-compiler/.env.production', required: true, description: 'Prod config (committed)' },
+  { path: 'apps/remote-latex-compiler/.env.example', required: true, description: 'Template' },
+  
+  // Desktop - all VITE_ vars are safe
+  { path: 'apps/desktop/frontend/.env.development', required: true, description: 'Dev config (committed)' },
+  { path: 'apps/desktop/frontend/.env.production', required: true, description: 'Prod config (committed)' },
+  { path: 'apps/desktop/frontend/.env.example', required: true, description: 'Template' },
+  
+  // Website - all VITE_ vars are safe
+  { path: 'apps/website/.env.development', required: true, description: 'Dev config (committed)' },
+  { path: 'apps/website/.env.production', required: true, description: 'Prod config (committed)' },
+  { path: 'apps/website/.env.example', required: true, description: 'Template' },
 ];
 
 function checkEnvFiles(): void {
@@ -20,10 +26,11 @@ function checkEnvFiles(): void {
 
   for (const file of ENV_FILES) {
     const exists = fs.existsSync(file.path);
-    const status = exists ? chalk.green('[OK]') : (file.required ? chalk.red('[X]') : chalk.yellow('[?]'));
+    const status = exists ? chalk.green('[OK]') : chalk.red('[X]');
+    const secretTag = file.secrets ? chalk.magenta('(secrets)') : '';
     const required = file.required ? '(required)' : '(optional)';
     
-    console.log(`  ${status} ${file.path} ${chalk.gray(required)}`);
+    console.log(`  ${status} ${file.path} ${chalk.gray(required)} ${secretTag}`);
     
     if (!exists && file.required) {
       allGood = false;
@@ -32,27 +39,26 @@ function checkEnvFiles(): void {
 
   console.log();
 
-  // Check for missing critical files
   const missingRequired = ENV_FILES.filter(f => f.required && !fs.existsSync(f.path));
   
   if (missingRequired.length > 0) {
-    console.log(chalk.yellow('Missing required files. Create them from .env.example:'));
+    console.log(chalk.yellow('\nMissing required files:'));
     for (const file of missingRequired) {
-      const examplePath = file.path.replace(/\.local$|\.development$|\.production$/, '.example');
-      if (fs.existsSync(examplePath)) {
-        console.log(chalk.gray(`  cp ${examplePath} ${file.path}`));
+      if (file.secrets) {
+        console.log(chalk.gray(`  cp apps/remote-latex-compiler/.env.example ${file.path}`));
+        console.log(chalk.gray(`  # Edit ${file.path} and add your secrets`));
+      } else {
+        const examplePath = file.path.replace(/\.development$|\.production$/, '.example');
+        console.log(chalk.gray(`  Create ${file.path} from ${examplePath}`));
       }
     }
     process.exit(1);
   }
 
-  if (!fs.existsSync('apps/remote-latex-compiler/.env.local')) {
-    console.log(chalk.yellow('Tip: Copy a template to .env.local for active configuration:'));
-    console.log(chalk.gray('  pnpm env:dev   # Use development settings'));
-    console.log(chalk.gray('  pnpm env:prod  # Use production settings'));
-  }
-
   console.log(chalk.bold.green('\n[+] Environment check complete\n'));
+  console.log(chalk.gray('Structure:'));
+  console.log(chalk.gray('  .env.development/.env.production - Config (committed)'));
+  console.log(chalk.gray('  .env.local - Secrets (gitignored)'));
 }
 
 checkEnvFiles();
