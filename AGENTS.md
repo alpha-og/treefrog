@@ -188,8 +188,9 @@ Run `pnpm env:setup` to create `.env.local` from the template, then add your sec
 
 ### Docker Compose
 
-The `docker-compose.yml` loads:
-- `.env.local` for secrets and runtime config
+Each compiler has its own `compose.yml`:
+- `apps/local-latex-compiler/compose.yml` - Local compiler (no auth)
+- `apps/remote-latex-compiler/compose.yml` - Remote compiler (loads `.env.local` for secrets)
 
 ### Desktop (`apps/desktop/frontend/`)
 - `.env.example` - Template (committed)

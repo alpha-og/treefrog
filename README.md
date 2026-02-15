@@ -26,15 +26,15 @@ Treefrog is a desktop application providing a complete LaTeX editing and compila
 
 ```bash
 pnpm install           # Install all dependencies
-make dev               # Start development server with hot reload
-make doctor            # Verify Wails setup
+pnpm dev               # Start desktop app with local compiler
+pnpm doctor            # Verify development environment
 ```
 
 ### Build for Distribution
 
 ```bash
-make build             # Build for current platform
-make build-all         # Build for macOS, Windows, Linux
+pnpm build             # Build for current platform
+pnpm build:all         # Build for macOS, Windows, Linux
 ```
 
 Built binaries are in `apps/desktop/build/bin/`
@@ -47,13 +47,14 @@ treefrog/
 │   ├── local-latex-compiler/  # Local LaTeX compiler (no auth, pure rendering)
 │   │   ├── cmd/server/        # HTTP server entry point
 │   │   ├── internal/          # Private packages (storage, cleanup)
-│   │   └── Dockerfile         # Server container
+│   │   ├── Dockerfile         # Server container
+│   │   └── compose.yml        # Docker Compose config
 │   │
 │   ├── remote-latex-compiler/ # Remote SaaS compiler (auth, billing)
 │   │   ├── cmd/server/        # HTTP server entry point
 │   │   ├── internal/          # Private packages (auth, billing, build, etc.)
-│   │   ├── migrations/        # SQL migrations
-│   │   └── Dockerfile         # Server container
+│   │   ├── Dockerfile         # Server container
+│   │   └── compose.yml        # Docker Compose config
 │   │
 │   ├── local-cli/             # Standalone local LaTeX compiler CLI
 │   │   └── cmd/main.go        # CLI entry point
@@ -82,94 +83,92 @@ treefrog/
 │       ├── synctex/           # SyncTeX parser
 │       └── validation/        # UUID validation
 │
+├── scripts/                   # Development and build scripts
 ├── go.work                    # Go workspace configuration
 ├── pnpm-workspace.yaml        # pnpm monorepo configuration
-├── Makefile                   # Build targets
-└── docker-compose.yml         # Docker services (compiler, redis, db)
+└── vercel.json                # Vercel deployment config
 ```
 
-## Make Commands
+## Commands
 
 ```bash
 # Development
-make dev                # Start desktop app with hot reload
-make dev-debug          # Dev with DEBUG logging
-make website-dev        # Start website dev server
+pnpm dev                 # Start desktop app with local compiler
+pnpm dev:desktop-local   # Desktop + Local compiler (no auth)
+pnpm dev:desktop-remote  # Desktop + Remote compiler (auth required)
+pnpm dev:website         # Website only
+pnpm dev:compiler        # Remote compiler only
+
+# Service Management
+pnpm dev:status          # Show status of all services
+pnpm dev:stop            # Stop services
+pnpm dev:logs <service>  # View logs
 
 # Building
-make build              # Build desktop app for current platform
-make build-all          # Build for macOS, Windows, Linux
-make build-backend      # Build remote compiler server binary
-make build-cli          # Build local CLI
+pnpm build               # Build desktop app for current platform
+pnpm build:all           # Build for macOS, Windows, Linux
+pnpm build:docker        # Build Docker images
+pnpm build:backend       # Build remote compiler binary
+pnpm build:cli           # Build local CLI
 
-# Docker - Remote Compiler (SaaS)
-make compiler           # Start remote compiler with Docker Compose
-make compiler-dev       # Start with .env.development
-make compiler-prod      # Start with .env.production
-make stop               # Stop Docker services
-make logs               # View Docker logs
-
-# Docker - Local Compiler (No auth)
-make local-compiler     # Start local LaTeX compiler
-make local-compiler-stop # Stop local compiler
+# Production
+pnpm prod:compiler       # Start remote compiler (production)
+pnpm prod:stop           # Stop production services
+pnpm prod:logs           # View production logs
 
 # Testing
-make test               # Run all tests
-make test-backend       # Run Go tests
-make test-frontend      # Run frontend tests
+pnpm test                # Run all tests
+pnpm test:backend        # Run Go tests
+pnpm test:frontend       # Run frontend tests
 
 # Code Quality
-make lint               # Lint all code
-make fmt                # Format all code
-make typecheck          # Type check frontend
+pnpm lint                # Lint all code
+pnpm fmt                 # Format all code
+pnpm typecheck           # Type check TypeScript
 
 # Diagnostics
-make doctor             # Check Wails setup
-make clean              # Clean build artifacts
-make clean-all          # Deep clean (removes node_modules)
+pnpm doctor              # Check development environment
+pnpm clean               # Clean build artifacts
+pnpm clean:all           # Deep clean (removes node_modules)
 ```
 
 ## Configuration
 
 ### Environment Variables
 
-Copy `.env.example` to `.env.local` in each directory:
+Run `pnpm env:setup` to create `.env.local` from the template.
 
 **Remote Compiler (`apps/remote-latex-compiler/.env.local`):**
 - `DATABASE_URL` - PostgreSQL connection string
 - `SUPABASE_URL` - Supabase project URL
-- `SUPABASE_SECRET_KEY` - Supabase service role key
+- `SUPABASE_SECRET_KEY` - Supabase service role key (SECRET)
 - `REDIS_URL` - Redis connection string
-- `RAZORPAY_*` - Payment configuration
+- `RAZORPAY_*` - Payment configuration (SECRETS)
+- `COMPILER_SIGNING_KEY` - URL signing secret (SECRET)
 
-**Desktop (`apps/desktop/frontend/.env.local`):**
+**Desktop & Website (`VITE_*` vars are safe, client-side):**
 - `VITE_SUPABASE_URL` - Supabase project URL
-- `VITE_SUPABASE_PUBLISHABLE_KEY` - Supabase anon key
+- `VITE_SUPABASE_PUBLISHABLE_KEY` - Supabase anon key (public-safe)
 - `VITE_API_URL` - Backend API URL
-
-**Website (`apps/website/.env.local`):**
-- Same as Desktop
+- `VITE_WEBSITE_URL` - Website URL
 
 ### Docker Compose
 
-Start the remote compiler stack:
+Each compiler has its own `compose.yml`:
 
 ```bash
-make compiler
+# Local compiler (no auth)
+cd apps/local-latex-compiler && docker compose up
+
+# Remote compiler (requires .env.local)
+cd apps/remote-latex-compiler && docker compose up
 ```
 
-This starts:
-- Remote LaTeX compiler on port 9000
-- Redis on port 6379
-
-Start the local compiler:
-
+Or use the pnpm scripts:
 ```bash
-make local-compiler
+pnpm dev:local      # Local compiler on port 8080
+pnpm prod:compiler  # Remote compiler on port 9000
 ```
-
-This starts:
-- Local LaTeX compiler on port 8080
 
 ## Features
 
@@ -186,8 +185,8 @@ This starts:
 ### Application fails to start
 
 ```bash
-make doctor             # Verify dependencies
-pnpm install            # Reinstall dependencies
+pnpm doctor            # Verify dependencies
+pnpm install           # Reinstall dependencies
 ```
 
 ### Build compilation fails
@@ -195,7 +194,7 @@ pnpm install            # Reinstall dependencies
 - Verify Compiler URL is accessible
 - Check API token in Settings
 - Enable shell-escape if required
-- Check compiler logs: `make logs`
+- Check compiler logs: `pnpm dev:logs remote-compiler`
 
 ### Docker Renderer issues
 
@@ -205,7 +204,9 @@ pnpm install            # Reinstall dependencies
 
 ## Security
 
-See `.env.example` files for required environment variables. Never commit `.env.local` files.
+- Never commit `.env.local` files (gitignored)
+- All `VITE_*` variables are client-side and public-safe
+- Server secrets go in `apps/remote-latex-compiler/.env.local`
 
 ## License
 
