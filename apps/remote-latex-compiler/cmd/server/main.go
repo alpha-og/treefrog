@@ -125,7 +125,7 @@ func main() {
 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   allowedOrigins,
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Compiler-Token", "X-Request-ID"},
 		ExposedHeaders:   []string{"X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"},
 		AllowCredentials: allowCredentials,
@@ -133,6 +133,7 @@ func main() {
 	}))
 
 	r.Get("/health", healthHandler)
+	r.Head("/health", healthHandler)
 	r.Get("/ready", readyHandler)
 
 	r.Route("/api", func(r chi.Router) {
