@@ -3,7 +3,6 @@ import type {
   BuildStatus,
   BuildHistory,
   DeltaSyncRequest,
-  DeltaSyncResponse,
 } from '@treefrog/types';
 import { apiClient } from './apiClient';
 import { supabase } from '@treefrog/supabase';
@@ -31,13 +30,15 @@ export class BuildService {
     
     if (error) return [];
     
-    return (data || []).map(build => ({
+    return (data || []).map((build: { id: string; status: string; engine: string; main_file: string | null; created_at: string; expires_at: string | null }) => ({
       id: build.id,
+      projectId: '',
       status: build.status,
       engine: build.engine,
-      mainFile: build.main_file,
+      shellEscape: false,
+      artifacts: [],
       createdAt: build.created_at,
-      expiresAt: build.expires_at,
+      completedAt: build.expires_at ?? undefined,
     }));
   }
 
