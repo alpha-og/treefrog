@@ -301,7 +301,7 @@ export default forwardRef(function LatexCompilerSettings(
     try {
       await rendererService.setImageSource(newSource, rendererImageRef);
       setRendererImageSource(newSource);
-      if (newSource === "ghcr") setRendererImageRef("ghcr.io/alpha-og/treefrog/renderer:latest");
+      if (newSource === "ghcr") setRendererImageRef("ghcr.io/alpha-og/treefrog/local-latex-compiler:latest");
       toast.success(`Source: ${newSource}`);
     } catch (err) {
       toast.error(`Failed: ${err}`);
