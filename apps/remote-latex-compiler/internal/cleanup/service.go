@@ -53,6 +53,12 @@ func (s *Service) Run() {
 
 	s.logger.Info("Starting cleanup cycle")
 
+	// Ensure work directory exists
+	if err := os.MkdirAll(s.config.WorkDir, 0755); err != nil {
+		s.logger.WithError(err).Error("Failed to create work directory")
+		return
+	}
+
 	// Run all cleanup tasks
 	s.expireOldBuilds()
 	s.hardDeleteExpired()
