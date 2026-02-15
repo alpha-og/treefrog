@@ -1,7 +1,16 @@
 version: 2
 updates:
   - package-ecosystem: "gomod"
-    directory: "/apps/compiler"
+    directory: "/apps/remote-latex-compiler"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "go"
+
+  - package-ecosystem: "gomod"
+    directory: "/apps/local-latex-compiler"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
@@ -28,6 +37,15 @@ updates:
       - "go"
 
   - package-ecosystem: "gomod"
+    directory: "/packages/go/build"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "go"
+
+  - package-ecosystem: "gomod"
     directory: "/packages/go/synctex"
     schedule:
       interval: "weekly"
@@ -38,6 +56,51 @@ updates:
 
   - package-ecosystem: "gomod"
     directory: "/packages/go/signer"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "go"
+
+  - package-ecosystem: "gomod"
+    directory: "/packages/go/http"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "go"
+
+  - package-ecosystem: "gomod"
+    directory: "/packages/go/config"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "go"
+
+  - package-ecosystem: "gomod"
+    directory: "/packages/go/logging"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "go"
+
+  - package-ecosystem: "gomod"
+    directory: "/packages/go/security"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "go"
+
+  - package-ecosystem: "gomod"
+    directory: "/packages/go/validation"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
@@ -100,7 +163,16 @@ updates:
       - "javascript"
 
   - package-ecosystem: "docker"
-    directory: "/apps/compiler"
+    directory: "/apps/local-latex-compiler"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "docker"
+
+  - package-ecosystem: "docker"
+    directory: "/apps/remote-latex-compiler"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
