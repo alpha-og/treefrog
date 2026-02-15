@@ -288,12 +288,28 @@ func (a *App) getCompilerURL() string {
 		if a.config.RemoteCompilerURL != "" && a.remoteMonitor != nil && a.remoteMonitor.IsHealthy() {
 			return a.config.RemoteCompilerURL
 		}
+		// Check if local renderer is actually running before returning its URL
+		if a.dockerMgr != nil {
+			status := a.dockerMgr.GetStatus()
+			if status.State == "running" {
+				return fmt.Sprintf("http://127.0.0.1:%d", a.config.Renderer.Port)
+			}
+		}
+		// Fall back to default port if nothing is running
 		return fmt.Sprintf("http://127.0.0.1:%d", a.config.Renderer.Port)
 	}
 
 	if effectiveMode == ModeRemote {
 		if a.config.RemoteCompilerURL != "" {
 			return a.config.RemoteCompilerURL
+		}
+	}
+
+	// Check if local renderer is actually running
+	if a.dockerMgr != nil {
+		status := a.dockerMgr.GetStatus()
+		if status.State == "running" {
+			return fmt.Sprintf("http://127.0.0.1:%d", a.config.Renderer.Port)
 		}
 	}
 
