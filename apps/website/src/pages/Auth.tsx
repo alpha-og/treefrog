@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../lib/auth'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { motion } from 'motion/react'
@@ -7,11 +7,13 @@ import { easeOutExpo, ANIMATION_DURATIONS } from '../lib/animations'
 import { Link } from '@tanstack/react-router'
 import type { Provider } from '@supabase/supabase-js'
 
+const REDIRECT_URL_KEY = 'auth_redirect_url'
+
 interface AuthPageProps {
   mode: 'sign-in' | 'sign-up' | 'reset-password'
 }
 
-function isValidRedirect(redirect: string): boolean {
+function isValidInternalRedirect(redirect: string): boolean {
   if (!redirect) return false
   if (redirect.startsWith('/') && !redirect.startsWith('//')) return true
   try {
@@ -22,12 +24,22 @@ function isValidRedirect(redirect: string): boolean {
   }
 }
 
+function isCustomProtocolUrl(url: string): boolean {
+  return url.startsWith('treefrog://')
+}
+
 export default function AuthPage({ mode }: AuthPageProps) {
   const { signIn, signUp, resetPassword, signInWithOAuth } = useAuth()
   const navigate = useNavigate()
   const search = useSearch({ strict: false })
-  const rawRedirect = (search as { redirect?: string })?.redirect || '/dashboard'
-  const redirectUrl = isValidRedirect(rawRedirect) ? rawRedirect : '/dashboard'
+  
+  const rawRedirectUrl = (search as { redirect_url?: string; redirect?: string })?.redirect_url 
+    || (search as { redirect?: string })?.redirect 
+    || '/dashboard'
+  
+  const redirectUrl = isCustomProtocolUrl(rawRedirectUrl) 
+    ? rawRedirectUrl 
+    : (isValidInternalRedirect(rawRedirectUrl) ? rawRedirectUrl : '/dashboard')
   
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -37,10 +49,16 @@ export default function AuthPage({ mode }: AuthPageProps) {
   const [success, setSuccess] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
+  useEffect(() => {
+    if (redirectUrl && (isCustomProtocolUrl(redirectUrl) || redirectUrl !== '/dashboard')) {
+      sessionStorage.setItem(REDIRECT_URL_KEY, redirectUrl)
+    }
+  }, [redirectUrl])
+
   const handleOAuthSignIn = async (provider: Provider) => {
     setError(null)
     setIsLoading(true)
-    const { error } = await signInWithOAuth(provider)
+    const { error } = await signInWithOAuth(provider, redirectUrl)
     if (error) {
       setError(error.message)
       setIsLoading(false)
@@ -69,14 +87,14 @@ export default function AuthPage({ mode }: AuthPageProps) {
           setError(error.message)
         } else if (needsConfirmation) {
           setSuccess('Account created! Please check your email to confirm your account.')
-        } else {
+        } else if (!isCustomProtocolUrl(redirectUrl)) {
           navigate({ to: redirectUrl as never })
         }
       } else {
         const { error } = await signIn(email, password)
         if (error) {
           setError(error.message)
-        } else {
+        } else if (!isCustomProtocolUrl(redirectUrl)) {
           navigate({ to: redirectUrl as never })
         }
       }
