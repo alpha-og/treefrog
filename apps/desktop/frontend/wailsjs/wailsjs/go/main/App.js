@@ -118,10 +118,6 @@ export function HandleAuthCallback(arg1) {
   return window['go']['main']['App']['HandleAuthCallback'](arg1);
 }
 
-export function HandleAuthCallbackWithUser(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['HandleAuthCallbackWithUser'](arg1, arg2, arg3, arg4);
-}
-
 export function IsAuthenticated() {
   return window['go']['main']['App']['IsAuthenticated']();
 }
@@ -160,10 +156,6 @@ export function ResetCompilationMetrics() {
 
 export function RestartRenderer() {
   return window['go']['main']['App']['RestartRenderer']();
-}
-
-export function SetAuthUser(arg1, arg2, arg3) {
-  return window['go']['main']['App']['SetAuthUser'](arg1, arg2, arg3);
 }
 
 export function SetImageSource(arg1, arg2) {
