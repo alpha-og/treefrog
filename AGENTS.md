@@ -58,8 +58,7 @@ pnpm typecheck                # TypeScript checking
 pnpm fmt                      # Format all code
 
 # Environment
-pnpm env:dev                  # Copy .env.development to .env.local
-pnpm env:prod                 # Copy .env.production to .env.local
+pnpm env:setup               # Create .env.local from template (first time)
 pnpm env:check                # Check environment files
 
 # Utility
@@ -180,24 +179,40 @@ Shared Go packages in `packages/go/` can be imported using their module paths:
 Each app has its own environment configuration:
 
 ### Remote Compiler (`apps/remote-latex-compiler/`)
-- `.env.development` - Development template (Supabase dev project)
-- `.env.production` - Production template (Supabase prod project)
-- `.env.local` - Active configuration (gitignored)
-- `.env.example` - Template with all variables
+- `.env.example` - Template with all variables (committed)
+- `.env.development` - Non-secret dev config only (committed)
+- `.env.production` - Non-secret prod config only (committed)
+- `.env.local` - All secrets + overrides (gitignored)
 
-Use `pnpm env:dev` or `pnpm env:prod` to copy the appropriate template.
+Run `pnpm env:setup` to create `.env.local` from the template, then add your secrets.
+
+### Docker Compose
+
+The `docker-compose.yml` loads:
+- `.env.local` for secrets and runtime config
 
 ### Desktop (`apps/desktop/frontend/`)
-- `.env.development` - Auto-loaded by `vite dev`
-- `.env.production` - Auto-loaded by `vite build`
+- `.env.example` - Template (committed)
+- `.env.development` - Auto-loaded by `vite dev` (committed - safe, client-side only)
+- `.env.production` - Auto-loaded by `vite build` (committed - safe, client-side only)
 - `.env.local` - Local overrides (gitignored)
-- `.env.example` - Template
 
 ### Website (`apps/website/`)
-- `.env.development` - Auto-loaded by `vite dev`
-- `.env.production` - Auto-loaded by `vite build`
+- `.env.example` - Template (committed)
+- `.env.development` - Auto-loaded by `vite dev` (committed - safe, client-side only)
+- `.env.production` - Auto-loaded by `vite build` (committed - safe, client-side only)
 - `.env.local` - Local overrides (gitignored)
-- `.env.example` - Template
+
+### What's Safe to Commit
+
+| Variable | Safe? | Reason |
+|----------|-------|--------|
+| `VITE_*` (frontend) | **Yes** | Client-side, Supabase anon key is public-safe |
+| `SUPABASE_URL` | Yes | Public URL |
+| `SUPABASE_SECRET_KEY` | **NO** | Full access, bypasses RLS |
+| `DATABASE_URL` | **NO** | Database credentials |
+| `RAZORPAY_*` | **NO** | Payment secrets |
+| `COMPILER_SIGNING_KEY` | **NO** | URL signing secret |
 
 ### Environment Variables
 
