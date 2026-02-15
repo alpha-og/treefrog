@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	defaultImage   = "treefrog-renderer:latest"
+	defaultImage   = "treefrog-local-latex-compiler:latest"
 	defaultEngine  = "pdflatex"
 	defaultTimeout = 5 * time.Minute
 	version        = "1.0.0"
