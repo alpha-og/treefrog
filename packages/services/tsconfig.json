@@ -8,12 +8,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": false,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "outDir": "./dist",
-    "rootDir": "./src",
+    "noEmit": true,
     "jsx": "react-jsx",
     "strict": true,
     "noUnusedLocals": true,
@@ -23,10 +18,11 @@
     "paths": {
       "@treefrog/types": ["../types/src"],
       "@treefrog/types/*": ["../types/src/*"],
-      "@treefrog/services": ["../services/src"],
-      "@treefrog/services/*": ["../services/src/*"]
-    }
+      "@treefrog/supabase": ["../supabase/src"],
+      "@treefrog/supabase/*": ["../supabase/src/*"]
+    },
+    "types": ["vite/client", "node"]
   },
   "include": ["src"],
-  "exclude": ["dist", "node_modules"]
+  "exclude": ["node_modules"]
 }

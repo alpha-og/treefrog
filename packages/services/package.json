@@ -3,24 +3,25 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "import": "./src/index.ts",
+      "types": "./src/index.ts"
     }
   },
   "scripts": {
-    "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@treefrog/types": "workspace:*",
     "@treefrog/supabase": "workspace:*",
+    "@treefrog/types": "workspace:*",
     "axios": "^1.13.4"
   },
   "devDependencies": {
-    "typescript": "^5.5.4"
+    "@types/node": "^25.2.3",
+    "typescript": "^5.5.4",
+    "vite": "^7.3.1"
   }
 }
