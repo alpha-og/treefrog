@@ -1,0 +1,63 @@
+name: Container Security Scan
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'apps/compiler/Dockerfile'
+      - 'apps/compiler/go.mod'
+      - 'apps/compiler/go.sum'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'apps/compiler/Dockerfile'
+      - 'apps/compiler/go.mod'
+      - 'apps/compiler/go.sum'
+  schedule:
+    - cron: '0 6 * * 1'
+
+jobs:
+  trivy-scan:
+    name: Trivy Vulnerability Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./apps/compiler
+          file: ./apps/compiler/Dockerfile
+          push: false
+          load: true
+          tags: treefrog-renderer:scan
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'treefrog-renderer:scan'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run Trivy for summary
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'treefrog-renderer:scan'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
