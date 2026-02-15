@@ -62,8 +62,9 @@ export async function PUT(url: string, body: unknown) {
 }
 
 export const getWailsApp = (): WailsApp | null => {
-  if (isWails() && window.go?.main?.App) {
-    return window.go.main.App as unknown as WailsApp;
+  const wailsWindow = window as { go?: { main?: { App?: unknown } } };
+  if (isWails() && wailsWindow.go?.main?.App) {
+    return wailsWindow.go.main.App as unknown as WailsApp;
   }
   return null;
 };

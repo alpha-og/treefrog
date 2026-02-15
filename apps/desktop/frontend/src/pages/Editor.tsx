@@ -114,7 +114,7 @@ export default function Editor() {
   // ========== UI STATE ==========
   const [engine, setEngine] = useState<string>("pdflatex");
   const [shellEscape, setShellEscape] = useState<boolean>(false);
-  const [zoom, setZoom] = useState<number>(1.2);
+  const [zoom, setZoom] = useState<number | 'fit-width' | 'fit-height'>(1.2);
   const [numPages, setNumPages] = useState<number>(0);
   const [pageInput, setPageInput] = useState<string>(() => "1");
   const [pdfKey, setPdfKey] = useState<number>(() => Date.now());
@@ -154,9 +154,10 @@ export default function Editor() {
 
   // ========== WEBSOCKET ==========
   const handleBuildMessage = useCallback(
-    (data: BuildStatus) => {
-      updateStatus(data);
-      if (data.state === "success") {
+    (data: unknown) => {
+      const buildData = data as BuildStatus;
+      updateStatus(buildData);
+      if (buildData.state === "success") {
         setPdfKey(Date.now());
         refreshGit();
       }
@@ -304,11 +305,11 @@ export default function Editor() {
       });
 
       runtime.EventsOn("menu-zoom-in", () => {
-        setZoom((z) => Math.min(z + 0.1, 2));
+        setZoom((z) => typeof z === 'number' ? Math.min(z + 0.1, 2) : z);
       });
 
       runtime.EventsOn("menu-zoom-out", () => {
-        setZoom((z) => Math.max(z - 0.1, 0.5));
+        setZoom((z) => typeof z === 'number' ? Math.max(z - 0.1, 0.5) : z);
       });
 
       runtime.EventsOn("menu-zoom-reset", () => {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Document } from "react-pdf";
-import type { PDFDocumentProxy } from "pdfjs-dist";
+import type { PDFPageProxy, PDFDocumentProxy } from "pdfjs-dist";
 import PDFPage from "./PDFPage";
 
 interface PDFPreviewProps {
@@ -9,7 +9,7 @@ interface PDFPreviewProps {
   numPages: number;
   onNumPagesChange: (numPages: number) => void;
   registerPageRef: (page: number, el: HTMLDivElement | null) => void;
-  pageProxyRef: React.MutableRefObject<Map<number, PDFDocumentProxy>>;
+  pageProxyRef: React.MutableRefObject<Map<number, PDFPageProxy>>;
   onInverseSearch?: (page: number, x: number, y: number) => void;
   onPageNavigate?: (page: number) => void;
   highlightPosition?: { page: number; x: number; y: number } | null;

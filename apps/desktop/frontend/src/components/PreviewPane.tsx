@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "motion/react";
-import { PDFDocumentProxy } from "react-pdf";
+import type { PDFPageProxy } from "pdfjs-dist";
 import PDFPreview from "./PDF/PDFPreview";
 import { BuildStatus } from "../types";
 import { createLogger } from "../utils/logger";
@@ -34,15 +34,15 @@ const log = createLogger("PreviewPane");
 
 interface PreviewPaneProps {
   buildStatus: BuildStatus | null;
-  zoom: number;
-  onZoomChange: (zoom: number) => void;
+  zoom: number | 'fit-width' | 'fit-height';
+  onZoomChange: (zoom: number | 'fit-width' | 'fit-height') => void;
   numPages: number;
   onNumPagesChange: (numPages: number) => void;
   currentPage: number;
   onPageChange: (page: number) => void;
   projectRoot: string;
   pdfKey: number;
-  pageProxyRef: React.MutableRefObject<Map<number, PDFDocumentProxy>>;
+  pageProxyRef: React.MutableRefObject<Map<number, PDFPageProxy>>;
   registerPageRef: (page: number, el: HTMLDivElement | null) => void;
   onInverseSearch?: (page: number, x: number, y: number) => void;
   highlightPosition?: { page: number; x: number; y: number } | null;

@@ -167,11 +167,12 @@ useEffect(() => {
     const fetchBuild = async () => {
       setIsLoading(true);
       try {
+        if (!supabase) return;
         const { data, error } = await supabase
           .from('builds')
           .select('*')
           .eq('id', buildId)
-          .eq('user_id', user.id)
+          .eq('user_id', user!.id)
           .single();
         
         if (!mounted) return;
