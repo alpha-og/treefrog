@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useRef, useMemo } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode, useRef, useMemo } from 'react'
 import { supabase } from './supabase'
 import type { User, Session, AuthError, Provider } from '@supabase/supabase-js'
 import { useNavigate } from '@tanstack/react-router'
@@ -46,8 +46,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     })
-    const needsConfirmation = data.user && !data.session
-    return { error, needsConfirmation }
+    const needsConfirmation = !!(data.user && !data.session)
+    return { error, needsConfirmation: needsConfirmation || undefined }
   }
 
   const signIn = async (email: string, password: string) => {

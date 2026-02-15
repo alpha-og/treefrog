@@ -185,7 +185,7 @@ function DashboardContent() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">Recent Builds</h2>
               {recentBuilds.length > 0 && (
-                <Link to="/builds" className="text-sm text-primary hover:underline flex items-center gap-1">
+                <Link to="/dashboard" className="text-sm text-primary hover:underline flex items-center gap-1">
                   View All <ArrowRight className="w-4 h-4" />
                 </Link>
               )}
