@@ -29,6 +29,8 @@
     "build:docker:local": "tsx scripts/build/docker.ts local-compiler",
     "build:docker:remote": "tsx scripts/build/docker.ts remote-compiler",
     "build:docker:all": "tsx scripts/build/docker.ts --all",
+    "build:docker:local:only": "tsx scripts/build/docker.ts local-compiler --build-only",
+    "build:docker:remote:only": "tsx scripts/build/docker.ts remote-compiler --build-only",
     "build:backend": "tsx scripts/build/backend.ts",
     "build:cli": "tsx scripts/build/cli.ts",
     "prod": "tsx scripts/prod/start.ts",

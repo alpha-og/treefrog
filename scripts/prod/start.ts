@@ -1,28 +1,31 @@
 import chalk from 'chalk';
 import { execa } from 'execa';
 import fs from 'fs';
+import { isDockerRunning } from '../lib/index.js';
 
 interface ProdOptions {
   service: string;
-  env: 'production';
 }
 
 function parseArgs(): ProdOptions {
   const args = process.argv.slice(2);
-  const options: ProdOptions = {
+  return {
     service: args.find(arg => !arg.startsWith('--')) || 'compiler',
-    env: 'production',
   };
-
-  return options;
 }
 
 async function startProd(options: ProdOptions): Promise<void> {
   console.log(chalk.bold.blue('\n[*] Starting production services...\n'));
 
+  // Check Docker
+  const dockerAvailable = await isDockerRunning();
+  if (!dockerAvailable) {
+    console.error(chalk.red('[X] Docker is not running. Please start Docker and try again.\n'));
+    process.exit(1);
+  }
+
   if (options.service === 'compiler') {
     const envLocalPath = 'apps/remote-latex-compiler/.env.local';
-    const envProductionPath = 'apps/remote-latex-compiler/.env.production';
     
     if (!fs.existsSync(envLocalPath)) {
       console.error(chalk.red('[X] Missing .env.local with secrets'));

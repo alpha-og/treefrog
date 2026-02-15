@@ -3,7 +3,7 @@ import fs from 'fs';
 
 const ENV_FILES = [
   // Remote compiler - secrets in .env.local, config in .env.development/.env.production
-  { path: 'apps/remote-latex-compiler/.env.local', required: true, description: 'Secrets (gitignored)', secrets: true },
+  { path: 'apps/remote-latex-compiler/.env.local', required: false, description: 'Secrets (gitignored)', secrets: true },
   { path: 'apps/remote-latex-compiler/.env.development', required: true, description: 'Dev config (committed)' },
   { path: 'apps/remote-latex-compiler/.env.production', required: true, description: 'Prod config (committed)' },
   { path: 'apps/remote-latex-compiler/.env.example', required: true, description: 'Template' },

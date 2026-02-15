@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import { execa } from 'execa';
+import fs from 'fs';
 
 async function stopProd(): Promise<void> {
   console.log(chalk.bold.yellow('\n[*] Stopping production services...\n'));
