@@ -21,18 +21,18 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
-          cache-dependency-path: apps/compiler/go.sum
+          go-version: '1.24'
+          cache-dependency-path: apps/remote-latex-compiler/go.sum
 
       - name: Run Backend Tests
         run: |
-          cd apps/compiler
+          cd apps/remote-latex-compiler
           go test ./... -v -race -coverprofile=coverage.out -covermode=atomic
 
       - name: Upload Coverage
         uses: codecov/codecov-action@v5
         with:
-          files: ./apps/compiler/coverage.out
+          files: ./apps/remote-latex-compiler/coverage.out
           flags: backend
           fail_ci_if_error: false
 
@@ -99,14 +99,14 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
-          cache-dependency-path: apps/compiler/go.sum
+          go-version: '1.24'
+          cache-dependency-path: apps/remote-latex-compiler/go.sum
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
-          working-directory: ./apps/compiler
+          working-directory: ./apps/remote-latex-compiler
           args: --timeout=5m
 
   lint-frontend:
