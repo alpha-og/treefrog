@@ -450,9 +450,8 @@ func (a *App) runBuild(mainFile, engine string, shellEscape bool) {
 
 	root := a.getRoot()
 	compilerURL := a.getCompilerURL()
-	compilerToken := a.getCompilerToken()
+	sessionToken := a.GetSessionToken()
 
-	// Create zip of project
 	zipPath := filepath.Join(a.cacheDir, "build.zip")
 	if err := zipProject(root, zipPath); err != nil {
 		a.statusMu.Lock()
@@ -464,8 +463,7 @@ func (a *App) runBuild(mainFile, engine string, shellEscape bool) {
 		return
 	}
 
-	// Upload to compiler
-	remoteID, err := a.uploadBuild(zipPath, mainFile, engine, shellEscape, compilerURL, compilerToken)
+	remoteID, err := a.uploadBuild(zipPath, mainFile, engine, shellEscape, compilerURL, sessionToken)
 	if err != nil {
 		a.statusMu.Lock()
 		a.status.State = "error"
@@ -478,12 +476,10 @@ func (a *App) runBuild(mainFile, engine string, shellEscape bool) {
 
 	a.setRemoteID(remoteID)
 
-	// Poll for completion
-	a.pollBuildStatus(remoteID, mainFile, engine, shellEscape, compilerURL, compilerToken)
+	a.pollBuildStatus(remoteID, mainFile, engine, shellEscape, compilerURL, sessionToken)
 }
 
-// uploadBuild uploads the project zip to the compiler
-func (a *App) uploadBuild(zipPath, mainFile, engine string, shellEscape bool, compilerURL, compilerToken string) (string, error) {
+func (a *App) uploadBuild(zipPath, mainFile, engine string, shellEscape bool, compilerURL, sessionToken string) (string, error) {
 	Logger.Infof("Uploading build to %s - mainFile: %s, engine: %s", compilerURL, mainFile, engine)
 
 	file, err := os.Open(zipPath)
@@ -499,7 +495,6 @@ func (a *App) uploadBuild(zipPath, mainFile, engine string, shellEscape bool, co
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
-	// Add options field with build configuration
 	opts := BuildOptions{
 		MainFile:    mainFile,
 		Engine:      engine,
@@ -509,7 +504,6 @@ func (a *App) uploadBuild(zipPath, mainFile, engine string, shellEscape bool, co
 	_ = writer.WriteField("options", string(optsJSON))
 	Logger.Debugf("Added build options: %s", string(optsJSON))
 
-	// Add file field with the zip
 	part, err := writer.CreateFormFile("file", "source.zip")
 	if err != nil {
 		Logger.Errorf("Failed to create form file: %v", err)
@@ -529,8 +523,8 @@ func (a *App) uploadBuild(zipPath, mainFile, engine string, shellEscape bool, co
 	}
 
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-	if compilerToken != "" {
-		req.Header.Set("X-Compiler-Token", compilerToken)
+	if sessionToken != "" {
+		req.Header.Set("Authorization", "Bearer "+sessionToken)
 	}
 
 	Logger.Debugf("Sending HTTP POST request to %s/build", compilerURL)
@@ -557,8 +551,7 @@ func (a *App) uploadBuild(zipPath, mainFile, engine string, shellEscape bool, co
 	return result.ID, nil
 }
 
-// pollBuildStatus polls the compiler for build status
-func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape bool, compilerURL, compilerToken string) {
+func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape bool, compilerURL, sessionToken string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
@@ -574,14 +567,13 @@ func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape boo
 			a.status.Message = "Build timeout"
 			a.status.EndedAt = time.Now().Format(time.RFC3339)
 			a.statusMu.Unlock()
-			// Record timeout as failed attempt
 			if a.metrics != nil {
 				a.metrics.RecordAttempt(false, time.Since(buildStart))
 			}
 			a.emitBuildStatus(a.status)
 			return
 		case <-ticker.C:
-			status, err := a.checkRemoteBuild(remoteID, compilerURL, compilerToken)
+			status, err := a.checkRemoteBuild(remoteID, compilerURL, sessionToken)
 			if err != nil {
 				a.statusMu.Lock()
 				a.status.State = "error"
@@ -589,7 +581,6 @@ func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape boo
 				a.status.EndedAt = time.Now().Format(time.RFC3339)
 				statusCopy := a.status
 				a.statusMu.Unlock()
-				// Record error as failed attempt
 				if a.metrics != nil {
 					a.metrics.RecordAttempt(false, time.Since(buildStart))
 				}
@@ -605,14 +596,12 @@ func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape boo
 			a.emitBuildStatus(statusCopy)
 
 			if status == "success" {
-				// Download PDF
-				if err := a.downloadPDF(remoteID, compilerURL, compilerToken); err != nil {
+				if err := a.downloadPDF(remoteID, compilerURL, sessionToken); err != nil {
 					a.statusMu.Lock()
 					a.status.State = "error"
 					a.status.Message = err.Error()
 					a.status.EndedAt = time.Now().Format(time.RFC3339)
 					a.statusMu.Unlock()
-					// Record download error as failed attempt
 					if a.metrics != nil {
 						a.metrics.RecordAttempt(false, time.Since(buildStart))
 					}
@@ -623,7 +612,6 @@ func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape boo
 				a.status.State = "success"
 				a.status.EndedAt = time.Now().Format(time.RFC3339)
 				a.statusMu.Unlock()
-				// Record successful build
 				if a.metrics != nil {
 					a.metrics.RecordAttempt(true, time.Since(buildStart))
 				}
@@ -635,7 +623,6 @@ func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape boo
 				a.statusMu.Lock()
 				a.status.EndedAt = time.Now().Format(time.RFC3339)
 				a.statusMu.Unlock()
-				// Record failed build
 				if a.metrics != nil {
 					a.metrics.RecordAttempt(false, time.Since(buildStart))
 				}
@@ -646,8 +633,7 @@ func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape boo
 	}
 }
 
-// checkRemoteBuild checks the status of a remote build
-func (a *App) checkRemoteBuild(remoteID, compilerURL, compilerToken string) (string, error) {
+func (a *App) checkRemoteBuild(remoteID, compilerURL, sessionToken string) (string, error) {
 	Logger.Debugf("Checking remote build status for: %s", remoteID)
 
 	url := compilerURL + "/build/" + remoteID + "/status"
@@ -658,8 +644,8 @@ func (a *App) checkRemoteBuild(remoteID, compilerURL, compilerToken string) (str
 		return "", err
 	}
 
-	if compilerToken != "" {
-		req.Header.Set("X-Compiler-Token", compilerToken)
+	if sessionToken != "" {
+		req.Header.Set("Authorization", "Bearer "+sessionToken)
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -690,8 +676,7 @@ func (a *App) checkRemoteBuild(remoteID, compilerURL, compilerToken string) (str
 	return result.Status, nil
 }
 
-// downloadPDF downloads the built PDF and build log
-func (a *App) downloadPDF(remoteID, compilerURL, compilerToken string) error {
+func (a *App) downloadPDF(remoteID, compilerURL, sessionToken string) error {
 	Logger.Infof("Downloading PDF for build: %s", remoteID)
 
 	url := compilerURL + "/build/" + remoteID + "/artifacts/pdf"
@@ -702,8 +687,8 @@ func (a *App) downloadPDF(remoteID, compilerURL, compilerToken string) error {
 		return err
 	}
 
-	if compilerToken != "" {
-		req.Header.Set("X-Compiler-Token", compilerToken)
+	if sessionToken != "" {
+		req.Header.Set("Authorization", "Bearer "+sessionToken)
 	}
 
 	client := &http.Client{Timeout: 30 * time.Second}
@@ -763,17 +748,14 @@ func (a *App) downloadPDF(remoteID, compilerURL, compilerToken string) error {
 
 	Logger.Infof("PDF validated successfully: %s", pdfPath)
 
-	// Also download the build log from remote compiler
-	if err := a.downloadBuildLog(remoteID, compilerURL, compilerToken); err != nil {
+	if err := a.downloadBuildLog(remoteID, compilerURL, sessionToken); err != nil {
 		Logger.Warnf("Failed to download build log: %v", err)
-		// Don't fail the entire download if log fails - it's not critical
 	}
 
 	return nil
 }
 
-// downloadBuildLog downloads the build log from remote compiler
-func (a *App) downloadBuildLog(remoteID, compilerURL, compilerToken string) error {
+func (a *App) downloadBuildLog(remoteID, compilerURL, sessionToken string) error {
 	Logger.Infof("Downloading build log for build: %s", remoteID)
 
 	url := compilerURL + "/build/" + remoteID + "/log"
@@ -784,8 +766,8 @@ func (a *App) downloadBuildLog(remoteID, compilerURL, compilerToken string) erro
 		return err
 	}
 
-	if compilerToken != "" {
-		req.Header.Set("X-Compiler-Token", compilerToken)
+	if sessionToken != "" {
+		req.Header.Set("Authorization", "Bearer "+sessionToken)
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -1141,9 +1123,9 @@ func (a *App) SyncTeXView(file string, line, col int) (*SyncTeXResult, error) {
 		return nil, err
 	}
 
-	compilerToken := a.getCompilerToken()
-	if compilerToken != "" {
-		req.Header.Set("X-Compiler-Token", compilerToken)
+	sessionToken := a.GetSessionToken()
+	if sessionToken != "" {
+		req.Header.Set("Authorization", "Bearer "+sessionToken)
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -1198,9 +1180,9 @@ func (a *App) SyncTeXEdit(page int, x, y float64) (*SyncTeXResult, error) {
 		return nil, err
 	}
 
-	compilerToken := a.getCompilerToken()
-	if compilerToken != "" {
-		req.Header.Set("X-Compiler-Token", compilerToken)
+	sessionToken := a.GetSessionToken()
+	if sessionToken != "" {
+		req.Header.Set("Authorization", "Bearer "+sessionToken)
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -1358,33 +1340,6 @@ func (a *App) SetImageSource(source string, ref string) error {
 	return a.saveConfig()
 }
 
-// SetRendererRemoteURL sets the remote compiler URL
-func (a *App) SetRendererRemoteURL(url string) error {
-	a.configMu.Lock()
-	defer a.configMu.Unlock()
-
-	if a.config.Renderer == nil {
-		a.config.Renderer = DefaultRendererConfig()
-	}
-
-	a.config.Renderer.RemoteURL = url
-	return a.saveConfig()
-}
-
-// SetRendererRemoteToken sets the remote compiler API token
-func (a *App) SetRendererRemoteToken(token string) error {
-	a.configMu.Lock()
-	defer a.configMu.Unlock()
-
-	if a.config.Renderer == nil {
-		a.config.Renderer = DefaultRendererConfig()
-	}
-
-	a.config.Renderer.RemoteToken = token
-	return a.saveConfig()
-}
-
-// VerifyCustomImage verifies a custom image works
 func (a *App) VerifyCustomImage(path string) bool {
 	a.configMu.Lock()
 	a.config.Renderer.CustomTarPath = path
@@ -1399,7 +1354,6 @@ func (a *App) VerifyCustomImage(path string) bool {
 	return err == nil
 }
 
-// DetectBestMode detects the best rendering mode
 func (a *App) DetectBestMode() string {
 	if a.dockerMgr == nil {
 		return string(ModeRemote)
@@ -1409,7 +1363,6 @@ func (a *App) DetectBestMode() string {
 	return string(mode)
 }
 
-// GetCompilationMetrics returns compilation statistics
 func (a *App) GetCompilationMetrics() CompilationMetrics {
 	if a.metrics == nil {
 		return CompilationMetrics{}
@@ -1417,7 +1370,6 @@ func (a *App) GetCompilationMetrics() CompilationMetrics {
 	return a.metrics.GetMetrics()
 }
 
-// ResetCompilationMetrics clears all compilation metrics
 func (a *App) ResetCompilationMetrics() error {
 	if a.metrics == nil {
 		return fmt.Errorf("metrics not initialized")
@@ -1427,11 +1379,10 @@ func (a *App) ResetCompilationMetrics() error {
 	return nil
 }
 
-// GetRemoteCompilerHealth returns the current remote compiler health status
 func (a *App) GetRemoteCompilerHealth() RemoteCompilerHealth {
 	if a.remoteMonitor == nil {
 		return RemoteCompilerHealth{
-			URL:       a.compilerURL,
+			URL:       a.config.RemoteCompilerURL,
 			IsHealthy: false,
 			LastError: "Remote compiler monitor not initialized",
 		}
@@ -1439,7 +1390,6 @@ func (a *App) GetRemoteCompilerHealth() RemoteCompilerHealth {
 	return a.remoteMonitor.GetHealth()
 }
 
-// IsRemoteCompilerHealthy returns whether the remote compiler is healthy
 func (a *App) IsRemoteCompilerHealthy() bool {
 	if a.remoteMonitor == nil {
 		return false
@@ -1447,7 +1397,6 @@ func (a *App) IsRemoteCompilerHealthy() bool {
 	return a.remoteMonitor.IsHealthy()
 }
 
-// CleanupDockerSystem performs cleanup of unused Docker resources
 func (a *App) CleanupDockerSystem() error {
 	if a.dockerMgr == nil {
 		return errors.New("docker manager not initialized")
@@ -1455,7 +1404,6 @@ func (a *App) CleanupDockerSystem() error {
 	return a.dockerMgr.CleanupDockerSystem(context.Background())
 }
 
-// CheckDockerDiskSpace checks available disk space for Docker operations
 func (a *App) CheckDockerDiskSpace() (int64, error) {
 	if a.dockerMgr == nil {
 		return 0, errors.New("docker manager not initialized")

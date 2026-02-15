@@ -17,9 +17,16 @@ make build-backend                # Build Go backend binary
 make build-cli                    # Build local CLI
 
 # Docker
-make compiler                     # Start Docker compiler (with Redis, Postgres)
+make compiler                     # Start Docker compiler (with Redis)
+make compiler-dev                 # Start with .env.development
+make compiler-prod                # Start with .env.production
 make stop                         # Stop Docker services
 make logs                         # View Docker logs
+
+# Environment
+make env-dev                      # Copy .env.development to .env.local
+make env-prod                     # Copy .env.production to .env.local
+make env-check                    # Check environment files exist
 
 # Frontend only
 cd apps/desktop/frontend && pnpm dev   # Frontend dev server
@@ -101,7 +108,6 @@ apps/
   compiler/            # LaTeX compiler server (Go)
     cmd/server/        # HTTP server entry point
     internal/          # Private packages (auth, billing, build, etc.)
-    migrations/        # SQL migrations
   local-cli/           # Standalone local LaTeX compiler CLI
   desktop/             # Wails desktop application
     frontend/          # React frontend (React 19)
@@ -123,6 +129,9 @@ packages/
     signer/            # URL signing utility
     synctex/           # SyncTeX parser
     validation/        # UUID validation
+
+supabase/
+  schema.sql           # Database schema (managed by Supabase)
 ```
 
 Use `workspace:*` for internal dependencies. Run `pnpm install` from root.
@@ -159,27 +168,51 @@ Shared Go packages in `packages/go/` can be imported using their module paths:
 
 ## Environment Variables
 
-Each component has its own `.env.local` file:
+Each app has its own environment configuration:
 
-### Website (`apps/website/.env.local`)
+### Compiler (`apps/compiler/`)
+- `.env.development` - Development template (Supabase dev project)
+- `.env.production` - Production template (Supabase prod project)
+- `.env.local` - Active configuration (gitignored)
+- `.env.example` - Template with all variables
+
+Use `make env-dev` or `make env-prod` to copy the appropriate template.
+
+### Desktop (`apps/desktop/frontend/`)
+- `.env.development` - Auto-loaded by `vite dev`
+- `.env.production` - Auto-loaded by `vite build`
+- `.env.local` - Local overrides (gitignored)
+- `.env.example` - Template
+
+### Website (`apps/website/`)
+- `.env.development` - Auto-loaded by `vite dev`
+- `.env.production` - Auto-loaded by `vite build`
+- `.env.local` - Local overrides (gitignored)
+- `.env.example` - Template
 - `VITE_SUPABASE_URL` - Supabase project URL
 - `VITE_SUPABASE_PUBLISHABLE_KEY` - Supabase anon/public key
 - `VITE_API_URL` - Backend API URL
 - `VITE_WEBSITE_URL` - Website URL (for redirects)
 
-### Backend (`apps/compiler/.env.local`)
-- `DATABASE_URL` - PostgreSQL connection string (SECRET)
+### Compiler (`apps/compiler/`)
+- `DATABASE_URL` - Supabase PostgreSQL connection string
 - `SUPABASE_URL` - Supabase project URL (for JWKS token verification)
-- `SUPABASE_SECRET_KEY` - Supabase service_role key (SECRET)
+- `SUPABASE_SECRET_KEY` - Supabase service_role key (SECRET, bypasses RLS)
 - `RAZORPAY_*` - Payment configuration
 - `REDIS_URL` - Redis for rate limiting
 - `COMPILER_*` - Compiler settings
 
-### Desktop (`apps/desktop/frontend/.env.local`)
+### Desktop (`apps/desktop/frontend/`)
 - `VITE_SUPABASE_URL` - Supabase project URL
 - `VITE_SUPABASE_PUBLISHABLE_KEY` - Supabase anon/public key
 - `VITE_API_URL` - Backend API URL
 - `VITE_WEBSITE_URL` - Website for auth/billing redirect
+
+### Website (`apps/website/`)
+- `VITE_SUPABASE_URL` - Supabase project URL
+- `VITE_SUPABASE_PUBLISHABLE_KEY` - Supabase anon/public key
+- `VITE_API_URL` - Backend API URL
+- `VITE_WEBSITE_URL` - Website URL (for redirects)
 
 Copy `.env.example` to `.env.local` in each directory and fill in values.
 

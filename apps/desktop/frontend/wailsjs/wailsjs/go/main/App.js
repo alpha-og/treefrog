@@ -166,16 +166,16 @@ export function SetAuthUser(arg1, arg2, arg3) {
   return window['go']['main']['App']['SetAuthUser'](arg1, arg2, arg3);
 }
 
-export function SetCompilerConfig(arg1, arg2) {
-  return window['go']['main']['App']['SetCompilerConfig'](arg1, arg2);
-}
-
 export function SetImageSource(arg1, arg2) {
   return window['go']['main']['App']['SetImageSource'](arg1, arg2);
 }
 
 export function SetProject(arg1) {
   return window['go']['main']['App']['SetProject'](arg1);
+}
+
+export function SetRemoteCompilerURL(arg1) {
+  return window['go']['main']['App']['SetRemoteCompilerURL'](arg1);
 }
 
 export function SetRendererAutoStart(arg1) {
@@ -188,14 +188,6 @@ export function SetRendererMode(arg1) {
 
 export function SetRendererPort(arg1) {
   return window['go']['main']['App']['SetRendererPort'](arg1);
-}
-
-export function SetRendererRemoteToken(arg1) {
-  return window['go']['main']['App']['SetRendererRemoteToken'](arg1);
-}
-
-export function SetRendererRemoteURL(arg1) {
-  return window['go']['main']['App']['SetRendererRemoteURL'](arg1);
 }
 
 export function SignOut() {

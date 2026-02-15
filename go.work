@@ -1,9 +1,11 @@
 go 1.24.0
 
 use (
-	./apps/compiler
 	./apps/desktop
 	./apps/local-cli
+	./apps/local-latex-compiler
+	./apps/remote-latex-compiler
+	./packages/go/build
 	./packages/go/config
 	./packages/go/http
 	./packages/go/logging

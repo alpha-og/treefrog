@@ -84,21 +84,17 @@ export function RestartRenderer():Promise<void>;
 
 export function SetAuthUser(arg1:string,arg2:string,arg3:string):Promise<void>;
 
-export function SetCompilerConfig(arg1:string,arg2:string):Promise<void>;
-
 export function SetImageSource(arg1:string,arg2:string):Promise<void>;
 
 export function SetProject(arg1:string):Promise<main.ProjectInfo>;
+
+export function SetRemoteCompilerURL(arg1:string):Promise<void>;
 
 export function SetRendererAutoStart(arg1:boolean):Promise<void>;
 
 export function SetRendererMode(arg1:string):Promise<void>;
 
 export function SetRendererPort(arg1:number):Promise<void>;
-
-export function SetRendererRemoteToken(arg1:string):Promise<void>;
-
-export function SetRendererRemoteURL(arg1:string):Promise<void>;
 
 export function SignOut():Promise<void>;
 

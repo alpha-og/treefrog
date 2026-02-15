@@ -6,6 +6,8 @@
 
 @import "shadcn/tailwind.css";
 
+@import "react-pdf/dist/Page/AnnotationLayer.css";
+
 @custom-variant dark (&:is(.dark *));
 
 /* ==========================================
@@ -208,6 +210,36 @@ body {
 .dark .pdf-page {
   background: #f8f6f2;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* PDF Annotation Layer fixes */
+.react-pdf__Page__annotations {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: auto;
+}
+
+.react-pdf__Page__annotations a {
+  pointer-events: auto;
+}
+
+.react-pdf__Page__annotations .annotationLayer section {
+  position: absolute;
+  pointer-events: auto;
+}
+
+.react-pdf__Page__annotations .annotationLayer a {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Fix for blank annotation layer in dark mode */
+.dark .react-pdf__Page__annotations {
+  background: transparent !important;
 }
 
 /* Monaco editor font override */

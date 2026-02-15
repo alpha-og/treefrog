@@ -18,10 +18,9 @@ import (
 
 // Config holds application configuration
 type Config struct {
-	ProjectRoot   string          `json:"projectRoot"`
-	CompilerURL   string          `json:"compilerUrl"`
-	CompilerToken string          `json:"compilerToken"`
-	Renderer      *RendererConfig `json:"renderer,omitempty"`
+	ProjectRoot       string          `json:"projectRoot"`
+	RemoteCompilerURL string          `json:"remoteCompilerUrl"`
+	Renderer          *RendererConfig `json:"renderer,omitempty"`
 }
 
 // BuildStatus represents the current state of a build
@@ -72,7 +71,6 @@ type SyncTeXResult struct {
 	Col  int     `json:"col,omitempty"`
 }
 
-// App struct
 type App struct {
 	ctx           context.Context
 	config        Config
@@ -85,8 +83,6 @@ type App struct {
 	status        BuildStatus
 	remoteMu      sync.Mutex
 	remoteID      string
-	compilerURL   string
-	compilerToken string
 	dockerMgr     *DockerManager
 	buildWg       sync.WaitGroup
 	metrics       *MetricsCollector
@@ -114,19 +110,7 @@ func (a *App) startup(ctx context.Context) {
 	if a.config.ProjectRoot != "" {
 		a.setRoot(a.config.ProjectRoot)
 	}
-	a.compilerURL = a.config.CompilerURL
-	a.compilerToken = a.config.CompilerToken
 
-	// Initialize metrics collector
-	a.metrics = NewMetricsCollector(Logger)
-
-	// Initialize remote compiler monitor if URL is configured
-	if a.config.CompilerURL != "" {
-		a.remoteMonitor = NewRemoteCompilerMonitor(a.config.CompilerURL, Logger)
-		a.remoteMonitor.Start()
-	}
-
-	// Initialize Docker manager for renderer
 	if a.config.Renderer == nil {
 		a.config.Renderer = DefaultRendererConfig()
 		a.saveConfig()
@@ -134,7 +118,6 @@ func (a *App) startup(ctx context.Context) {
 
 	a.dockerMgr = NewDockerManager(a.config.Renderer, Logger)
 
-	// Auto-detect mode if set to Auto
 	if a.config.Renderer.Mode == ModeAuto {
 		detectedMode := a.dockerMgr.DetectBestMode(ctx)
 		Logger.WithFields(logrus.Fields{
@@ -143,16 +126,13 @@ func (a *App) startup(ctx context.Context) {
 		}).Info("Auto-detected rendering mode")
 	}
 
-	// Auto-start renderer if configured
 	if a.config.Renderer.AutoStart && a.config.Renderer.Mode == ModeLocal {
 		a.buildWg.Add(1)
 		go func() {
 			defer a.buildWg.Done()
-			// Create a separate context with timeout for auto-start to prevent blocking app shutdown
 			autoStartCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
 
-			// Wait for app to fully initialize
 			select {
 			case <-time.After(2 * time.Second):
 				if err := a.dockerMgr.Start(autoStartCtx); err != nil {
@@ -162,6 +142,11 @@ func (a *App) startup(ctx context.Context) {
 				Logger.Info("App shutdown initiated, cancelling auto-start")
 			}
 		}()
+	}
+
+	if a.config.RemoteCompilerURL != "" {
+		a.remoteMonitor = NewRemoteCompilerMonitor(a.config.RemoteCompilerURL, Logger)
+		a.remoteMonitor.Start()
 	}
 }
 
@@ -228,44 +213,49 @@ func (a *App) saveConfig() error {
 	return os.WriteFile(configPath, data, 0600)
 }
 
-// GetConfig returns the current configuration
 func (a *App) GetConfig() Config {
 	return Config{
-		ProjectRoot:   a.getRoot(),
-		CompilerURL:   a.getCompilerURL(),
-		CompilerToken: a.getCompilerToken(),
+		ProjectRoot:       a.getRoot(),
+		RemoteCompilerURL: a.getRemoteCompilerURL(),
+		Renderer:          a.config.Renderer,
 	}
 }
 
-// SetCompilerConfig updates the compiler configuration
-func (a *App) SetCompilerConfig(url, token string) {
+func (a *App) SetRemoteCompilerURL(url string) {
 	Logger.WithFields(logrus.Fields{
-		"url":      url,
-		"hasToken": token != "",
-	}).Info("Setting compiler configuration")
+		"url": url,
+	}).Info("Setting remote compiler URL")
 
 	a.configMu.Lock()
-	defer a.configMu.Unlock()
-	a.compilerURL = url
-	a.compilerToken = token
-	a.config.CompilerURL = url
-	a.config.CompilerToken = token
+	oldURL := a.config.RemoteCompilerURL
+	a.config.RemoteCompilerURL = url
+	a.configMu.Unlock()
 
 	if err := a.saveConfig(); err != nil {
-		Logger.WithError(err).Error("Failed to save compiler configuration")
+		Logger.WithError(err).Error("Failed to save remote compiler configuration")
 	} else {
-		Logger.Info("Compiler configuration saved successfully")
+		Logger.Info("Remote compiler URL saved successfully")
+	}
+
+	if oldURL != url {
+		if a.remoteMonitor != nil {
+			a.remoteMonitor.Stop()
+			a.remoteMonitor = nil
+		}
+		if url != "" {
+			a.remoteMonitor = NewRemoteCompilerMonitor(url, Logger)
+			a.remoteMonitor.Start()
+			Logger.WithField("url", url).Info("Started remote compiler monitor")
+		}
 	}
 }
 
-// getRoot returns the current project root safely
 func (a *App) getRoot() string {
 	a.rootMu.Lock()
 	defer a.rootMu.Unlock()
 	return a.projectRoot
 }
 
-// setRoot sets the project root and creates cache directory
 func (a *App) setRoot(root string) error {
 	a.rootMu.Lock()
 	defer a.rootMu.Unlock()
@@ -275,90 +265,53 @@ func (a *App) setRoot(root string) error {
 	return nil
 }
 
-// getCompilerURL returns the current compiler URL based on renderer mode
+func (a *App) getRemoteCompilerURL() string {
+	a.configMu.Lock()
+	defer a.configMu.Unlock()
+	return a.config.RemoteCompilerURL
+}
+
 func (a *App) getCompilerURL() string {
 	a.configMu.Lock()
 	defer a.configMu.Unlock()
 
 	if a.config.Renderer == nil {
-		if a.compilerURL != "" {
-			return a.compilerURL
+		if a.config.RemoteCompilerURL != "" {
+			return a.config.RemoteCompilerURL
 		}
-		return "https://compiler.example.com"
+		return "http://127.0.0.1:8080"
 	}
 
-	// Determine effective mode
 	effectiveMode := a.config.Renderer.Mode
 
-	// For auto mode, use remote URL if configured
-	// (auto mode prefers remote when available)
-	if effectiveMode == ModeAuto && a.config.Renderer.RemoteURL != "" {
-		Logger.WithFields(logrus.Fields{
-			"mode":      "auto",
-			"remoteUrl": a.config.Renderer.RemoteURL,
-		}).Debug("Auto mode: using remote URL")
-		return a.config.Renderer.RemoteURL
+	if effectiveMode == ModeAuto {
+		if a.config.RemoteCompilerURL != "" && a.remoteMonitor != nil && a.remoteMonitor.IsHealthy() {
+			return a.config.RemoteCompilerURL
+		}
+		return fmt.Sprintf("http://127.0.0.1:%d", a.config.Renderer.Port)
 	}
 
-	// If explicitly using remote mode and remote URL is configured, use it
-	if effectiveMode == ModeRemote && a.config.Renderer.RemoteURL != "" {
-		return a.config.Renderer.RemoteURL
-	}
-
-	// Fall back to local/legacy compiler URL
-	if a.compilerURL != "" {
-		return a.compilerURL
-	}
-	return "https://compiler.example.com"
-}
-
-// getCompilerToken returns the current compiler token based on renderer mode
-func (a *App) getCompilerToken() string {
-	a.configMu.Lock()
-	defer a.configMu.Unlock()
-
-	if a.config.Renderer == nil {
-		return a.compilerToken
-	}
-
-	// Determine effective mode
-	effectiveMode := a.config.Renderer.Mode
-
-	// For auto mode, use remote token if remote URL is configured
-	// (auto mode prefers remote when available)
-	if effectiveMode == ModeAuto && a.config.Renderer.RemoteURL != "" {
-		Logger.WithFields(logrus.Fields{
-			"mode":      "auto",
-			"remoteUrl": a.config.Renderer.RemoteURL,
-			"hasToken":  a.config.Renderer.RemoteToken != "",
-		}).Debug("Auto mode: using remote token")
-		return a.config.Renderer.RemoteToken
-	}
-
-	// If explicitly using remote mode, return remote token
 	if effectiveMode == ModeRemote {
-		return a.config.Renderer.RemoteToken
+		if a.config.RemoteCompilerURL != "" {
+			return a.config.RemoteCompilerURL
+		}
 	}
 
-	// Fall back to legacy compiler token (local mode)
-	return a.compilerToken
+	return fmt.Sprintf("http://127.0.0.1:%d", a.config.Renderer.Port)
 }
 
-// getRemoteID returns the current remote build ID
 func (a *App) getRemoteID() string {
 	a.remoteMu.Lock()
 	defer a.remoteMu.Unlock()
 	return a.remoteID
 }
 
-// setRemoteID sets the current remote build ID
 func (a *App) setRemoteID(id string) {
 	a.remoteMu.Lock()
 	defer a.remoteMu.Unlock()
 	a.remoteID = id
 }
 
-// safePath ensures a path is within the project root
 func (a *App) safePath(rel string) (string, error) {
 	root := a.getRoot()
 	if root == "" {
@@ -379,7 +332,6 @@ func (a *App) safePath(rel string) (string, error) {
 	return abs, nil
 }
 
-// emitBuildStatus emits a build status event to the frontend
 func (a *App) emitBuildStatus(status BuildStatus) {
 	runtime.EventsEmit(a.ctx, "build-status", status)
 }
