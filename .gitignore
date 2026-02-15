@@ -28,6 +28,11 @@ packages/*/src/*.d.ts.map
 # Wails generated bindings
 apps/desktop/frontend/wailsjs/
 
+# Vite cache
+.vite/
+apps/desktop/frontend/.vite/
+apps/website/.vite/
+
 # Go coverage
 *.out
 coverage.html
@@ -37,6 +42,7 @@ coverage.html
 .vscode/
 *.swp
 *.swo
+telemetry-id
 
 # Logs
 *.log
