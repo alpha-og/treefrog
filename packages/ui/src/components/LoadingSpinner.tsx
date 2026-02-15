@@ -1,12 +1,12 @@
-import * as React from "react";
-import { motion } from "motion/react";
+import { motion, type Variants } from "motion/react";
 import { cn } from "../lib/utils";
 
-interface LoadingSpinnerProps extends React.HTMLAttributes<HTMLDivElement> {
+interface LoadingSpinnerProps {
   size?: "xs" | "sm" | "md" | "lg";
   variant?: "primary" | "secondary" | "destructive" | "muted" | "inherit";
   label?: string;
   inline?: boolean;
+  className?: string;
 }
 
 const sizeClasses = {
@@ -24,75 +24,63 @@ const variantClasses = {
   inherit: "border-current text-current",
 };
 
-const spinnerVariants = {
+const spinnerVariants: Variants = {
   animate: {
     rotate: 360,
     transition: {
       duration: 1,
       repeat: Infinity,
-      ease: "linear",
+      ease: "linear" as const,
     },
   },
 };
 
-const LoadingSpinner = React.forwardRef<HTMLDivElement, LoadingSpinnerProps>(
-  (
-    {
-      size = "md",
-      variant = "primary",
-      label,
-      inline = true,
-      className,
-      ...props
-    },
-    ref
-  ) => {
-    if (label) {
-      return (
-        <div
-          ref={ref}
-          className={cn(
-            "flex items-center gap-2",
-            !inline && "justify-center",
-            className
-          )}
-          {...props}
-        >
-          <motion.div
-            className={cn(
-              "border-2 border-transparent rounded-full shrink-0",
-              sizeClasses[size],
-              variantClasses[variant],
-              "border-t-current border-l-current"
-            )}
-            animate="animate"
-            variants={spinnerVariants}
-          />
-          <span className="text-sm font-medium text-muted-foreground">
-            {label}
-          </span>
-        </div>
-      );
-    }
-
+function LoadingSpinner({
+  size = "md",
+  variant = "primary",
+  label,
+  inline = true,
+  className,
+}: LoadingSpinnerProps) {
+  if (label) {
     return (
-      <motion.div
-        ref={ref}
+      <div
         className={cn(
-          "border-2 border-transparent rounded-full inline-flex",
-          sizeClasses[size],
-          variantClasses[variant],
-          "border-t-current border-l-current",
+          "flex items-center gap-2",
+          !inline && "justify-center",
           className
         )}
-        animate="animate"
-        variants={spinnerVariants}
-        {...props}
-      />
+      >
+        <motion.div
+          className={cn(
+            "border-2 border-transparent rounded-full shrink-0",
+            sizeClasses[size],
+            variantClasses[variant],
+            "border-t-current border-l-current"
+          )}
+          animate="animate"
+          variants={spinnerVariants}
+        />
+        <span className="text-sm font-medium text-muted-foreground">
+          {label}
+        </span>
+      </div>
     );
   }
-);
 
-LoadingSpinner.displayName = "LoadingSpinner";
+  return (
+    <motion.div
+      className={cn(
+        "border-2 border-transparent rounded-full inline-flex",
+        sizeClasses[size],
+        variantClasses[variant],
+        "border-t-current border-l-current",
+        className
+      )}
+      animate="animate"
+      variants={spinnerVariants}
+    />
+  );
+}
 
-export { LoadingSpinner };
+export { LoadingSpinner, type LoadingSpinnerProps };
