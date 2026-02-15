@@ -2,110 +2,102 @@
 
 Guidelines for AI coding agents working in this repository.
 
-## Build Commands
+## Development Commands
 
 ```bash
-# Development (desktop app with Wails)
-make dev                          # Start dev server with logging
-make dev-debug                    # DEBUG level logging
-make dev-info                     # INFO level logging
+# Development profiles (concurrent services with health checks)
+pnpm dev                      # Default: desktop-local
+pnpm dev:desktop-local        # Desktop + Local compiler (no auth)
+pnpm dev:desktop-remote       # Desktop + Remote compiler + Website (auth required)
+pnpm dev:website-compiler     # Website + Remote compiler
+pnpm dev:full                 # All services
+pnpm dev:compiler             # Remote compiler only
+pnpm dev:local                # Local compiler only
+pnpm dev:website              # Website only
+pnpm dev:desktop              # Desktop only (needs external compiler)
+
+# Development options
+pnpm dev <profile> --log-dir ./logs    # Write logs to directory
+pnpm dev <profile> --detach            # Run in background
+pnpm dev <profile> --no-health-check   # Skip health checks
+
+# Service management
+pnpm dev:status               # Show status of all services
+pnpm dev:stop                 # Show stop options
+pnpm dev:stop:all             # Stop all Treefrog services
+pnpm dev:stop <profile>       # Stop services in a profile
+pnpm dev:logs <service>       # View logs (local-compiler, remote-compiler)
+pnpm dev:logs <service> -f    # Follow logs
+
+# Production
+pnpm prod:compiler            # Start remote compiler (production)
+pnpm prod:stop                # Stop production services
+pnpm prod:logs                # View production logs
 
 # Building
-make build                        # Build for current platform
-make build-all                    # Build for all platforms (macOS, Linux, Windows)
-make build-backend                # Build Go backend binary
-make build-cli                    # Build local CLI
+pnpm build                    # Desktop app (current platform)
+pnpm build:all                # Desktop app (all platforms)
+pnpm build:docker             # Show Docker build options
+pnpm build:docker:local       # Build local compiler image
+pnpm build:docker:remote      # Build remote compiler image
+pnpm build:docker:all         # Build all Docker images
+pnpm build:backend            # Build backend binary
+pnpm build:cli                # Build local CLI
 
-# Docker - Remote Compiler (SaaS with auth/billing)
-make compiler                     # Start Docker compiler (with Redis)
-make compiler-dev                 # Start with .env.development
-make compiler-prod                # Start with .env.production
-make stop                         # Stop Docker services
-make logs                         # View Docker logs
+# Testing
+pnpm test                     # All tests
+pnpm test:backend             # Go tests
+pnpm test:backend:verbose     # Go tests with coverage
+pnpm test:frontend            # Frontend tests
 
-# Docker - Local Compiler (No auth)
-make local-compiler               # Start local LaTeX compiler
-make local-compiler-stop          # Stop local compiler
+# Linting and Formatting
+pnpm lint                     # All linting
+pnpm lint:backend             # Go linting
+pnpm lint:frontend            # Frontend linting
+pnpm typecheck                # TypeScript checking
+pnpm fmt                      # Format all code
 
 # Environment
-make env-dev                      # Copy .env.development to .env.local
-make env-prod                     # Copy .env.production to .env.local
-make env-check                    # Check environment files exist
+pnpm env:dev                  # Copy .env.development to .env.local
+pnpm env:prod                 # Copy .env.production to .env.local
+pnpm env:check                # Check environment files
 
-# Frontend only
-cd apps/desktop/frontend && pnpm dev   # Frontend dev server
-cd apps/desktop/frontend && pnpm build # Production build
-
-# Backend only
-cd apps/remote-latex-compiler && go build -o server ./cmd/server
-
-# Website
-make website-dev                  # Start website dev server
-make website-build                # Build website
+# Utility
+pnpm clean                    # Remove build artifacts
+pnpm clean:all                # Deep clean (includes node_modules)
+pnpm doctor                   # Check development environment
 ```
 
-## Testing
+## Development Profiles
 
-```bash
-# All tests
-make test                         # Run all tests
+| Profile | Desktop | Website | Local Compiler | Remote Compiler | Redis |
+|---------|:-------:|:-------:|:--------------:|:---------------:|:-----:|
+| `desktop-local` | X | | X | | |
+| `desktop-remote` | X | X | | X | X |
+| `website-compiler` | | X | | X | X |
+| `full` | X | X | X | X | X |
+| `compiler-only` | | | | X | X |
+| `local-only` | | | X | | |
 
-# Go tests
-make test-backend                 # Run Go tests
-make test-backend-verbose         # Verbose Go tests with coverage
-cd apps/remote-latex-compiler && go test ./internal/build -run TestCreateBuild  # Single test
-cd apps/remote-latex-compiler && go test ./internal/build -v -run TestCreateBuild  # Single test verbose
+## Service Ports
 
-# Frontend tests
-make test-frontend                # Run frontend tests (placeholder)
-cd apps/desktop/frontend && pnpm test  # Direct frontend test
-```
+| Service | Port | Health Endpoint |
+|---------|------|-----------------|
+| Local Compiler | 8080 | http://localhost:8080/health |
+| Remote Compiler | 9000 | http://localhost:9000/health |
+| Website | 3000 | http://localhost:3000 |
+| Redis | 6379 | redis-cli ping |
 
-## Linting and Formatting
+## Architecture
 
-```bash
-make lint                         # Lint all code
-make lint-backend                 # Lint Go code (golangci-lint)
-make lint-frontend                # Lint frontend (ESLint)
-make fmt                          # Format all code
-make fmt-backend                  # Format Go code
-make fmt-frontend                 # Format frontend code
-make typecheck                    # Type check frontend
-```
+### Compiler Services
 
-## Code Style
+| Compiler | Auth | Use Case |
+|----------|------|----------|
+| **local-latex-compiler** | No auth | Local Docker rendering, pure compilation |
+| **remote-latex-compiler** | Supabase JWT | SaaS with auth, billing, rate limiting |
 
-### TypeScript/React
-- Use TypeScript strict mode with `noUnusedLocals` and `noUnusedParameters`
-- Functional components with explicit return types when complex
-- Path aliases: `@/components`, `@/hooks`, `@/services`, `@/stores`, `@/utils`, `@/lib`
-- Import order: React → External libs (motion, lucide-react) → Internal aliases → Relative imports
-- Zustand for state management with `persist` middleware
-- React 19 for desktop and website
-- Components export as `export default function ComponentName()`
-- Use `cn()` utility from `@/lib/utils` for conditional classNames
-
-### Go
-- Standard Go formatting (gofmt)
-- Package structure: `internal/` for app-private code, `cmd/` for binaries
-- Errors wrapped with context: `fmt.Errorf("failed to create container: %w", err)`
-- HTTP status codes: `http.StatusBadRequest`, not 400
-- Config structs with nested types (ServerConfig, BuildConfig, etc.)
-- Helper functions for env vars: `getEnvOrDefault`, `getIntEnv`, `getDurationEnv`
-
-### Naming
-- TypeScript: PascalCase types/interfaces, camelCase functions/variables
-- Go: PascalCase exports, camelCase internals
-- Files: kebab-case (e.g., `build-service.ts`, `renderer-service.ts`)
-- Components: PascalCase matching filename (e.g., `Sidebar.tsx` → `Sidebar`)
-- Stores: camelCase with `Store` suffix (e.g., `appStore.ts`, `fileStore.ts`)
-
-### Error Handling
-- TypeScript: Try/catch with typed errors, user-facing messages via sonner
-- Go: Early returns, wrap errors with context, log with structured logger
-- Always validate user input before processing
-
-## Monorepo Structure
+### Monorepo Structure
 
 ```
 apps/
@@ -137,6 +129,12 @@ packages/
     signer/              # URL signing utility
     synctex/             # SyncTeX parser
     validation/          # UUID validation
+
+scripts/
+  lib/                   # Shared utilities (services, profiles, docker, health)
+  dev/                   # Development scripts (start, stop, status, logs)
+  build/                 # Build scripts (desktop, docker, backend, cli)
+  prod/                  # Production scripts (start, stop, logs)
 
 supabase/
   schema.sql             # Database schema (managed by Supabase)
@@ -187,7 +185,7 @@ Each app has its own environment configuration:
 - `.env.local` - Active configuration (gitignored)
 - `.env.example` - Template with all variables
 
-Use `make env-dev` or `make env-prod` to copy the appropriate template.
+Use `pnpm env:dev` or `pnpm env:prod` to copy the appropriate template.
 
 ### Desktop (`apps/desktop/frontend/`)
 - `.env.development` - Auto-loaded by `vite dev`
@@ -200,12 +198,10 @@ Use `make env-dev` or `make env-prod` to copy the appropriate template.
 - `.env.production` - Auto-loaded by `vite build`
 - `.env.local` - Local overrides (gitignored)
 - `.env.example` - Template
-- `VITE_SUPABASE_URL` - Supabase project URL
-- `VITE_SUPABASE_PUBLISHABLE_KEY` - Supabase anon/public key
-- `VITE_API_URL` - Backend API URL
-- `VITE_WEBSITE_URL` - Website URL (for redirects)
 
-### Remote Compiler (`apps/remote-latex-compiler/`)
+### Environment Variables
+
+#### Remote Compiler (`apps/remote-latex-compiler/`)
 - `DATABASE_URL` - Supabase PostgreSQL connection string
 - `SUPABASE_URL` - Supabase project URL (for JWKS token verification)
 - `SUPABASE_SECRET_KEY` - Supabase service_role key (SECRET, bypasses RLS)
@@ -213,13 +209,13 @@ Use `make env-dev` or `make env-prod` to copy the appropriate template.
 - `REDIS_URL` - Redis for rate limiting
 - `COMPILER_*` - Compiler settings
 
-### Desktop (`apps/desktop/frontend/`)
+#### Desktop (`apps/desktop/frontend/`)
 - `VITE_SUPABASE_URL` - Supabase project URL
 - `VITE_SUPABASE_PUBLISHABLE_KEY` - Supabase anon/public key
 - `VITE_API_URL` - Backend API URL
 - `VITE_WEBSITE_URL` - Website for auth/billing redirect
 
-### Website (`apps/website/`)
+#### Website (`apps/website/`)
 - `VITE_SUPABASE_URL` - Supabase project URL
 - `VITE_SUPABASE_PUBLISHABLE_KEY` - Supabase anon/public key
 - `VITE_API_URL` - Backend API URL
@@ -227,21 +223,37 @@ Use `make env-dev` or `make env-prod` to copy the appropriate template.
 
 Copy `.env.example` to `.env.local` in each directory and fill in values.
 
-## Compiler Architecture
+## Code Style
 
-### Local LaTeX Compiler
-- **Port**: 8080 (configurable)
-- **Image**: `treefrog-local-latex-compiler:latest`
-- **Auth**: None (pure rendering)
-- **Routes**: `/api/build/*`, `/health`
-- **Storage**: Filesystem with TTL cleanup
+### TypeScript/React
+- Use TypeScript strict mode with `noUnusedLocals` and `noUnusedParameters`
+- Functional components with explicit return types when complex
+- Path aliases: `@/components`, `@/hooks`, `@/services`, `@/stores`, `@/utils`, `@/lib`
+- Import order: React -> External libs (motion, lucide-react) -> Internal aliases -> Relative imports
+- Zustand for state management with `persist` middleware
+- React 19 for desktop and website
+- Components export as `export default function ComponentName()`
+- Use `cn()` utility from `@/lib/utils` for conditional classNames
 
-### Remote LaTeX Compiler
-- **Port**: 9000
-- **Image**: `treefrog-remote-latex-compiler:latest`
-- **Auth**: Supabase JWT (`Authorization: Bearer` header)
-- **Routes**: `/api/build/*`, `/health`
-- **Storage**: Database-backed with Redis rate limiting
+### Go
+- Standard Go formatting (gofmt)
+- Package structure: `internal/` for app-private code, `cmd/` for binaries
+- Errors wrapped with context: `fmt.Errorf("failed to create container: %w", err)`
+- HTTP status codes: `http.StatusBadRequest`, not 400
+- Config structs with nested types (ServerConfig, BuildConfig, etc.)
+- Helper functions for env vars: `getEnvOrDefault`, `getIntEnv`, `getDurationEnv`
+
+### Naming
+- TypeScript: PascalCase types/interfaces, camelCase functions/variables
+- Go: PascalCase exports, camelCase internals
+- Files: kebab-case (e.g., `build-service.ts`, `renderer-service.ts`)
+- Components: PascalCase matching filename (e.g., `Sidebar.tsx` -> `Sidebar`)
+- Stores: camelCase with `Store` suffix (e.g., `appStore.ts`, `fileStore.ts`)
+
+### Error Handling
+- TypeScript: Try/catch with typed errors, user-facing messages via sonner
+- Go: Early returns, wrap errors with context, log with structured logger
+- Always validate user input before processing
 
 ## Important Notes
 
@@ -252,3 +264,4 @@ Copy `.env.example` to `.env.local` in each directory and fill in values.
 - Frontend uses Tailwind 4 with oklch colors
 - No breaking changes to existing stores (appStore, fileStore)
 - Desktop and website both use React 19 for shared UI components
+- Windows development requires WSL for shell scripts
