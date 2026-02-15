@@ -1,74 +1,27 @@
 services:
-  remote-latex-compiler:
+  remote-compiler:
     build:
       context: ../..
       dockerfile: apps/remote-latex-compiler/Dockerfile
-      args:
-        BUILDKIT_INLINE_CACHE: "1"
-      cache_from:
-        - type=local,src=/tmp/.buildx-cache
     image: treefrog-remote-latex-compiler:latest
     container_name: treefrog-remote-latex-compiler
     ports:
-      - "127.0.0.1:9000:9000"
-    env_file:
-      - ${ENV_FILE:-.env.development}
+      - "${SERVER_PORT:-9000}:9000"
     environment:
-      - PORT=9000
+      - SERVER_PORT=9000
       - COMPILER_WORKDIR=/tmp/treefrog-builds
+    env_file:
+      - .env.local
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - treefrog-builds:/tmp/treefrog-builds
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
-    depends_on:
-      redis:
-        condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 4G
-        reservations:
-          cpus: '0.5'
-          memory: 1G
-    read_only: true
-    tmpfs:
-      - /tmp:size=2G,mode=1777
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  redis:
-    image: redis:7-alpine
-    container_name: treefrog-redis
-    ports:
-      - "127.0.0.1:6379:6379"
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 256M
-        reservations:
-          cpus: '0.1'
-          memory: 64M
-    volumes:
-      - redis-data:/data
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-treefrog_redis_dev}
+      start_period: 5s
 
 volumes:
-  redis-data:
+  treefrog-builds:
