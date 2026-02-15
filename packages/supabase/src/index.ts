@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import type { GenericSchema } from '@supabase/supabase-js/dist/module/lib/types';
 
 const getSupabaseUrl = (): string => {
   if (typeof process !== 'undefined' && process.env?.SUPABASE_URL) {

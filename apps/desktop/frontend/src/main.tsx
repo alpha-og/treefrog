@@ -39,7 +39,7 @@ const initializeTheme = () => {
     try {
       const parsed = JSON.parse(storedTheme);
       theme = parsed.state?.theme || "dark";
-    } catch {}
+    } catch { /* ignore */ }
   }
   
   if (theme === "dark") {
@@ -73,78 +73,76 @@ self.MonacoEnvironment = {
 function isWailsEnvironment(): boolean {
   return typeof window !== 'undefined' && 
     (window.location.protocol === 'wails:' || 
-     (window as any).go !== undefined);
+     (window as { go?: unknown }).go !== undefined);
 }
 
 function AppContent() {
   const { setMode, setSessionToken, setUser } = useAuthStore();
-  const [isReady, setIsReady] = useState(false);
+  const [isReady, setIsReady] = useState(() => !isWailsEnvironment());
 
   useEffect(() => {
     const isWails = isWailsEnvironment();
     
-    if (isWails) {
-      log.info("Wails environment detected - using browser-based auth");
-      
-      // Check if user is already authenticated via Go backend
-      const checkAuth = async () => {
-        try {
-          const { GetAuthState } = (window as any).go?.main?.App || {};
-          if (GetAuthState) {
-            const state = await GetAuthState();
-            if (state?.isAuthenticated && state?.user) {
-              setMode('supabase');
-              setUser({
-                id: state.user.id,
-                email: state.user.email,
-                name: state.user.firstName,
-              });
-              log.info("Restored authenticated session from Go backend");
-            } else {
-              setMode('guest');
-            }
+    if (!isWails) {
+      setMode('guest');
+      return;
+    }
+    
+    log.info("Wails environment detected - using browser-based auth");
+    
+    const checkAuth = async () => {
+      try {
+        const GetAuthState = (window as { go?: { main?: { App?: { GetAuthState?: () => Promise<{ isAuthenticated?: boolean; user?: { id: string; email: string; firstName: string } }> } } } }).go?.main?.App?.GetAuthState;
+        if (GetAuthState) {
+          const state = await GetAuthState();
+          if (state?.isAuthenticated && state?.user) {
+            setMode('supabase');
+            setUser({
+              id: state.user.id,
+              email: state.user.email,
+              name: state.user.firstName,
+            });
+            log.info("Restored authenticated session from Go backend");
           } else {
             setMode('guest');
           }
-        } catch (error) {
-          log.warn("Could not check auth state:", error);
+        } else {
           setMode('guest');
         }
-        setIsReady(true);
-      };
-      
-      checkAuth();
-      
-      // Listen for auth callbacks from Go backend
-      const { EventsOn, EventsOff } = (window as any).runtime || {};
-      if (EventsOn) {
-        EventsOn("auth:callback", (data: any) => {
-          log.info("Auth callback received", data);
-          if (data?.success) {
-            setMode('supabase');
-            toast.success("Signed in successfully");
-            // Refresh auth state
-            checkAuth();
-          }
-        });
-        
-        EventsOn("auth:signout", () => {
-          log.info("Sign out event received");
-          setMode('guest');
-          setSessionToken(null);
-          setUser(null);
-        });
-        
-        return () => {
-          if (EventsOff) {
-            EventsOff("auth:callback", "auth:signout");
-          }
-        };
+      } catch (error) {
+        log.warn("Could not check auth state:", error);
+        setMode('guest');
       }
-    } else {
-      // Web environment - use Supabase Auth
-      setMode('guest');
       setIsReady(true);
+    };
+    
+    checkAuth();
+    
+    const EventsOn = (window as { runtime?: { EventsOn?: (event: string, cb: (data: unknown) => void) => void } }).runtime?.EventsOn;
+    const EventsOff = (window as { runtime?: { EventsOff?: (...events: string[]) => void } }).runtime?.EventsOff;
+    if (EventsOn) {
+      EventsOn("auth:callback", (data: unknown) => {
+        const authData = data as { success?: boolean };
+        log.info("Auth callback received", authData);
+        if (authData?.success) {
+          setMode('supabase');
+          toast.success("Signed in successfully");
+          checkAuth();
+        }
+      });
+      
+      EventsOn("auth:signout", () => {
+        log.info("Sign out event received");
+        setMode('guest');
+        setSessionToken(null);
+        setUser(null);
+      });
+      
+      return () => {
+        if (EventsOff) {
+          EventsOff("auth:callback", "auth:signout");
+        }
+      };
     }
   }, [setMode, setSessionToken, setUser]);
 

@@ -1,4 +1,5 @@
-import { Page, PDFPageProxy } from "react-pdf";
+import { Page } from "react-pdf";
+import type { PDFPageProxy } from "pdfjs-dist";
 import { useState, useCallback } from "react";
 
 interface PDFPageProps {

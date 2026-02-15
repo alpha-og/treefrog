@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Document, PDFDocumentProxy } from "react-pdf";
+import { Document } from "react-pdf";
+import type { PDFDocumentProxy } from "pdfjs-dist";
 import PDFPage from "./PDFPage";
 
 interface PDFPreviewProps {
