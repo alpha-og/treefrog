@@ -49,8 +49,7 @@
     "clean": "tsx scripts/clean.ts",
     "clean:all": "tsx scripts/clean.ts --deep",
     "doctor": "tsx scripts/doctor.ts",
-    "env:dev": "cp apps/remote-latex-compiler/.env.development apps/remote-latex-compiler/.env.local",
-    "env:prod": "cp apps/remote-latex-compiler/.env.production apps/remote-latex-compiler/.env.local",
+    "env:setup": "cp apps/remote-latex-compiler/.env.example apps/remote-latex-compiler/.env.local && echo 'Edit apps/remote-latex-compiler/.env.local with your secrets'",
     "env:check": "tsx scripts/env-check.ts"
   },
   "keywords": [
