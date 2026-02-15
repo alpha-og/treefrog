@@ -16,12 +16,10 @@ export interface ToggleProps
 const Toggle = React.forwardRef<HTMLInputElement, ToggleProps>(
   (
     {
-      className,
       label,
       description,
       animated = true,
       size = "md",
-      color = "primary",
       disabled,
       ...props
     },

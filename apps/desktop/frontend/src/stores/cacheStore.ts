@@ -138,7 +138,8 @@ export const useCacheStore = create<CacheStore>()(
 
       clearProjectCache: (projectId) => {
         set((state) => {
-          const { [projectId]: _, ...remaining } = state.projectCache;
+          const remaining = { ...state.projectCache };
+          delete remaining[projectId];
           return {
             projectCache: remaining,
             currentProjectId:

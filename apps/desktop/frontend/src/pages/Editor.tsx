@@ -95,7 +95,6 @@ export default function Editor() {
     moveFile,
     duplicateFile,
     deleteFile,
-    refresh: _refreshFiles,
     clear: clearFiles,
   } = useFiles();
   const { status: buildStatus, build, updateStatus } = useBuild();
@@ -103,6 +102,7 @@ export default function Editor() {
     status: gitStatus,
     isError: gitError,
     refresh: refreshGit,
+    initRefresh: initGitRefresh,
     commit,
     push,
     pull,
@@ -116,8 +116,8 @@ export default function Editor() {
   const [shellEscape, setShellEscape] = useState<boolean>(false);
   const [zoom, setZoom] = useState<number>(1.2);
   const [numPages, setNumPages] = useState<number>(0);
-  const [pageInput, setPageInput] = useState<string>("1");
-  const [pdfKey, setPdfKey] = useState<number>(Date.now());
+  const [pageInput, setPageInput] = useState<string>(() => "1");
+  const [pdfKey, setPdfKey] = useState<number>(() => Date.now());
 
   // ========== MODAL STATE ==========
    const [contextMenu, setContextMenu] = useState<{
@@ -179,14 +179,22 @@ export default function Editor() {
   }, [projectRoot, projectLoading, loadEntries, refreshGit, openFile, setCurrentFile, setFileContent]);
 
   // Clamp page input when numPages changes
+  // This is intentional state sync from props - safe because it's a derived value
+  const prevNumPages = useRef(0);
   useEffect(() => {
-    if (numPages > 0) {
+    if (numPages > 0 && numPages !== prevNumPages.current) {
+      prevNumPages.current = numPages;
       const next = String(clampPage(Number(pageInput || "1"), numPages));
       if (next !== pageInput) {
         setPageInput(next);
       }
     }
-  }, [numPages]);
+  }, [numPages, pageInput]);
+
+  // Initialize git refresh on mount
+  useEffect(() => {
+    initGitRefresh();
+  }, [initGitRefresh]);
 
   // ========== BUILD FUNCTIONS ==========
   const scheduleBuild = useCallback(() => {
@@ -241,8 +249,8 @@ export default function Editor() {
 
     // Menu event listeners
     useEffect(() => {
-      // @ts-ignore - Wails runtime
-      if (!window.runtime?.EventsOn) return;
+      const runtime = (window as { runtime?: { EventsOn?: (event: string, cb: () => void) => void; EventsOff?: (...events: string[]) => void } }).runtime;
+      if (!runtime?.EventsOn) return;
 
       const events = [
         "menu-open-project",
@@ -263,97 +271,75 @@ export default function Editor() {
         "menu-git-refresh",
       ];
 
-       // File menu events
-       // @ts-ignore
-       window.runtime.EventsOn("menu-open-project", () => {
-         setShowPicker(true);
-       });
+      runtime.EventsOn("menu-open-project", () => {
+        setShowPicker(true);
+      });
 
-       // @ts-ignore
-       window.runtime.EventsOn("menu-new-file", () => {
-         handleOpenModal({ kind: "create", type: "file" });
-       });
+      runtime.EventsOn("menu-new-file", () => {
+        handleOpenModal({ kind: "create", type: "file" });
+      });
 
-       // @ts-ignore
-       window.runtime.EventsOn("menu-new-folder", () => {
-         handleOpenModal({ kind: "create", type: "dir" });
-       });
+      runtime.EventsOn("menu-new-folder", () => {
+        handleOpenModal({ kind: "create", type: "dir" });
+      });
 
-       // @ts-ignore
-       window.runtime.EventsOn("menu-go-home", () => {
-         navigate({ to: "/" });
-       });
+      runtime.EventsOn("menu-go-home", () => {
+        navigate({ to: "/" });
+      });
 
-      // Build menu events
-      // @ts-ignore
-      window.runtime.EventsOn("menu-build", () => {
+      runtime.EventsOn("menu-build", () => {
         triggerBuild();
       });
 
-      // View menu events
-      // @ts-ignore
-      window.runtime.EventsOn("menu-toggle-sidebar", () => {
+      runtime.EventsOn("menu-toggle-sidebar", () => {
         togglePane("sidebar");
       });
 
-      // @ts-ignore
-      window.runtime.EventsOn("menu-toggle-editor", () => {
+      runtime.EventsOn("menu-toggle-editor", () => {
         togglePane("editor");
       });
 
-      // @ts-ignore
-      window.runtime.EventsOn("menu-toggle-preview", () => {
+      runtime.EventsOn("menu-toggle-preview", () => {
         togglePane("preview");
       });
 
-      // @ts-ignore
-      window.runtime.EventsOn("menu-zoom-in", () => {
+      runtime.EventsOn("menu-zoom-in", () => {
         setZoom((z) => Math.min(z + 0.1, 2));
       });
 
-      // @ts-ignore
-      window.runtime.EventsOn("menu-zoom-out", () => {
+      runtime.EventsOn("menu-zoom-out", () => {
         setZoom((z) => Math.max(z - 0.1, 0.5));
       });
 
-      // @ts-ignore
-      window.runtime.EventsOn("menu-zoom-reset", () => {
+      runtime.EventsOn("menu-zoom-reset", () => {
         setZoom(1.2);
       });
 
-      // @ts-ignore
-      window.runtime.EventsOn("menu-toggle-theme", () => {
+      runtime.EventsOn("menu-toggle-theme", () => {
         setTheme(theme === "dark" ? "light" : "dark");
       });
 
-      // Git menu events
-      // @ts-ignore
-      window.runtime.EventsOn("menu-git-commit", () => {
+      runtime.EventsOn("menu-git-commit", () => {
         if (gitStatus.includes("modified") || gitStatus.includes("untracked")) {
           handleOpenModal({ kind: "commit" });
         }
       });
 
-      // @ts-ignore
-      window.runtime.EventsOn("menu-git-push", async () => {
+      runtime.EventsOn("menu-git-push", async () => {
         await push();
       });
 
-      // @ts-ignore
-      window.runtime.EventsOn("menu-git-pull", async () => {
+      runtime.EventsOn("menu-git-pull", async () => {
         await pull();
       });
 
-      // @ts-ignore
-      window.runtime.EventsOn("menu-git-refresh", () => {
+      runtime.EventsOn("menu-git-refresh", () => {
         refreshGit();
       });
 
       return () => {
-        // @ts-ignore - Wails runtime
-        if (window.runtime?.EventsOff) {
-          // @ts-ignore
-          window.runtime.EventsOff(...events);
+        if (runtime.EventsOff) {
+          runtime.EventsOff(...events);
         }
       };
     }, [theme, setTheme, togglePane, triggerBuild, navigate, setShowPicker, setZoom, gitStatus, push, pull, refreshGit, handleOpenModal]);
@@ -385,8 +371,9 @@ export default function Editor() {
       if (modal.kind === "delete") {
         await deleteFile(modal.path, modal.isDir || false);
       }
-    } catch (err: any) {
-      alert(err.message || "Operation failed");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Operation failed";
+      alert(message);
     }
     closeModal();
   }, [

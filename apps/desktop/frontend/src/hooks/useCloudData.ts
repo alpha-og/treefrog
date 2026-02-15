@@ -157,21 +157,27 @@ export function useCloudBuild(buildId: string | null) {
 
   const isAuthenticated = mode === 'supabase' && user?.id
 
-  useEffect(() => {
+useEffect(() => {
     if (!buildId || !isAuthenticated || !supabase || !user?.id) {
-      return
+      return;
     }
 
-    setIsLoading(true)
-    supabase
-      .from('builds')
-      .select('*')
-      .eq('id', buildId)
-      .eq('user_id', user.id)
-      .single()
-      .then(({ data, error }) => {
+    let mounted = true;
+    
+    const fetchBuild = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('builds')
+          .select('*')
+          .eq('id', buildId)
+          .eq('user_id', user.id)
+          .single();
+        
+        if (!mounted) return;
+        
         if (error) {
-          log.error('Failed to fetch build', error)
+          log.error('Failed to fetch build', error);
         } else if (data) {
           setBuild({
             id: data.id,
@@ -181,11 +187,17 @@ export function useCloudBuild(buildId: string | null) {
             created_at: data.created_at,
             expires_at: data.expires_at,
             error_message: data.error_message,
-          })
+          });
         }
-        setIsLoading(false)
-      })
-  }, [buildId, isAuthenticated, user?.id])
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    };
+    
+    fetchBuild();
+    
+    return () => { mounted = false; };
+  }, [buildId, isAuthenticated, user?.id]);
 
   return { build, isLoading }
 }

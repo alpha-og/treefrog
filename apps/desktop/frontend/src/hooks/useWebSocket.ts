@@ -4,7 +4,7 @@ import { createLogger } from "../utils/logger";
 
 const log = createLogger("WebSocket");
 
-export function useWebSocket(onMsg: (d: any) => void) {
+export function useWebSocket(onMsg: (d: unknown) => void) {
   const onMsgRef = useRef(onMsg);
 
   useEffect(() => {
@@ -18,24 +18,26 @@ export function useWebSocket(onMsg: (d: any) => void) {
       
       const setupWailsEvents = () => {
         try {
-          const wailsRuntime = (window as any).wails?.runtime;
+          const wailsRuntime = (window as { wails?: { runtime?: { EventsOn?: (event: string, cb: (data: unknown) => void) => (() => void) | undefined } } }).wails?.runtime;
           
           if (wailsRuntime?.EventsOn) {
             log.debug("Connected to Wails runtime EventsOn");
-            unsubscribe = wailsRuntime.EventsOn("build-status", (data: any) => {
-              log.debug("Received build status event", { state: data?.state });
+            const unsub = wailsRuntime.EventsOn("build-status", (data: unknown) => {
+              log.debug("Received build status event", { state: (data as { state?: string })?.state });
               onMsgRef.current(data);
             });
+            if (unsub) unsubscribe = unsub;
             return;
           }
           
-          const globalRuntime = (window as any).runtime;
+          const globalRuntime = (window as { runtime?: { EventsOn?: (event: string, cb: (data: unknown) => void) => (() => void) | undefined } }).runtime;
           if (globalRuntime?.EventsOn) {
             log.debug("Connected to global runtime EventsOn");
-            unsubscribe = globalRuntime.EventsOn("build-status", (data: any) => {
-              log.debug("Received build status event", { state: data?.state });
+            const unsub = globalRuntime.EventsOn("build-status", (data: unknown) => {
+              log.debug("Received build status event", { state: (data as { state?: string })?.state });
               onMsgRef.current(data);
             });
+            if (unsub) unsubscribe = unsub;
             return;
           }
           

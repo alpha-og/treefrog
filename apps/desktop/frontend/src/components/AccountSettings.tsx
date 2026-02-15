@@ -4,7 +4,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { Button } from "@/components/common";
 import { createLogger } from "@/utils/logger";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 const log = createLogger('AccountSettings');
 
@@ -12,34 +12,9 @@ export default function AccountSettings() {
   const { mode, user, setMode, setUser } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    const EventsOn = (window as any).runtime?.EventsOn;
-    if (EventsOn) {
-      EventsOn("auth:callback", (data: any) => {
-        log.info("Auth callback received", data);
-        if (data?.success) {
-          if (data?.user) {
-            setMode('supabase');
-            setUser({
-              id: data.user.id || '',
-              email: data.user.email || '',
-              name: data.user.name || '',
-            });
-            toast.success("Signed in successfully");
-          } else {
-            refreshAuthState();
-            toast.success("Signed in successfully");
-          }
-        } else if (data?.error) {
-          toast.error(`Sign in failed: ${data.error}`);
-        }
-      });
-    }
-  }, [setMode, setUser]);
-
-  const refreshAuthState = async () => {
+  const refreshAuthState = useCallback(async () => {
     try {
-      const getAuthState = (window as any).go?.main?.App?.GetAuthState;
+      const getAuthState = (window as { go?: { main?: { App?: { GetAuthState?: () => Promise<{ isAuthenticated?: boolean; user?: { id: string; email: string; firstName: string } }> } } } }).go?.main?.App?.GetAuthState;
       if (getAuthState) {
         const state = await getAuthState();
         if (state?.isAuthenticated && state?.user) {
@@ -54,12 +29,38 @@ export default function AccountSettings() {
     } catch (error) {
       log.warn("Could not refresh auth state", error);
     }
-  };
+  }, [setMode, setUser]);
+
+  useEffect(() => {
+    const EventsOn = (window as { runtime?: { EventsOn?: (event: string, cb: (data: unknown) => void) => void } }).runtime?.EventsOn;
+    if (EventsOn) {
+      EventsOn("auth:callback", (data: unknown) => {
+        const authData = data as { success?: boolean; user?: { id?: string; email?: string; name?: string }; error?: string } | undefined;
+        log.info("Auth callback received", authData);
+        if (authData?.success) {
+          if (authData?.user) {
+            setMode('supabase');
+            setUser({
+              id: authData.user.id || '',
+              email: authData.user.email || '',
+              name: authData.user.name || '',
+            });
+            toast.success("Signed in successfully");
+          } else {
+            refreshAuthState();
+            toast.success("Signed in successfully");
+          }
+        } else if (authData?.error) {
+          toast.error(`Sign in failed: ${authData.error}`);
+        }
+      });
+    }
+  }, [setMode, setUser, refreshAuthState]);
 
   const handleSignIn = async () => {
     setIsLoading(true);
     try {
-      const openAuthURL = (window as any).go?.main?.App?.OpenAuthURL;
+      const openAuthURL = (window as { go?: { main?: { App?: { OpenAuthURL?: () => Promise<void> } } } }).go?.main?.App?.OpenAuthURL;
       if (openAuthURL) {
         await openAuthURL();
         toast.success("Browser opened for sign-in");
@@ -76,7 +77,7 @@ export default function AccountSettings() {
 
   const handleSignOut = async () => {
     try {
-      const signOut = (window as any).go?.main?.App?.SignOut;
+      const signOut = (window as { go?: { main?: { App?: { SignOut?: () => Promise<void> } } } }).go?.main?.App?.SignOut;
       if (signOut) {
         await signOut();
         setMode('guest');

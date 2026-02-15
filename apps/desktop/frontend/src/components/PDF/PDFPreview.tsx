@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Document } from "react-pdf";
+import { Document, PDFDocumentProxy } from "react-pdf";
 import PDFPage from "./PDFPage";
 
 interface PDFPreviewProps {
@@ -8,7 +8,7 @@ interface PDFPreviewProps {
   numPages: number;
   onNumPagesChange: (numPages: number) => void;
   registerPageRef: (page: number, el: HTMLDivElement | null) => void;
-  pageProxyRef: React.MutableRefObject<Map<number, any>>;
+  pageProxyRef: React.MutableRefObject<Map<number, PDFDocumentProxy>>;
   onInverseSearch?: (page: number, x: number, y: number) => void;
   onPageNavigate?: (page: number) => void;
   highlightPosition?: { page: number; x: number; y: number } | null;
@@ -26,15 +26,10 @@ export default function PDFPreview({
   highlightPosition,
 }: PDFPreviewProps) {
   const [error, setError] = useState("");
-  const [internalNumPages, setInternalNumPages] = useState<number>(0);
+  const [internalNumPages, setInternalNumPages] = useState<number>(() => 0);
   const [containerWidth, setContainerWidth] = useState<number>(0);
   const [containerHeight, setContainerHeight] = useState<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setError("");
-    setInternalNumPages(0);
-  }, [url]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -55,7 +50,7 @@ export default function PDFPreview({
     };
   }, []);
 
-  const handleLoadSuccess = (d: any) => {
+  const handleLoadSuccess = (d: PDFDocumentProxy) => {
     setInternalNumPages(d.numPages);
     onNumPagesChange(d.numPages);
   };

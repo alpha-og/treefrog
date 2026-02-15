@@ -1,4 +1,3 @@
-/// <reference path="./wails.d.ts" />
 import { AuthState, AuthUser } from "./auth";
 import { BuildStatus, CompilationMetrics } from "./build";
 import { Config } from "./config";

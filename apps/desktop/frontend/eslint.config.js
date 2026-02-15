@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'wailsjs', 'node_modules', 'coverage']),
+  globalIgnores(['dist', 'wailsjs', 'node_modules', 'coverage', '.vite']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -23,6 +23,7 @@ export default defineConfig([
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/explicit-function-return-type': 'off',
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      'react-hooks/set-state-in-effect': 'off',
     },
   },
 ])

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import {
   gitStatus,
   gitCommit,
@@ -12,6 +12,7 @@ const log = createLogger("Git");
 export function useGit() {
   const [status, setStatus] = useState("");
   const [isError, setIsError] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -25,9 +26,9 @@ export function useGit() {
     }
   }, []);
 
-  // Auto-refresh on mount
-  useEffect(() => {
-    refresh();
+  const initRefresh = useCallback(async () => {
+    await refresh();
+    setIsInitialized(true);
   }, [refresh]);
 
   const commit = useCallback(
@@ -64,7 +65,9 @@ export function useGit() {
   return {
     status,
     isError,
+    isInitialized,
     refresh,
+    initRefresh,
     commit,
     push,
     pull,

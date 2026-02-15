@@ -219,7 +219,7 @@ export default forwardRef(function LatexCompilerSettings(
     const loadDisk = async () => {
       try {
         setDiskSpaceAvailable(await rendererService.checkDiskSpace());
-      } catch {}
+      } catch { /* ignore */ }
     };
     loadDisk();
     const interval = setInterval(loadDisk, 30000);
@@ -280,7 +280,7 @@ export default forwardRef(function LatexCompilerSettings(
     try {
       const logs = await rendererService.getRendererLogs();
       if (logs) setRendererLogs(logs);
-    } catch {}
+    } catch { /* ignore */ }
   };
 
   const handleModeChange = async (newMode: RendererMode) => {

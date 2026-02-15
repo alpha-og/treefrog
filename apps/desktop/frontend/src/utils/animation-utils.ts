@@ -98,7 +98,7 @@ export function createInstantVariant(variant: Variants): Variants {
       instantVariant[key as keyof Variants] = {
         ...state,
         transition: {
-          ...(state as any).transition,
+          ...((state as { transition?: object }).transition ?? {}),
           duration: 0,
           delay: 0,
         },
@@ -141,7 +141,7 @@ export function createVariantWithDuration(
       newVariant[key as keyof Variants] = {
         ...state,
         transition: {
-          ...(state as any).transition,
+          ...((state as { transition?: object }).transition ?? {}),
           duration,
         },
       };
@@ -169,7 +169,7 @@ export function createVariantWithDelay(
       newVariant[key as keyof Variants] = {
         ...state,
         transition: {
-          ...(state as any).transition,
+          ...((state as { transition?: object }).transition ?? {}),
           delay,
         },
       };

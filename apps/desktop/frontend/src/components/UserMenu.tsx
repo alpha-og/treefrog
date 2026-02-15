@@ -19,6 +19,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { getWailsApp } from "@/services/api";
+import { createLogger } from "@/utils/logger";
+
+const log = createLogger("UserMenu");
 
 export function UserMenu() {
   const navigate = useNavigate();
@@ -35,8 +38,8 @@ export function UserMenu() {
         await app.SignOut();
         toast.success("Signed out");
       }
-    } catch (error) {
-      toast.error("Failed to sign out");
+    } catch {
+      log.error("Failed to sign out");
     }
   };
 

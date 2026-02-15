@@ -38,7 +38,7 @@ export default function Account() {
         setUser(null);
         navigate({ to: "/" });
       }
-    } catch (err) {
+    } catch {
       alert("Failed to delete account");
     } finally {
       setIsSaving(false);

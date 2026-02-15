@@ -70,7 +70,7 @@ export default function Settings() {
       }
 
       toast.success("Settings saved");
-    } catch (error) {
+    } catch {
       toast.error("Failed to save settings");
     } finally {
       setIsSaving(false);

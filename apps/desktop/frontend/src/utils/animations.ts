@@ -516,7 +516,7 @@ export function createSafeVariant(variant: Variants): Variants {
     safeVariant[key as keyof Variants] = {
       ...state,
       transition: {
-        ...(state as any).transition,
+        ...((state as { transition?: object }).transition ?? {}),
         duration: 0, // Instant
       },
     };

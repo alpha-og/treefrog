@@ -49,20 +49,19 @@ export default function AuthPage() {
   }, [isFirstLaunch, mode, navigate])
 
   useEffect(() => {
-    // @ts-ignore - Wails runtime
-    const EventsOn = window.runtime?.EventsOn || window.runtime?.on
+    const EventsOn = (window as { runtime?: { EventsOn?: (event: string, cb: (data: unknown) => void) => void } }).runtime?.EventsOn;
     if (EventsOn) {
       EventsOn("auth:callback", (data: unknown) => {
-        log.info("Auth callback received", data)
+        log.info("Auth callback received", data);
         if ((data as { success?: boolean })?.success) {
-          markFirstLaunchComplete()
-          setMode('supabase')
-          toast.success("Signed in successfully!")
-          setTimeout(() => navigate({ to: '/' }), 500)
+          markFirstLaunchComplete();
+          setMode('supabase');
+          toast.success("Signed in successfully!");
+          setTimeout(() => navigate({ to: '/' }), 500);
         }
-      })
+      });
     }
-  }, [markFirstLaunchComplete, setMode, navigate])
+  }, [markFirstLaunchComplete, setMode, navigate]);
 
   return (
     <FramelessWindow title="Treefrog">

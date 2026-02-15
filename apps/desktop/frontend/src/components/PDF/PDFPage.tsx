@@ -1,10 +1,10 @@
-import { Page } from "react-pdf";
+import { Page, PDFPageProxy } from "react-pdf";
 import { useState, useCallback } from "react";
 
 interface PDFPageProps {
   pageNum: number;
   zoom: number | string;
-  pageProxyRef: React.MutableRefObject<Map<number, any>>;
+  pageProxyRef: React.MutableRefObject<Map<number, PDFPageProxy>>;
   registerPageRef: (page: number, el: HTMLDivElement | null) => void;
   containerWidth: number;
   containerHeight: number;
@@ -44,7 +44,7 @@ export default function PDFPage({
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
 
-    let actualZoom = typeof zoom === 'number' ? zoom : 1;
+const actualZoom = typeof zoom === 'number' ? zoom : 1;
     
     const pdfX = clickX / actualZoom;
     const pdfY = viewport.height - (clickY / actualZoom);
@@ -99,7 +99,7 @@ export default function PDFPage({
       <Page
         pageNumber={pageNum}
         scale={actualZoom}
-        onLoadSuccess={(p: any) => {
+        onLoadSuccess={(p: PDFPageProxy) => {
           pageProxyRef.current.set(pageNum, p);
           if (p.getViewport) {
             const viewport = p.getViewport({ scale: 1 });

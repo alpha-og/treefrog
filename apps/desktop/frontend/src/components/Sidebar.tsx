@@ -173,7 +173,7 @@ export default function Sidebar({
      // Build tree structure
      const treeNodes = useMemo(() => {
        // Use consistent caching approach for all levels
-       let getCachedContents = (path: string) => {
+       const getCachedContents = (path: string) => {
          if (path === "") {
            // For root level, use cache if available, otherwise use entries
            const cached = getCachedFolderContents(path);

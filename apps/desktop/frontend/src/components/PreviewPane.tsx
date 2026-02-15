@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "motion/react";
+import { PDFDocumentProxy } from "react-pdf";
 import PDFPreview from "./PDF/PDFPreview";
 import { BuildStatus } from "../types";
 import { createLogger } from "../utils/logger";
@@ -41,7 +42,7 @@ interface PreviewPaneProps {
   onPageChange: (page: number) => void;
   projectRoot: string;
   pdfKey: number;
-  pageProxyRef: React.MutableRefObject<Map<number, any>>;
+  pageProxyRef: React.MutableRefObject<Map<number, PDFDocumentProxy>>;
   registerPageRef: (page: number, el: HTMLDivElement | null) => void;
   onInverseSearch?: (page: number, x: number, y: number) => void;
   highlightPosition?: { page: number; x: number; y: number } | null;
@@ -271,7 +272,7 @@ const handleViewLog = async () => {
                   
                   <DropdownMenuRadioGroup value={zoom.toString()} onValueChange={(val) => {
                     if (val === 'fit-width' || val === 'fit-height') {
-                      onZoomChange(val as any);
+                      onZoomChange(val as 'fit-width' | 'fit-height');
                     } else {
                       onZoomChange(Number(val));
                     }

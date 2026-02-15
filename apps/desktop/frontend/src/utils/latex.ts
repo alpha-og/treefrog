@@ -36,7 +36,7 @@ const ADDITIONAL_COMMANDS = [
 export function setupLatexLanguage() {
   try {
     // Register LaTeX language using the official registration function
-    registerLaTeXLanguage(monaco as any);
+    registerLaTeXLanguage(monaco as typeof monaco);
 
     // Register augmented completion provider with both built-in and additional commands
     monaco.languages.registerCompletionItemProvider("latex", {
