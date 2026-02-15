@@ -1,0 +1,25 @@
+services:
+  remote-compiler:
+    build:
+      context: ../..
+      dockerfile: apps/remote-latex-compiler/Dockerfile
+    ports:
+      - "${SERVER_PORT:-9000}:9000"
+    environment:
+      - SERVER_PORT=9000
+      - COMPILER_WORKDIR=/tmp/treefrog-builds
+    env_file:
+      - .env.local
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - treefrog-builds:/tmp/treefrog-builds
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  treefrog-builds:
