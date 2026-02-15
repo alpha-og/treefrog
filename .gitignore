@@ -46,3 +46,8 @@ telemetry-id
 
 # Logs
 *.log
+
+# Local workflow configurations (do not commit)
+.github/workflows/test.yml
+.github/workflows/codeql.yml
+.github/dependabot.yml
