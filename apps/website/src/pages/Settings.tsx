@@ -6,7 +6,6 @@ import {
   Shield, 
   HardDrive, 
   CreditCard,
-  Download,
   Trash2,
   Loader2,
   AlertCircle

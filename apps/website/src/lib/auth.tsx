@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, ReactNode, useRef, useMemo } from 'react'
 import { supabase } from './supabase'
 import type { User, Session, AuthError, Provider } from '@supabase/supabase-js'
 import { useNavigate } from '@tanstack/react-router'
@@ -96,48 +96,51 @@ export function useAuth() {
 
 export function AuthCallback() {
   const navigate = useNavigate()
-  const [status, setStatus] = useState<'loading' | 'error'>('loading')
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const { error: errorParam, description: errorDescription } = useMemo(() => {
+    const params = new URLSearchParams(window.location.search)
+    return {
+      error: params.get('error'),
+      description: params.get('error_description'),
+    }
+  }, [])
+  
+  const [status, setStatus] = useState<'loading' | 'error'>(() => 
+    errorParam ? 'error' : 'loading'
+  )
+  const [errorMessage, setErrorMessage] = useState<string | null>(() => 
+    errorParam ? (errorDescription || errorParam) : null
+  )
+  const handledRef = useRef(false)
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const errorParam = params.get('error')
-    const errorDescription = params.get('error_description')
-
     if (errorParam) {
       console.error('OAuth error:', errorParam, errorDescription)
-      setErrorMessage(errorDescription || errorParam)
-      setStatus('error')
       return
     }
 
-    let handled = false
     let timeoutId: ReturnType<typeof setTimeout> | null = null
 
     const handleSuccess = () => {
-      if (handled) return
-      handled = true
+      if (handledRef.current) return
+      handledRef.current = true
       window.history.replaceState({}, '', window.location.pathname)
       navigate({ to: '/dashboard' })
     }
 
-    // Listen for auth state change - Supabase auto-handles PKCE with detectSessionInUrl
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
         handleSuccess()
       }
     })
 
-    // Check if already have a session (might have been set by auto-detection)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         handleSuccess()
       }
     })
 
-    // Timeout after 10 seconds if nothing happens
     timeoutId = setTimeout(() => {
-      if (!handled) {
+      if (!handledRef.current) {
         console.error('Auth callback timeout')
         setErrorMessage('Authentication timed out. Please try again.')
         setStatus('error')
@@ -149,7 +152,7 @@ export function AuthCallback() {
       if (timeoutId) clearTimeout(timeoutId)
       subscription.unsubscribe()
     }
-  }, [navigate])
+  }, [navigate, errorParam, errorDescription])
 
   if (status === 'error') {
     return (

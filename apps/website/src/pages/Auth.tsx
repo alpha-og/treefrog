@@ -80,7 +80,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
           navigate({ to: redirectUrl as never })
         }
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred')
     } finally {
       setIsLoading(false)

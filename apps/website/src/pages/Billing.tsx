@@ -13,7 +13,7 @@ import {
   ExternalLink
 } from 'lucide-react'
 import { useUsageStats, useCreateSubscription, useSubscriptionStatus, usePlans, useCancelSubscription, useRedeemCoupon, useInvoices } from '../hooks/useApi'
-import { staggerContainer, staggerItem, easeOutExpo, ANIMATION_DURATIONS, buttonHover } from '../lib/animations'
+import { staggerContainer, staggerItem, easeOutExpo, ANIMATION_DURATIONS } from '../lib/animations'
 
 export default function BillingPage() {
   const { user, loading } = useAuth()
@@ -108,7 +108,7 @@ function BillingContent() {
     
     try {
       await redeemCoupon.mutateAsync({ couponCode: couponCode.trim(), planId: targetPlan })
-    } catch (error) {
+    } catch {
       setCouponError('Invalid coupon code or coupon not applicable')
     }
   }

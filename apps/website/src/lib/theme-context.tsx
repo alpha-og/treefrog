@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 
 type Theme = "light" | "dark" | "system";
 
@@ -14,38 +14,47 @@ const ThemeContext = createContext<ThemeContextType>({
   resolvedTheme: "light",
 });
 
+function getInitialTheme(): Theme {
+  if (typeof window === "undefined") return "system";
+  return (localStorage.getItem("theme") as Theme) || "system";
+}
+
+function getSystemTheme(): "light" | "dark" {
+  if (typeof window === "undefined") return "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window !== "undefined") {
-      return (localStorage.getItem("theme") as Theme) || "system";
-    }
-    return "system";
+  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
+  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">(() => {
+    const initial = getInitialTheme();
+    return initial === "system" ? getSystemTheme() : initial;
   });
 
-  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");
+  const setTheme = useCallback((newTheme: Theme) => {
+    setThemeState(newTheme);
+    const resolved = newTheme === "system" ? getSystemTheme() : newTheme;
+    setResolvedTheme(resolved);
+    localStorage.setItem("theme", newTheme);
+  }, []);
 
   useEffect(() => {
     const root = document.documentElement;
-    const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    const resolved = theme === "system" ? systemTheme : theme;
-
     root.classList.remove("light", "dark");
-    root.classList.add(resolved);
-    setResolvedTheme(resolved);
-    localStorage.setItem("theme", theme);
+    root.classList.add(resolvedTheme);
 
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handler = () => {
       if (theme === "system") {
         const newResolved = mediaQuery.matches ? "dark" : "light";
+        setResolvedTheme(newResolved);
         root.classList.remove("light", "dark");
         root.classList.add(newResolved);
-        setResolvedTheme(newResolved);
       }
     };
     mediaQuery.addEventListener?.("change", handler);
     return () => mediaQuery.removeEventListener?.("change", handler);
-  }, [theme]);
+  }, [theme, resolvedTheme]);
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme, resolvedTheme }}>
