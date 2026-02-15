@@ -51,7 +51,7 @@ export const SERVICES: Record<string, Service> = {
     port: 9000,
     healthCheck: 'http://localhost:9000/health',
     healthCheckTimeout: 90000,
-    startCommand: 'cd apps/remote-latex-compiler && docker compose --env-file .env.development up --build',
+    startCommand: 'cd apps/remote-latex-compiler && docker compose up --build',
     stopCommand: 'cd apps/remote-latex-compiler && docker compose down',
     dependsOn: ['redis'],
     dockerContainer: 'treefrog-remote-latex-compiler',

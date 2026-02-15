@@ -33,16 +33,11 @@ async function startProd(options: ProdOptions): Promise<void> {
     }
 
     console.log(chalk.cyan('Starting remote LaTeX compiler (production mode)...'));
-    console.log(chalk.gray('  Using config from: .env.production'));
     console.log(chalk.gray('  Using secrets from: .env.local'));
     
     await execa('docker', ['compose', 'up', '--build', '-d'], {
       cwd: 'apps/remote-latex-compiler',
       stdio: 'inherit',
-      env: {
-        ...process.env,
-        COMPOSE_FILE: 'docker-compose.yml',
-      },
     });
 
     console.log(chalk.green('[+] Remote compiler started'));
