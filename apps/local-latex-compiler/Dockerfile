@@ -8,7 +8,7 @@ COPY packages/go/build/go.mod packages/go/build/go.sum ./packages/go/build/
 COPY packages/go/config/go.mod ./packages/go/config/
 COPY packages/go/logging/go.mod packages/go/logging/go.sum ./packages/go/logging/
 COPY packages/go/security/go.mod ./packages/go/security/
-COPY packages/go/synctex/go.mod packages/go/synctex/go.sum ./packages/go/synctex/
+COPY packages/go/synctex/go.mod ./packages/go/synctex/
 COPY packages/go/validation/go.mod ./packages/go/validation/
 
 RUN cd apps/local-latex-compiler && go mod download

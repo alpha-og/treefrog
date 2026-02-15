@@ -10,18 +10,39 @@ services:
     environment:
       - SERVER_PORT=9000
       - COMPILER_WORKDIR=/tmp/treefrog-builds
+      - REDIS_URL=redis://redis:6379
     env_file:
+      - .env.development
       - .env.local
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - treefrog-builds:/tmp/treefrog-builds
+    depends_on:
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: treefrog-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
       start_period: 5s
 
 volumes:
   treefrog-builds:
+  redis-data:
