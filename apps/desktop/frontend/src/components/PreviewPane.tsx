@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { ZOOM_LEVELS } from "../constants";
 import { usePDFUrl } from "../hooks/usePDFUrl";
-import { isWails } from "../utils/env";
 import { getBuildLog, exportPDFFile, exportSourceFile } from "../services/buildService";
 import { cn } from "@/lib/utils";
 import {
@@ -33,7 +32,6 @@ import { Button } from "@/components/common";
 const log = createLogger("PreviewPane");
 
 interface PreviewPaneProps {
-  apiUrl: string;
   buildStatus: BuildStatus | null;
   zoom: number;
   onZoomChange: (zoom: number) => void;
@@ -51,7 +49,6 @@ interface PreviewPaneProps {
 }
 
 export default function PreviewPane({
-  apiUrl,
   buildStatus,
   zoom,
   onZoomChange,
@@ -70,8 +67,7 @@ export default function PreviewPane({
    const clampZoom = (z: number) =>
      Math.min(2.4, Math.max(0.6, Math.round(z * 10) / 10));
 
-   // Get PDF URL that works in both web and Wails modes
-   const { pdfUrl, loading: pdfLoading, error: pdfError } = usePDFUrl(apiUrl, pdfKey);
+   const { pdfUrl, loading: pdfLoading, error: pdfError } = usePDFUrl(pdfKey);
    
    // Zoom button text measurement
    const [zoomTextWidth, setZoomTextWidth] = useState<number>(0);
@@ -176,40 +172,34 @@ export default function PreviewPane({
      };
    }, []);
 
-  const handleViewLog = async () => {
-    if (isWails()) {
-      setLogLoading(true);
-      try {
-        const log = await getBuildLog();
-        setLogContent(log || "No log available");
-        setShowLog(true);
-       } catch (err) {
-         log.error("Failed to load build log", err);
-         setLogContent("Failed to load build log");
-        setShowLog(true);
-      } finally {
-        setLogLoading(false);
-      }
+const handleViewLog = async () => {
+    setLogLoading(true);
+    try {
+      const log = await getBuildLog();
+      setLogContent(log || "No log available");
+      setShowLog(true);
+    } catch (err) {
+      log.error("Failed to load build log", err);
+      setLogContent("Failed to load build log");
+      setShowLog(true);
+    } finally {
+      setLogLoading(false);
     }
   };
 
   const handleExportPDF = async () => {
-    if (isWails()) {
-      try {
-        await exportPDFFile();
-       } catch (err) {
-         log.error("Failed to export PDF", err);
-       }
+    try {
+      await exportPDFFile();
+    } catch (err) {
+      log.error("Failed to export PDF", err);
     }
   };
 
   const handleExportSource = async () => {
-    if (isWails()) {
-      try {
-        await exportSourceFile();
-       } catch (err) {
-         log.error("Failed to export source", err);
-      }
+    try {
+      await exportSourceFile();
+    } catch (err) {
+      log.error("Failed to export source", err);
     }
   };
 
@@ -424,41 +414,14 @@ export default function PreviewPane({
              </Button>
            </DropdownMenuTrigger>
           <DropdownMenuContentWrapper align="end" className="w-56">
-            {isWails() ? (
-              <>
-                <MenuItem
-                  onClick={handleExportPDF}
-                >
-                  <MenuIcon name="export-pdf" size={16} />
-                  <span className="flex-1">Export PDF</span>
-                </MenuItem>
-                <MenuItem
-                  onClick={handleExportSource}
-                >
-                  <MenuIcon name="export-source" size={16} />
-                  <span className="flex-1">Export Source</span>
-                </MenuItem>
-              </>
-            ) : (
-              <>
-                <MenuItem
-                  onClick={() => {
-                    window.open(`${apiUrl}/export/pdf`, "_blank", "noreferrer");
-                  }}
-                >
-                  <MenuIcon name="export-pdf" size={16} />
-                  <span className="flex-1">Download PDF</span>
-                </MenuItem>
-                <MenuItem
-                  onClick={() => {
-                    window.open(`${apiUrl}/export/source-zip`, "_blank", "noreferrer");
-                  }}
-                >
-                  <MenuIcon name="export-source" size={16} />
-                  <span className="flex-1">Download Source</span>
-                </MenuItem>
-              </>
-            )}
+            <MenuItem onClick={handleExportPDF}>
+              <MenuIcon name="export-pdf" size={16} />
+              <span className="flex-1">Export PDF</span>
+            </MenuItem>
+            <MenuItem onClick={handleExportSource}>
+              <MenuIcon name="export-source" size={16} />
+              <span className="flex-1">Export Source</span>
+            </MenuItem>
           </DropdownMenuContentWrapper>
         </DropdownMenuWrapper>
       </div>
@@ -473,26 +436,14 @@ export default function PreviewPane({
                <p className="text-xs text-error/80 wrap-break-word leading-relaxed">
                 {buildStatus.message || "Unknown error occurred"}
               </p>
-              {isWails() ? (
-                <button
-                  onClick={handleViewLog}
-                  disabled={logLoading}
-                  className="link link-hover text-xs mt-2 inline-flex items-center gap-1 text-error hover:text-error font-medium"
-                >
-                  <FileText size={12} />
-                  {logLoading ? "Loading..." : "View full log"}
-                </button>
-              ) : (
-                <a
-                  href={`${apiUrl}/build/log`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="link link-hover text-xs mt-2 inline-flex items-center gap-1 text-error hover:text-error font-medium"
-                >
-                  <FileText size={12} />
-                  View full log
-                </a>
-              )}
+              <button
+                onClick={handleViewLog}
+                disabled={logLoading}
+                className="link link-hover text-xs mt-2 inline-flex items-center gap-1 text-error hover:text-error font-medium"
+              >
+                <FileText size={12} />
+                {logLoading ? "Loading..." : "View full log"}
+              </button>
             </div>
           </div>
         </div>

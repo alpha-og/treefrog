@@ -7,23 +7,20 @@ import (
 	"time"
 )
 
-// Image references
 const (
-	LocalImageName = "treefrog-renderer:latest"
-	GHCRImageRef   = "ghcr.io/alpha-og/treefrog/renderer:latest"
+	LocalImageName = "treefrog-local-latex-compiler:latest"
+	GHCRImageRef   = "ghcr.io/alpha-og/treefrog/local-latex-compiler:latest"
 )
 
-// Retry configuration
 const (
 	DefaultMaxRetries     = 3
 	DefaultRetryDelay     = 1 * time.Second
-	DefaultRetryBackoff   = 2.0 // Exponential multiplier
+	DefaultRetryBackoff   = 2.0
 	DefaultRetryTimeout   = 5 * time.Minute
 	HealthCheckMaxRetries = 30
 	HealthCheckDelay      = 200 * time.Millisecond
 )
 
-// RendererMode represents the rendering mode
 type RendererMode string
 
 const (
@@ -32,7 +29,6 @@ const (
 	ModeRemote RendererMode = "remote"
 )
 
-// ImageSource represents the source of the Docker image
 type ImageSource string
 
 const (
@@ -41,32 +37,25 @@ const (
 	SourceCustom   ImageSource = "custom"
 )
 
-// RendererConfig holds all renderer settings
 type RendererConfig struct {
 	Mode      RendererMode `json:"mode"`
 	Port      int          `json:"port"`
 	AutoStart bool         `json:"autoStart"`
 
-	// Image configuration
 	ImageSource ImageSource `json:"imageSource"`
 	ImageRef    string      `json:"imageRef"`
 
-	// Remote compiler settings
-	RemoteURL   string `json:"remoteUrl"` // JSON tag uses lowercase 'url'
-	RemoteToken string `json:"remoteToken"`
+	RemoteCompilerURL string `json:"remoteCompilerUrl"`
 
-	// Custom image settings
 	CustomRegistry string `json:"customRegistry,omitempty"`
 	CustomTarPath  string `json:"customTarPath,omitempty"`
 
-	// Retry configuration
 	MaxRetries   int           `json:"maxRetries"`
 	RetryDelay   time.Duration `json:"retryDelay"`
 	RetryBackoff float64       `json:"retryBackoff"`
 	RetryTimeout time.Duration `json:"retryTimeout"`
 }
 
-// DefaultRendererConfig returns sensible defaults
 func DefaultRendererConfig() *RendererConfig {
 	return &RendererConfig{
 		Mode:         ModeAuto,
@@ -81,7 +70,6 @@ func DefaultRendererConfig() *RendererConfig {
 	}
 }
 
-// ValidatePort checks if port is valid
 func ValidatePort(port int) error {
 	if port < 1024 || port > 65535 {
 		return errors.New("port must be between 1024 and 65535")
@@ -89,7 +77,6 @@ func ValidatePort(port int) error {
 	return nil
 }
 
-// IsPortAvailable checks if a port is available
 func IsPortAvailable(port int) bool {
 	listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
@@ -99,13 +86,11 @@ func IsPortAvailable(port int) bool {
 	return true
 }
 
-// FindAvailablePort finds an available port, preferring the given one
 func FindAvailablePort(preferred int) (int, error) {
 	if preferred > 0 && IsPortAvailable(preferred) {
 		return preferred, nil
 	}
 
-	// Search ephemeral port range
 	for port := 49152; port <= 65535; port++ {
 		if IsPortAvailable(port) {
 			return port, nil

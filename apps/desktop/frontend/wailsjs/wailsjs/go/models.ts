@@ -111,8 +111,7 @@ export namespace main {
 	    autoStart: boolean;
 	    imageSource: string;
 	    imageRef: string;
-	    remoteUrl: string;
-	    remoteToken: string;
+	    remoteCompilerUrl: string;
 	    customRegistry?: string;
 	    customTarPath?: string;
 	    maxRetries: number;
@@ -131,8 +130,7 @@ export namespace main {
 	        this.autoStart = source["autoStart"];
 	        this.imageSource = source["imageSource"];
 	        this.imageRef = source["imageRef"];
-	        this.remoteUrl = source["remoteUrl"];
-	        this.remoteToken = source["remoteToken"];
+	        this.remoteCompilerUrl = source["remoteCompilerUrl"];
 	        this.customRegistry = source["customRegistry"];
 	        this.customTarPath = source["customTarPath"];
 	        this.maxRetries = source["maxRetries"];
@@ -143,8 +141,7 @@ export namespace main {
 	}
 	export class Config {
 	    projectRoot: string;
-	    compilerUrl: string;
-	    compilerToken: string;
+	    remoteCompilerUrl: string;
 	    renderer?: RendererConfig;
 	
 	    static createFrom(source: any = {}) {
@@ -154,8 +151,7 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.projectRoot = source["projectRoot"];
-	        this.compilerUrl = source["compilerUrl"];
-	        this.compilerToken = source["compilerToken"];
+	        this.remoteCompilerUrl = source["remoteCompilerUrl"];
 	        this.renderer = this.convertValues(source["renderer"], RendererConfig);
 	    }
 	

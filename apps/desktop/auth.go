@@ -565,13 +565,8 @@ func (a *App) OpenAuthURL() error {
 	return nil
 }
 
-// fetchUserInfo fetches user info from the latex-compiler backend
 func (a *App) fetchUserInfo(sessionToken string) (*AuthUser, error) {
-	// Get compiler URL from app config
-	compilerURL := a.compilerURL
-	if compilerURL == "" {
-		compilerURL = "http://localhost:9000"
-	}
+	compilerURL := a.getCompilerURL()
 
 	req, err := http.NewRequest("GET", compilerURL+"/api/user/me", nil)
 	if err != nil {
