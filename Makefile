@@ -1,11 +1,11 @@
 .PHONY: dev dev-debug dev-info dev-warn dev-error build build-all build-backend \
-        compiler stop logs \
+        compiler compiler-dev compiler-prod stop logs \
         test test-backend test-frontend test-backend-verbose \
         lint lint-backend lint-frontend \
         fmt fmt-backend fmt-frontend \
         typecheck typecheck-frontend \
         doctor clean clean-all \
-        install deps
+        install deps env-dev env-prod
 
 LOG_LEVEL ?= DEBUG
 LOG_FORMAT ?= text
@@ -68,14 +68,24 @@ build-all:
 
 compiler:
 	@echo "Starting LaTeX compiler backend with Docker..."
-	docker compose up --build -d
+	cd apps/compiler && docker compose up --build -d
+
+compiler-dev:
+	@echo "Starting LaTeX compiler in development mode..."
+	@echo "Using .env.development"
+	cd apps/compiler && docker compose --env-file .env.development up --build -d
+
+compiler-prod:
+	@echo "Starting LaTeX compiler in production mode..."
+	@echo "Using .env.production"
+	cd apps/compiler && docker compose --env-file .env.production up --build -d
 
 stop:
 	@echo "Stopping services..."
-	docker compose down
+	cd apps/compiler && docker compose down
 
 logs:
-	docker compose logs -f latex-renderer
+	cd apps/compiler && docker compose logs -f latex-renderer
 
 build-backend:
 	@echo "Building LaTeX compiler backend..."
@@ -175,3 +185,29 @@ clean-all: clean
 	@rm -rf apps/website/node_modules
 	@rm -rf packages/*/node_modules
 	@echo "Deep clean complete!"
+
+env-dev:
+	@if [ ! -f apps/compiler/.env.development ]; then \
+		echo "Error: apps/compiler/.env.development not found"; \
+		exit 1; \
+	fi
+	@echo "Copying .env.development to .env.local..."
+	@cp apps/compiler/.env.development apps/compiler/.env.local
+	@echo "Development environment configured!"
+	@echo "Edit apps/compiler/.env.local with your actual values."
+
+env-prod:
+	@if [ ! -f apps/compiler/.env.production ]; then \
+		echo "Error: apps/compiler/.env.production not found"; \
+		exit 1; \
+	fi
+	@echo "Copying .env.production to .env.local..."
+	@cp apps/compiler/.env.production apps/compiler/.env.local
+	@echo "Production environment configured!"
+	@echo "Edit apps/compiler/.env.local with your actual values."
+
+env-check:
+	@echo "Checking environment configuration..."
+	@test -f apps/compiler/.env.local && echo "✓ apps/compiler/.env.local exists" || echo "✗ apps/compiler/.env.local missing (run 'make env-dev' or 'make env-prod')"
+	@test -f apps/compiler/.env.development && echo "✓ apps/compiler/.env.development exists" || echo "✗ apps/compiler/.env.development missing"
+	@test -f apps/compiler/.env.production && echo "✓ apps/compiler/.env.production exists" || echo "✗ apps/compiler/.env.production missing"

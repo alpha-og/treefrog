@@ -3,6 +3,7 @@ dist/
 .treefrog-cache/
 .env
 .env.local
+.env.*.local
 .DS_Store
 
 # Build artifacts

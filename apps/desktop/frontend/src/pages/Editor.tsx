@@ -36,10 +36,6 @@ import { useGit } from "@/hooks/useGit";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useSyncTeX } from "@/hooks/useSyncTex";
 
-// Services
-import { syncConfig } from "@/services/configService";
-
-// Utils
 import { clampPage, modalTitle, modalPlaceholder, modalHint } from "@/utils/ui";
 import { joinPath } from "@/utils/path";
 import { Button } from "@/components/common/Button";
@@ -64,7 +60,7 @@ export default function Editor() {
   const navigate = useNavigate();
 
   // ========== STORES ==========
-  const { theme, setTheme, apiUrl, compilerUrl, compilerToken } = useAppStore();
+  const { theme, setTheme } = useAppStore();
   const { addProject } = useRecentProjectsStore();
   const {
     entries,
@@ -121,7 +117,6 @@ export default function Editor() {
   const [zoom, setZoom] = useState<number>(1.2);
   const [numPages, setNumPages] = useState<number>(0);
   const [pageInput, setPageInput] = useState<string>("1");
-  const [configSynced, setConfigSynced] = useState<boolean>(false);
   const [pdfKey, setPdfKey] = useState<number>(Date.now());
 
   // ========== MODAL STATE ==========
@@ -171,33 +166,12 @@ export default function Editor() {
 
   useWebSocket(handleBuildMessage);
 
-  // ========== EFFECTS ==========
-
-
-
-  // Sync config to server
-  useEffect(() => {
-    const doSync = async () => {
-      try {
-        await syncConfig(compilerUrl, compilerToken);
-        setConfigSynced(true);
-        window.setTimeout(() => setConfigSynced(false), 2000);
-      } catch (err) {
-        console.warn("Could not send config to server:", err);
-      }
-    };
-    doSync();
-  }, [compilerUrl, compilerToken]);
-
-  // Load files when project is set
   useEffect(() => {
     if (projectRoot && !projectLoading) {
       console.log("[Editor] Loading files for project:", projectRoot);
       loadEntries("");
       refreshGit();
-      // Auto-open main.tex if it exists
       openFile("main.tex").catch(() => {
-        // File doesn't exist, clear editor to show empty state
         setCurrentFile("");
         setFileContent("");
       });
@@ -561,10 +535,9 @@ export default function Editor() {
            onEngineChange={setEngine}
            shell={shellEscape}
            onShellChange={setShellEscape}
-           onTogglePane={togglePane}
-           panesVisible={visiblePanes}
-           configSynced={configSynced}
-         />
+onTogglePane={togglePane}
+            panesVisible={visiblePanes}
+          />
 
         {/* Main Content */}
         <div className="flex-1 flex flex-row overflow-hidden relative z-10" ref={mainRef} style={_isResizing ? { userSelect: "none" } as React.CSSProperties : {}}>
@@ -660,15 +633,14 @@ export default function Editor() {
               )}
 
              {/* Preview */}
-             {preview && (
-               <motion.div 
-                 className="flex-1 min-w-0"
-                 initial={{ opacity: 0, x: 20 }}
-                 animate={{ opacity: 1, x: 0 }}
-                 transition={{ duration: 0.3 }}
-               >
-<PreviewPane
-                    apiUrl={apiUrl}
+{preview && (
+                <motion.div 
+                  className="flex-1 min-w-0"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <PreviewPane
                     buildStatus={buildStatus}
                     zoom={zoom}
                     onZoomChange={setZoom}
@@ -687,8 +659,8 @@ export default function Editor() {
                     highlightPosition={pdfHighlight}
                     onPageNavigate={scrollToPage}
                   />
-              </motion.div>
-            )}
+                </motion.div>
+              )}
           </>
         )}
       </div>

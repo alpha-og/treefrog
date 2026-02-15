@@ -16,8 +16,4 @@ export default defineConfig({
       "wailsjs": path.resolve(__dirname, "./wailsjs/wailsjs"),
     },
   },
-  define: {
-    // Define a fake origin for Clerk to use
-    'import.meta.env.VITE_APP_URL': JSON.stringify('http://localhost:5173'),
-  },
 });

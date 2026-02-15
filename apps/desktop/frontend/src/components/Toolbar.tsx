@@ -1,6 +1,6 @@
 import { ArrowLeft, Sidebar as SidebarIcon, Code, Eye as PreviewIcon } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import BuildButton from "./BuildButton";
 import { cn } from "@/lib/utils";
 
@@ -12,7 +12,6 @@ interface ToolbarProps {
   onShellChange: (shell: boolean) => void;
   onTogglePane: (pane: "sidebar" | "editor" | "preview") => void;
   panesVisible: { sidebar: boolean; editor: boolean; preview: boolean };
-  configSynced?: boolean;
 }
 
 export default function Toolbar({
@@ -23,7 +22,6 @@ export default function Toolbar({
   onShellChange,
   onTogglePane,
   panesVisible,
-  configSynced,
 }: ToolbarProps) {
   const navigate = useNavigate();
 
@@ -154,22 +152,6 @@ export default function Toolbar({
           />
         </div>
       </header>
-
-      {/* Status Indicator - Fixed bottom right */}
-      <AnimatePresence>
-        {configSynced && (
-          <motion.div
-            className="fixed bottom-6 right-6 flex items-center gap-2 px-4 py-3 bg-emerald-500/10 rounded-lg shadow-lg border border-emerald-500/20"
-            initial={{ opacity: 0, x: 100 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 100 }}
-            transition={{ duration: 0.3 }}
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="text-sm font-medium text-emerald-600">Config synced</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </>
   );
 }

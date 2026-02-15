@@ -409,44 +409,18 @@ func (dm *DockerManager) GetStatus() RendererStatus {
 	}
 }
 
-// DetectBestMode determines the optimal rendering mode
 func (dm *DockerManager) DetectBestMode(ctx context.Context) RendererMode {
 	if dm.config.Mode != ModeAuto {
 		return dm.config.Mode
 	}
 
-	// Try remote first (if configured)
-	if dm.config.RemoteURL != "" && dm.pingRemote(ctx) {
-		dm.logger.Info("Remote compiler available")
-		return ModeRemote
-	}
-
-	// Fall back to local
 	if dm.IsDockerInstalled() {
 		dm.logger.Info("Docker available, using local mode")
 		return ModeLocal
 	}
 
-	dm.logger.Warn("No rendering backend available")
-	return ModeRemote // Default even if unreachable
-}
-
-func (dm *DockerManager) pingRemote(ctx context.Context) bool {
-	remoteURL := dm.config.RemoteURL
-
-	// Validate URL to prevent SSRF attacks
-	if !isValidRemoteURL(remoteURL) {
-		dm.logger.Warnf("Invalid remote URL blocked: %s", remoteURL)
-		return false
-	}
-
-	client := &http.Client{Timeout: 2 * time.Second}
-	resp, err := client.Get(remoteURL + "/health")
-	if err != nil || resp == nil {
-		return false
-	}
-	defer resp.Body.Close()
-	return resp.StatusCode == 200
+	dm.logger.Warn("No local backend available, using remote mode")
+	return ModeRemote
 }
 
 // isValidRemoteURL validates that a remote URL is safe to query
