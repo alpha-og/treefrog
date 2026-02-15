@@ -35,6 +35,7 @@ apps/desktop/frontend/wailsjs/
 .vite/
 apps/desktop/frontend/.vite/
 apps/website/.vite/
+*.timestamp-*.mjs
 
 # Go coverage
 *.out
