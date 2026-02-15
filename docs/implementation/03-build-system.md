@@ -1365,7 +1365,7 @@ func deleteBuildHandler(w http.ResponseWriter, r *http.Request) {
 func compileBuild(buildRec *build.Build) {
 	// Get Docker compiler
 	compiler, err := build.NewDockerCompiler(
-		"latex-compiler:latest",
+		"treefrog-local-latex-compiler:latest",
 		os.Getenv("COMPILER_WORKDIR"),
 	)
 	if err != nil {

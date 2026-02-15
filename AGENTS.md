@@ -16,12 +16,16 @@ make build-all                    # Build for all platforms (macOS, Linux, Windo
 make build-backend                # Build Go backend binary
 make build-cli                    # Build local CLI
 
-# Docker
+# Docker - Remote Compiler (SaaS with auth/billing)
 make compiler                     # Start Docker compiler (with Redis)
 make compiler-dev                 # Start with .env.development
 make compiler-prod                # Start with .env.production
 make stop                         # Stop Docker services
 make logs                         # View Docker logs
+
+# Docker - Local Compiler (No auth)
+make local-compiler               # Start local LaTeX compiler
+make local-compiler-stop          # Stop local compiler
 
 # Environment
 make env-dev                      # Copy .env.development to .env.local
@@ -33,7 +37,7 @@ cd apps/desktop/frontend && pnpm dev   # Frontend dev server
 cd apps/desktop/frontend && pnpm build # Production build
 
 # Backend only
-cd apps/compiler && go build -o server ./cmd/server
+cd apps/remote-latex-compiler && go build -o server ./cmd/server
 
 # Website
 make website-dev                  # Start website dev server
@@ -49,8 +53,8 @@ make test                         # Run all tests
 # Go tests
 make test-backend                 # Run Go tests
 make test-backend-verbose         # Verbose Go tests with coverage
-cd apps/compiler && go test ./internal/build -run TestCreateBuild  # Single test
-cd apps/compiler && go test ./internal/build -v -run TestCreateBuild  # Single test verbose
+cd apps/remote-latex-compiler && go test ./internal/build -run TestCreateBuild  # Single test
+cd apps/remote-latex-compiler && go test ./internal/build -v -run TestCreateBuild  # Single test verbose
 
 # Frontend tests
 make test-frontend                # Run frontend tests (placeholder)
@@ -105,33 +109,37 @@ make typecheck                    # Type check frontend
 
 ```
 apps/
-  compiler/            # LaTeX compiler server (Go)
-    cmd/server/        # HTTP server entry point
-    internal/          # Private packages (auth, billing, build, etc.)
-  local-cli/           # Standalone local LaTeX compiler CLI
-  desktop/             # Wails desktop application
-    frontend/          # React frontend (React 19)
-    *.go               # Go backend (app.go, bindings.go, etc.)
-  website/             # Marketing website (React 19)
+  local-latex-compiler/  # Local LaTeX compiler (no auth, pure rendering)
+    cmd/server/          # HTTP server entry point
+    internal/            # Private packages (storage, cleanup)
+  remote-latex-compiler/ # Remote SaaS compiler (auth, billing, etc.)
+    cmd/server/          # HTTP server entry point
+    internal/            # Private packages (auth, billing, build, etc.)
+  local-cli/             # Standalone local LaTeX compiler CLI
+  desktop/               # Wails desktop application
+    frontend/            # React frontend (React 19)
+    *.go                 # Go backend (app.go, bindings.go, etc.)
+  website/               # Marketing website (React 19)
 
 packages/
-  types/               # @treefrog/types - Shared TypeScript types
-  services/            # @treefrog/services - API clients
-  supabase/            # @treefrog/supabase - Database client + types
-  ui/                  # @treefrog/ui - Shared React components
-  eslint-config/       # @treefrog/eslint-config - Shared ESLint config
+  types/                 # @treefrog/types - Shared TypeScript types
+  services/              # @treefrog/services - API clients
+  supabase/              # @treefrog/supabase - Database client + types
+  ui/                    # @treefrog/ui - Shared React components
+  eslint-config/         # @treefrog/eslint-config - Shared ESLint config
 
-  go/                  # Shared Go packages
-    config/            # Environment variable helpers
-    http/              # HTTP client factory, JSON helpers
-    logging/           # Shared logger initialization
-    security/          # Path traversal validation
-    signer/            # URL signing utility
-    synctex/           # SyncTeX parser
-    validation/        # UUID validation
+  go/                    # Shared Go packages
+    build/               # DockerCompiler, Build types, ExtractZip
+    config/              # Environment variable helpers
+    http/                # HTTP client factory, JSON helpers
+    logging/             # Shared logger initialization
+    security/            # Path traversal validation
+    signer/              # URL signing utility
+    synctex/             # SyncTeX parser
+    validation/          # UUID validation
 
 supabase/
-  schema.sql           # Database schema (managed by Supabase)
+  schema.sql             # Database schema (managed by Supabase)
 ```
 
 Use `workspace:*` for internal dependencies. Run `pnpm install` from root.
@@ -144,9 +152,11 @@ The project uses Go workspaces (`go.work`) to manage multiple modules:
 go 1.24.0
 
 use (
-    ./apps/compiler
     ./apps/desktop
     ./apps/local-cli
+    ./apps/local-latex-compiler
+    ./apps/remote-latex-compiler
+    ./packages/go/build
     ./packages/go/config
     ./packages/go/http
     ./packages/go/logging
@@ -158,6 +168,7 @@ use (
 ```
 
 Shared Go packages in `packages/go/` can be imported using their module paths:
+- `github.com/alpha-og/treefrog/packages/go/build`
 - `github.com/alpha-og/treefrog/packages/go/config`
 - `github.com/alpha-og/treefrog/packages/go/http`
 - `github.com/alpha-og/treefrog/packages/go/logging`
@@ -170,7 +181,7 @@ Shared Go packages in `packages/go/` can be imported using their module paths:
 
 Each app has its own environment configuration:
 
-### Compiler (`apps/compiler/`)
+### Remote Compiler (`apps/remote-latex-compiler/`)
 - `.env.development` - Development template (Supabase dev project)
 - `.env.production` - Production template (Supabase prod project)
 - `.env.local` - Active configuration (gitignored)
@@ -194,7 +205,7 @@ Use `make env-dev` or `make env-prod` to copy the appropriate template.
 - `VITE_API_URL` - Backend API URL
 - `VITE_WEBSITE_URL` - Website URL (for redirects)
 
-### Compiler (`apps/compiler/`)
+### Remote Compiler (`apps/remote-latex-compiler/`)
 - `DATABASE_URL` - Supabase PostgreSQL connection string
 - `SUPABASE_URL` - Supabase project URL (for JWKS token verification)
 - `SUPABASE_SECRET_KEY` - Supabase service_role key (SECRET, bypasses RLS)
@@ -215,6 +226,22 @@ Use `make env-dev` or `make env-prod` to copy the appropriate template.
 - `VITE_WEBSITE_URL` - Website URL (for redirects)
 
 Copy `.env.example` to `.env.local` in each directory and fill in values.
+
+## Compiler Architecture
+
+### Local LaTeX Compiler
+- **Port**: 8080 (configurable)
+- **Image**: `treefrog-local-latex-compiler:latest`
+- **Auth**: None (pure rendering)
+- **Routes**: `/api/build/*`, `/health`
+- **Storage**: Filesystem with TTL cleanup
+
+### Remote LaTeX Compiler
+- **Port**: 9000
+- **Image**: `treefrog-remote-latex-compiler:latest`
+- **Auth**: Supabase JWT (`Authorization: Bearer` header)
+- **Routes**: `/api/build/*`, `/health`
+- **Storage**: Database-backed with Redis rate limiting
 
 ## Important Notes
 

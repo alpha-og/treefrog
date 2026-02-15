@@ -27,15 +27,15 @@ This document provides a comprehensive overview of all features implemented acro
 
 | Feature              | Description                                             | Implementation                                        |
 | -------------------- | ------------------------------------------------------- | ----------------------------------------------------- |
-| PDF Compilation      | Compile LaTeX source to PDF using Docker containers     | `apps/compiler/internal/build/compiler.go`            |
+| PDF Compilation      | Compile LaTeX source to PDF using Docker containers     | `apps/remote-latex-compiler/internal/build/compiler.go` |
 | Engine Selection     | Support for pdflatex, xelatex, and lualatex engines     | Configurable via `engine` parameter in build request  |
 | Shell-Escape         | Enable `-shell-escape` flag for advanced LaTeX packages | Restricted to Enterprise tier users only              |
-| Build Queue          | Worker pool with configurable workers (default: 4)      | `apps/compiler/internal/build/queue.go`               |
+| Build Queue          | Worker pool with configurable workers (default: 4)      | `apps/remote-latex-compiler/internal/build/queue.go` |
 | Build Status Polling | Real-time status updates via WebSocket or polling       | Status stored in database, updated during compilation |
 | Build Logs           | Capture and stream latexmk output logs                  | Stored in database, accessible via API                |
-| Delta-Sync/Caching   | Incremental builds with file checksum verification      | `apps/compiler/cmd/server/handlers_delta_sync.go`     |
+| Delta-Sync/Caching   | Incremental builds with file checksum verification      | `apps/remote-latex-compiler/cmd/server/handlers_delta_sync.go` |
 | Docker Isolation   | Each build runs in isolated Docker container            | Memory/CPU limits, tmpfs, no network, auto-remove     |
-| Retry Logic          | Exponential backoff for failed builds                   | `apps/compiler/internal/build/queue.go`               |
+| Retry Logic          | Exponential backoff for failed builds                   | `apps/remote-latex-compiler/internal/build/queue.go` |
 | Timeout Handling     | Configurable build timeouts (default: 5min, max: 10min) | Enforced at container level                           |
 
 ### Desktop Application
@@ -129,9 +129,9 @@ This document provides a comprehensive overview of all features implemented acro
 
 | Feature          | Description                      | Implementation                               |
 | ---------------- | -------------------------------- | -------------------------------------------- |
-| PDF Serving      | Serve built PDF files            | `apps/compiler/cmd/server/handlers_build.go` |
+| PDF Serving      | Serve built PDF files            | `apps/remote-latex-compiler/cmd/server/handlers_build.go` |
 | Signed URLs      | Time-limited access to artifacts | `packages/go/signer/signer.go`               |
-| Artifact Storage | 24-hour TTL for build artifacts  | `apps/compiler/internal/cleanup/service.go`  |
+| Artifact Storage | 24-hour TTL for build artifacts  | `apps/remote-latex-compiler/internal/cleanup/service.go`  |
 
 ---
 
@@ -159,7 +159,7 @@ This document provides a comprehensive overview of all features implemented acro
 
 | Feature              | Description                        | Implementation                            |
 | -------------------- | ---------------------------------- | ----------------------------------------- |
-| JWT Validation       | Verify Supabase tokens             | `apps/compiler/internal/auth/supabase.go` |
+| JWT Validation       | Verify Supabase tokens             | `apps/remote-latex-compiler/internal/auth/supabase.go` |
 | JWKS Caching         | Cache public keys for verification | Auto-refresh every 24 hours               |
 | User Tier Management | Free, Pro, Enterprise tiers        | Stored in database, checked for features  |
 | Admin Middleware     | Protect admin-only routes          | Role-based access control                 |
@@ -172,12 +172,12 @@ This document provides a comprehensive overview of all features implemented acro
 
 | Feature              | Description                      | Implementation                                 |
 | -------------------- | -------------------------------- | ---------------------------------------------- |
-| Razorpay Integration | Payment gateway integration      | `apps/compiler/internal/billing/razorpay.go`   |
+| Razorpay Integration | Payment gateway integration      | `apps/remote-latex-compiler/internal/billing/razorpay.go`   |
 | Plan Tiers           | Free, Pro, Enterprise            | `packages/types/src/constants.ts`              |
-| Subscription Create  | Create new subscription          | `apps/compiler/cmd/server/handlers_billing.go` |
+| Subscription Create  | Create new subscription          | `apps/remote-latex-compiler/cmd/server/handlers_billing.go` |
 | Subscription Cancel  | Cancel existing subscription     | Webhook handling for status updates            |
-| Webhook Handling     | Process Razorpay events          | `apps/compiler/internal/billing/webhook.go`    |
-| Coupon System        | Discount, trial, upgrade coupons | `apps/compiler/internal/user/coupon.go`        |
+| Webhook Handling     | Process Razorpay events          | `apps/remote-latex-compiler/internal/billing/webhook.go`    |
+| Coupon System        | Discount, trial, upgrade coupons | `apps/remote-latex-compiler/internal/user/coupon.go`        |
 | Invoice Generation   | Track payment invoices           | Stored in `invoices` table                     |
 
 ### Desktop Application
@@ -292,12 +292,12 @@ This document provides a comprehensive overview of all features implemented acro
 
 | Feature              | Description                   | Implementation                               |
 | -------------------- | ----------------------------- | -------------------------------------------- |
-| User Management      | List and view all users       | `apps/compiler/cmd/server/handlers_admin.go` |
+| User Management      | List and view all users       | `apps/remote-latex-compiler/cmd/server/handlers_admin.go` |
 | Tier Updates         | Change user subscription tier | Admin-only endpoint                          |
 | Admin Status         | Grant/revoke admin privileges | Role management                              |
-| Allowlist Management | Early access email allowlist  | `apps/compiler/internal/user/allowlist.go`   |
+| Allowlist Management | Early access email allowlist  | `apps/remote-latex-compiler/internal/user/allowlist.go`   |
 | Admin Stats          | Platform statistics           | Total users, builds, storage                 |
-| Audit Logging        | Track admin actions           | `apps/compiler/internal/log/audit.go`        |
+| Audit Logging        | Track admin actions           | `apps/remote-latex-compiler/internal/log/audit.go`        |
 
 ### API Endpoints
 
@@ -483,7 +483,7 @@ The following features are noted as TODOs or incomplete in the codebase:
 
 | Feature               | Location                                        | Notes                                  |
 | --------------------- | ----------------------------------------------- | -------------------------------------- |
-| Email Notifications   | `apps/compiler/internal/cleanup/service.go:316` | Admin disk alerts                      |
+| Email Notifications   | `apps/remote-latex-compiler/internal/cleanup/service.go:316` | Admin disk alerts                      |
 | Build Cancellation    | Desktop app                                     | Stop button exists, no backend handler |
 | LRU Cache for SyncTeX | `packages/go/synctex/parser.go:446`             | Random eviction currently              |
 | Multi-tab Editor      | Desktop                                         | Planned feature                        |
