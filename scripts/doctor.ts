@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import { execa } from 'execa';
 import fs from 'fs';
+import { isDockerRunning } from './lib/index.js';
 
 async function checkCommand(name: string, cmd: string, args: string[] = ['--version']): Promise<boolean> {
   try {
@@ -14,13 +15,16 @@ async function checkCommand(name: string, cmd: string, args: string[] = ['--vers
   }
 }
 
-async function checkFile(description: string, filePath: string): Promise<boolean> {
+async function checkFile(description: string, filePath: string, required: boolean = true): Promise<boolean> {
   const exists = fs.existsSync(filePath);
   if (exists) {
     console.log(chalk.green(`  [OK] ${description}`));
     return true;
+  } else if (required) {
+    console.log(chalk.red(`  [X] ${description}: not found (required)`));
+    return false;
   } else {
-    console.log(chalk.yellow(`  [!] ${description}: not found`));
+    console.log(chalk.yellow(`  [!] ${description}: not found (optional)`));
     return false;
   }
 }
@@ -39,8 +43,9 @@ async function doctor(): Promise<void> {
 
   console.log();
   console.log(chalk.bold('Docker:'));
-  const dockerOk = await checkCommand('Docker', 'docker');
+  const dockerOk = await isDockerRunning();
   if (dockerOk) {
+    console.log(chalk.green('  [OK] Docker: running'));
     try {
       const { stdout } = await execa('docker', ['info', '--format', '{{.ServerVersion}}'], {
         timeout: 5000,
@@ -52,14 +57,26 @@ async function doctor(): Promise<void> {
     } catch {
       // Docker info failed
     }
+  } else {
+    console.log(chalk.red('  [X] Docker: not running'));
   }
 
   console.log();
   console.log(chalk.bold('Environment Files:'));
+
+  // Remote compiler - config files (committed)
   await checkFile('Remote compiler .env.development', 'apps/remote-latex-compiler/.env.development');
   await checkFile('Remote compiler .env.production', 'apps/remote-latex-compiler/.env.production');
-  await checkFile('Desktop frontend .env.development', 'apps/desktop/frontend/.env.development');
-  await checkFile('Website .env.local', 'apps/website/.env.local');
+  // Remote compiler - secrets (required for remote-compiler)
+  await checkFile('Remote compiler .env.local (secrets)', 'apps/remote-latex-compiler/.env.local', false);
+
+  // Desktop - VITE_ vars are safe
+  await checkFile('Desktop .env.development', 'apps/desktop/frontend/.env.development');
+  await checkFile('Desktop .env.production', 'apps/desktop/frontend/.env.production');
+
+  // Website - VITE_ vars are safe
+  await checkFile('Website .env.development', 'apps/website/.env.development');
+  await checkFile('Website .env.production', 'apps/website/.env.production');
 
   console.log();
   console.log(chalk.bold('Go Workspace:'));

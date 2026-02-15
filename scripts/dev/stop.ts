@@ -38,40 +38,42 @@ async function stopService(serviceKey: string, force: boolean): Promise<boolean>
 
   console.log(chalk.gray(`  Stopping ${service.name}...`));
 
-  // For Docker services, use docker commands
+  // For Docker services
   if (service.type === 'docker' && service.dockerContainer) {
     const status = await getContainerStatus(service.dockerContainer);
-    if (status === 'stopped') {
+    if (status === 'stopped' || status === 'unknown') {
       console.log(chalk.gray(`  ${serviceKey}: Already stopped`));
       return true;
     }
 
-    if (force) {
+    // Use stop command if defined (docker compose down)
+    if (service.stopCommand && service.cwd) {
+      try {
+        const [cmd, ...args] = service.stopCommand.split(' ');
+        await execa(cmd, args, { 
+          cwd: service.cwd,
+          timeout: 30000 
+        });
+        console.log(chalk.green(`  ${serviceKey}: Stopped`));
+        return true;
+      } catch (err) {
+        if (force) {
+          const success = await stopContainer(service.dockerContainer);
+          if (success) {
+            console.log(chalk.green(`  ${serviceKey}: Stopped (forced)`));
+          }
+          return success;
+        }
+        console.log(chalk.red(`  ${serviceKey}: Failed to stop - ${err}`));
+        return false;
+      }
+    } else {
+      // Direct container stop
       const success = await stopContainer(service.dockerContainer);
       if (success) {
-        console.log(chalk.green(`  ${serviceKey}: Stopped (forced)`));
+        console.log(chalk.green(`  ${serviceKey}: Stopped`));
       }
       return success;
-    }
-  }
-
-  // Use stop command if defined
-  if (service.stopCommand) {
-    try {
-      const [cmd, ...args] = service.stopCommand.split(' ');
-      await execa(cmd, args, { timeout: 30000 });
-      console.log(chalk.green(`  ${serviceKey}: Stopped`));
-      return true;
-    } catch (err) {
-      if (force && service.dockerContainer) {
-        const success = await stopContainer(service.dockerContainer);
-        if (success) {
-          console.log(chalk.green(`  ${serviceKey}: Stopped (forced)`));
-        }
-        return success;
-      }
-      console.log(chalk.red(`  ${serviceKey}: Failed to stop - ${err}`));
-      return false;
     }
   }
 
@@ -137,8 +139,8 @@ async function stopProfile(profileKey: string, force: boolean): Promise<void> {
 
   console.log(chalk.bold.yellow(`\n[*] Stopping profile: ${profile.name}...\n`));
 
-  // Stop in reverse startup order
-  const stopOrder = [...profile.startupOrder].reverse();
+  // Stop in reverse startup order (dependencies first)
+  const stopOrder = [...profile.services].reverse();
 
   for (const serviceKey of stopOrder) {
     await stopService(serviceKey, force);

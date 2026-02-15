@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import { execa } from 'execa';
-import { SERVICES, getContainerStatus, checkHttpHealth, checkRedisHealth, checkPortHealth } from '../lib/index.js';
+import { SERVICES, isDockerRunning, getContainerStatus, checkHttpHealth, checkPortHealth } from '../lib/index.js';
 
 interface ServiceStatus {
   key: string;
@@ -38,14 +38,23 @@ async function getServiceStatus(serviceKey: string): Promise<ServiceStatus> {
 
   // Check health if running
   if (status === 'running' && service.healthCheck) {
-    if (serviceKey === 'redis') {
-      const result = await checkRedisHealth();
-      health = result.healthy ? 'healthy' : 'unhealthy';
-      responseTime = result.responseTime;
-    } else if (service.healthCheck.startsWith('http')) {
+    if (service.healthCheck.startsWith('http')) {
       const result = await checkHttpHealth(service.healthCheck);
       health = result.healthy ? 'healthy' : 'unhealthy';
       responseTime = result.responseTime;
+    }
+  } else if (status === 'running' && serviceKey === 'redis') {
+    // Redis health check via docker
+    try {
+      const { stdout } = await execa('docker', [
+        'exec', 
+        service.dockerContainer!, 
+        'redis-cli', 
+        'ping'
+      ], { reject: false, timeout: 5000 });
+      health = stdout.includes('PONG') ? 'healthy' : 'unhealthy';
+    } catch {
+      health = 'unknown';
     }
   }
 
@@ -83,6 +92,12 @@ function formatHealth(health: 'healthy' | 'unhealthy' | 'unknown', responseTime:
 
 async function main(): Promise<void> {
   console.log(chalk.bold.blue('\n[*] Treefrog Service Status\n'));
+
+  // Check Docker availability
+  const dockerAvailable = await isDockerRunning();
+  if (!dockerAvailable) {
+    console.log(chalk.yellow('  Docker is not running - some services unavailable\n'));
+  }
 
   const statuses: ServiceStatus[] = [];
 
