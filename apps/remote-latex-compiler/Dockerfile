@@ -10,7 +10,7 @@ COPY packages/go/http/go.mod ./packages/go/http/
 COPY packages/go/logging/go.mod packages/go/logging/go.sum ./packages/go/logging/
 COPY packages/go/security/go.mod ./packages/go/security/
 COPY packages/go/signer/go.mod ./packages/go/signer/
-COPY packages/go/synctex/go.mod packages/go/synctex/go.sum ./packages/go/synctex/
+COPY packages/go/synctex/go.mod ./packages/go/synctex/
 COPY packages/go/validation/go.mod ./packages/go/validation/
 
 RUN cd apps/remote-latex-compiler && go mod download
