@@ -226,8 +226,8 @@ func (dm *DockerManager) startContainerWithRetry(ctx context.Context, port int) 
 		}).Debug("Starting container")
 
 		cmd := exec.CommandContext(ctx, "docker", "run", "-d", "--rm",
-			"-p", fmt.Sprintf("127.0.0.1:%d:9000", port),
-			"--name", "treefrog-renderer",
+			"-p", fmt.Sprintf("127.0.0.1:%d:8080", port),
+			"--name", "treefrog-local-latex-compiler",
 			LocalImageName)
 
 		output, err := cmd.CombinedOutput()
@@ -285,13 +285,13 @@ func (dm *DockerManager) forceRemoveContainer(ctx context.Context) error {
 	dm.stopContainer(ctx)
 
 	// Force remove container
-	rmCmd := exec.CommandContext(ctx, "docker", "rm", "-f", "treefrog-renderer")
+	rmCmd := exec.CommandContext(ctx, "docker", "rm", "-f", "treefrog-local-latex-compiler")
 	rmOutput, rmErr := rmCmd.CombinedOutput()
 	dm.logs.WriteString(string(rmOutput))
 
 	if rmErr != nil {
 		// Check if container exists
-		inspectCmd := exec.CommandContext(ctx, "docker", "inspect", "treefrog-renderer")
+		inspectCmd := exec.CommandContext(ctx, "docker", "inspect", "treefrog-local-latex-compiler")
 		if inspectCmd.Run() != nil {
 			// Container doesn't exist, which is fine
 			dm.logger.Info("No existing container to remove")
@@ -306,7 +306,7 @@ func (dm *DockerManager) forceRemoveContainer(ctx context.Context) error {
 }
 
 func (dm *DockerManager) stopContainer(ctx context.Context) error {
-	cmd := exec.CommandContext(ctx, "docker", "stop", "treefrog-renderer")
+	cmd := exec.CommandContext(ctx, "docker", "stop", "treefrog-local-latex-compiler")
 	output, err := cmd.CombinedOutput()
 	dm.logs.WriteString(string(output))
 	return err
@@ -384,6 +384,20 @@ func (dm *DockerManager) GetStatus() RendererStatus {
 
 	state := "stopped"
 	message := ""
+
+	// Check if container is actually running (not just cached state)
+	if dockerInstalled && dm.isRunning {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		cmd := exec.CommandContext(ctx, "docker", "inspect", "-f", "{{.State.Running}}", "treefrog-local-latex-compiler")
+		output, err := cmd.Output()
+		cancel()
+
+		if err != nil || strings.TrimSpace(string(output)) != "true" {
+			// Container is not actually running, update state
+			dm.isRunning = false
+			dm.logger.Warn("Container state mismatch: marked running but container not found")
+		}
+	}
 
 	if !dockerInstalled {
 		state = "not-installed"
