@@ -11,6 +11,7 @@ type Status string
 const (
 	StatusPending   Status = "pending"
 	StatusCompiling Status = "compiling"
+	StatusRetrying  Status = "retrying"
 	StatusCompleted Status = "completed"
 	StatusFailed    Status = "failed"
 	StatusExpired   Status = "expired"
@@ -78,8 +79,16 @@ func (b *Build) Validate() error {
 		return fmt.Errorf("main_file required")
 	}
 
-	if strings.Contains(b.MainFile, "..") || strings.Contains(b.MainFile, "/") || strings.Contains(b.MainFile, "\\") {
+	// Block parent directory traversal and absolute paths
+	if strings.Contains(b.MainFile, "..") {
 		return fmt.Errorf("invalid main_file: path traversal not allowed")
+	}
+	// Block absolute paths (Unix and Windows)
+	if strings.HasPrefix(b.MainFile, "/") || strings.HasPrefix(b.MainFile, "\\") {
+		return fmt.Errorf("invalid main_file: absolute path not allowed")
+	}
+	if len(b.MainFile) >= 2 && b.MainFile[1] == ':' { // Windows drive letter (C:\)
+		return fmt.Errorf("invalid main_file: absolute path not allowed")
 	}
 
 	if len(b.MainFile) > MaxMainFileLen {
