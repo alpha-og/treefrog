@@ -364,6 +364,7 @@ func (a *App) safePath(rel string) (string, error) {
 }
 
 func (a *App) emitBuildStatus(status BuildStatus) {
+	Logger.WithField("state", status.State).Info("Emitting build-status event")
 	runtime.EventsEmit(a.ctx, "build-status", status)
 }
 

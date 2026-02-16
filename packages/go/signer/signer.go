@@ -104,7 +104,7 @@ func (s *SignedURLSigner) GenerateURL(buildID, resource, userID string) (string,
 		return "", err
 	}
 
-	return fmt.Sprintf("/api/build/%s/%s?token=%s", url.QueryEscape(buildID), url.QueryEscape(resource),
+	return fmt.Sprintf("/api/build/%s/artifact/%s?token=%s", url.QueryEscape(buildID), url.QueryEscape(resource),
 		url.QueryEscape(token)), nil
 }
 

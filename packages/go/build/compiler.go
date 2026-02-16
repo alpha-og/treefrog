@@ -14,6 +14,12 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 )
 
+// Compiler is the interface for LaTeX compilers
+type Compiler interface {
+	Compile(build *Build) error
+	Close() error
+}
+
 type DockerCompiler struct {
 	dockerClient *client.Client
 	imageName    string
