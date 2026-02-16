@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rsa"
 	"database/sql"
 	"encoding/base64"
@@ -45,7 +47,8 @@ type JWKSClient struct {
 	jwksURL     string
 	supabaseURL string
 	httpClient  *http.Client
-	keys        map[string]*rsa.PublicKey
+	rsaKeys     map[string]*rsa.PublicKey
+	ecKeys      map[string]*ecdsa.PublicKey
 	keysMu      sync.RWMutex
 	lastRefresh time.Time
 	cacheTTL    time.Duration
@@ -61,8 +64,11 @@ type JWK struct {
 	Kid string `json:"kid"`
 	Kty string `json:"kty"`
 	Use string `json:"use"`
-	N   string `json:"n"`
-	E   string `json:"e"`
+	N   string `json:"n,omitempty"`
+	E   string `json:"e,omitempty"`
+	Crv string `json:"crv,omitempty"`
+	X   string `json:"x,omitempty"`
+	Y   string `json:"y,omitempty"`
 	Alg string `json:"alg"`
 }
 
@@ -74,16 +80,26 @@ func NewJWKSClient(supabaseURL string) *JWKSClient {
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
-		keys:     make(map[string]*rsa.PublicKey),
+		rsaKeys:  make(map[string]*rsa.PublicKey),
+		ecKeys:   make(map[string]*ecdsa.PublicKey),
 		cacheTTL: 10 * time.Minute,
 	}
 }
 
-func (c *JWKSClient) GetKey(kid string) (*rsa.PublicKey, error) {
+type SigningKey struct {
+	RSA *rsa.PublicKey
+	EC  *ecdsa.PublicKey
+}
+
+func (c *JWKSClient) GetKey(kid string) (*SigningKey, error) {
 	c.keysMu.RLock()
-	if key, ok := c.keys[kid]; ok && time.Since(c.lastRefresh) < c.cacheTTL {
+	if rsaKey, ok := c.rsaKeys[kid]; ok && time.Since(c.lastRefresh) < c.cacheTTL {
 		c.keysMu.RUnlock()
-		return key, nil
+		return &SigningKey{RSA: rsaKey}, nil
+	}
+	if ecKey, ok := c.ecKeys[kid]; ok && time.Since(c.lastRefresh) < c.cacheTTL {
+		c.keysMu.RUnlock()
+		return &SigningKey{EC: ecKey}, nil
 	}
 	c.keysMu.RUnlock()
 
@@ -92,8 +108,11 @@ func (c *JWKSClient) GetKey(kid string) (*rsa.PublicKey, error) {
 		c.refreshMu.Unlock()
 		c.keysMu.RLock()
 		defer c.keysMu.RUnlock()
-		if key, ok := c.keys[kid]; ok {
-			return key, nil
+		if rsaKey, ok := c.rsaKeys[kid]; ok {
+			return &SigningKey{RSA: rsaKey}, nil
+		}
+		if ecKey, ok := c.ecKeys[kid]; ok {
+			return &SigningKey{EC: ecKey}, nil
 		}
 		return nil, fmt.Errorf("key with kid %s not found", kid)
 	}
@@ -112,8 +131,11 @@ func (c *JWKSClient) GetKey(kid string) (*rsa.PublicKey, error) {
 
 	c.keysMu.RLock()
 	defer c.keysMu.RUnlock()
-	if key, ok := c.keys[kid]; ok {
-		return key, nil
+	if rsaKey, ok := c.rsaKeys[kid]; ok {
+		return &SigningKey{RSA: rsaKey}, nil
+	}
+	if ecKey, ok := c.ecKeys[kid]; ok {
+		return &SigningKey{EC: ecKey}, nil
 	}
 	return nil, fmt.Errorf("key with kid %s not found", kid)
 }
@@ -141,23 +163,34 @@ func (c *JWKSClient) refreshKeys() error {
 		return fmt.Errorf("failed to decode JWKS: %w", err)
 	}
 
-	newKeys := make(map[string]*rsa.PublicKey)
+	newRSAKeys := make(map[string]*rsa.PublicKey)
+	newECKeys := make(map[string]*ecdsa.PublicKey)
 	for _, jwk := range jwks.Keys {
-		if jwk.Kty != "RSA" {
-			continue
+		switch jwk.Kty {
+		case "RSA":
+			pubKey, err := jwk.ToRSAPublicKey()
+			if err != nil {
+				log.WithError(err).WithField("kid", jwk.Kid).Warn("Failed to parse RSA JWK")
+				continue
+			}
+			newRSAKeys[jwk.Kid] = pubKey
+		case "EC":
+			pubKey, err := jwk.ToECPublicKey()
+			if err != nil {
+				log.WithError(err).WithField("kid", jwk.Kid).Warn("Failed to parse EC JWK")
+				continue
+			}
+			newECKeys[jwk.Kid] = pubKey
 		}
-
-		pubKey, err := jwk.ToRSAPublicKey()
-		if err != nil {
-			log.WithError(err).WithField("kid", jwk.Kid).Warn("Failed to parse JWK")
-			continue
-		}
-		newKeys[jwk.Kid] = pubKey
 	}
 
-	c.keys = newKeys
+	c.rsaKeys = newRSAKeys
+	c.ecKeys = newECKeys
 	c.lastRefresh = time.Now()
-	log.WithField("key_count", len(newKeys)).Debug("JWKS keys refreshed")
+	log.WithFields(logrus.Fields{
+		"rsa_keys": len(newRSAKeys),
+		"ec_keys":  len(newECKeys),
+	}).Debug("JWKS keys refreshed")
 	return nil
 }
 
@@ -179,6 +212,35 @@ func (jwk *JWK) ToRSAPublicKey() (*rsa.PublicKey, error) {
 	return &rsa.PublicKey{
 		N: new(big.Int).SetBytes(n),
 		E: eInt,
+	}, nil
+}
+
+func (jwk *JWK) ToECPublicKey() (*ecdsa.PublicKey, error) {
+	x, err := decodeBase64URL(jwk.X)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode x: %w", err)
+	}
+	y, err := decodeBase64URL(jwk.Y)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode y: %w", err)
+	}
+
+	var curve elliptic.Curve
+	switch jwk.Crv {
+	case "P-256":
+		curve = elliptic.P256()
+	case "P-384":
+		curve = elliptic.P384()
+	case "P-521":
+		curve = elliptic.P521()
+	default:
+		return nil, fmt.Errorf("unsupported curve: %s", jwk.Crv)
+	}
+
+	return &ecdsa.PublicKey{
+		Curve: curve,
+		X:     new(big.Int).SetBytes(x),
+		Y:     new(big.Int).SetBytes(y),
 	}, nil
 }
 
@@ -235,16 +297,31 @@ func (c *SupabaseClaims) Valid() error {
 
 func validateToken(tokenString string) (*SupabaseClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &SupabaseClaims{}, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-
 		kid, ok := token.Header["kid"].(string)
 		if !ok {
 			return nil, fmt.Errorf("missing kid in token header")
 		}
 
-		return jwksClient.GetKey(kid)
+		signingKey, err := jwksClient.GetKey(kid)
+		if err != nil {
+			return nil, err
+		}
+
+		// Return the appropriate key based on signing method
+		switch token.Method.(type) {
+		case *jwt.SigningMethodRSA:
+			if signingKey.RSA != nil {
+				return signingKey.RSA, nil
+			}
+			return nil, fmt.Errorf("RSA key not found for kid %s", kid)
+		case *jwt.SigningMethodECDSA:
+			if signingKey.EC != nil {
+				return signingKey.EC, nil
+			}
+			return nil, fmt.Errorf("EC key not found for kid %s", kid)
+		default:
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
 	})
 	if err != nil {
 		return nil, err
