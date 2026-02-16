@@ -3,6 +3,7 @@ package build
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -65,6 +66,7 @@ func (c *NativeCompiler) Compile(build *Build) error {
 	args := []string{
 		engineFlag,
 		"-interaction=nonstopmode",
+		"-synctex=1",
 		"-outdir=" + outputDir,
 	}
 
@@ -120,17 +122,23 @@ func (c *NativeCompiler) Compile(build *Build) error {
 
 	// Check for SyncTeX - use main file name without extension
 	synctexPath := filepath.Join(outputDir, mainBase+".synctex.gz")
+	log.Printf("Looking for SyncTeX at: %s", synctexPath)
 	if _, err := os.Stat(synctexPath); err != nil {
 		// Fallback: try output.synctex.gz
 		synctexPath = filepath.Join(outputDir, "output.synctex.gz")
+		log.Printf("Fallback: looking for SyncTeX at: %s", synctexPath)
 	}
 	if _, err := os.Stat(synctexPath); err == nil {
 		destPath := filepath.Join(buildDir, "output.synctex.gz")
 		if err := copyFile(synctexPath, destPath); err == nil {
 			build.SyncTeXPath = destPath
+			log.Printf("SyncTeX copied to: %s", destPath)
 		} else {
 			build.SyncTeXPath = synctexPath
+			log.Printf("SyncTeX using original path: %s", synctexPath)
 		}
+	} else {
+		log.Printf("SyncTeX not found: %v", err)
 	}
 
 	build.UpdatedAt = time.Now()
