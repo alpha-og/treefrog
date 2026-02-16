@@ -460,6 +460,7 @@ func (a *App) runBuild(mainFile, engine string, shellEscape bool) {
 
 	zipPath := filepath.Join(a.cacheDir, "build.zip")
 	if err := zipProject(root, zipPath); err != nil {
+		Logger.Errorf("Failed to create zip: %v", err)
 		a.statusMu.Lock()
 		a.status.State = "error"
 		a.status.Message = err.Error()
@@ -468,9 +469,11 @@ func (a *App) runBuild(mainFile, engine string, shellEscape bool) {
 		a.emitBuildStatus(a.status)
 		return
 	}
+	Logger.Info("Project zip created successfully")
 
 	remoteID, err := a.uploadBuild(zipPath, mainFile, engine, shellEscape, compilerURL, sessionToken)
 	if err != nil {
+		Logger.Errorf("uploadBuild failed: %v", err)
 		a.statusMu.Lock()
 		a.status.State = "error"
 		a.status.Message = err.Error()
@@ -479,6 +482,7 @@ func (a *App) runBuild(mainFile, engine string, shellEscape bool) {
 		a.emitBuildStatus(a.status)
 		return
 	}
+	Logger.Infof("Build uploaded successfully, remoteID: %s", remoteID)
 
 	a.setRemoteID(remoteID)
 
@@ -501,14 +505,11 @@ func (a *App) uploadBuild(zipPath, mainFile, engine string, shellEscape bool, co
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
-	opts := BuildOptions{
-		MainFile:    mainFile,
-		Engine:      engine,
-		ShellEscape: shellEscape,
-	}
-	optsJSON, _ := json.Marshal(opts)
-	_ = writer.WriteField("options", string(optsJSON))
-	Logger.Debugf("Added build options: %s", string(optsJSON))
+	// Send as separate form fields (matching what the compiler expects)
+	_ = writer.WriteField("main_file", mainFile)
+	_ = writer.WriteField("engine", engine)
+	_ = writer.WriteField("shell_escape", fmt.Sprintf("%v", shellEscape))
+	Logger.Debugf("Build options: main_file=%s, engine=%s, shell_escape=%v", mainFile, engine, shellEscape)
 
 	part, err := writer.CreateFormFile("file", "source.zip")
 	if err != nil {
@@ -542,9 +543,14 @@ func (a *App) uploadBuild(zipPath, mainFile, engine string, shellEscape bool, co
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	Logger.Debugf("Upload response status: %d", resp.StatusCode)
+	defer resp.Body.Close()
+
+	// Accept both 200 OK (remote compiler) and 202 Accepted (local compiler)
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
 		respBody, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("compiler error: %s", string(respBody))
+		Logger.Errorf("Compiler returned unexpected status %d: %s", resp.StatusCode, string(respBody))
+		return "", fmt.Errorf("compiler error (status %d): %s", resp.StatusCode, string(respBody))
 	}
 
 	var result struct {
@@ -579,8 +585,9 @@ func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape boo
 			a.emitBuildStatus(a.status)
 			return
 		case <-ticker.C:
-			status, err := a.checkRemoteBuild(remoteID, compilerURL, sessionToken)
+			status, statusMessage, err := a.checkRemoteBuild(remoteID, compilerURL, sessionToken)
 			if err != nil {
+				Logger.Errorf("checkRemoteBuild error: %v", err)
 				a.statusMu.Lock()
 				a.status.State = "error"
 				a.status.Message = err.Error()
@@ -594,15 +601,35 @@ func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape boo
 				return
 			}
 
+			Logger.Infof("Build status poll returned: %s", status)
+
+			// Map compiler status to frontend status
+			displayStatus := status
+			if status == "pending" {
+				displayStatus = "queued"
+			} else if status == "compiling" {
+				displayStatus = "running"
+			} else if status == "retrying" {
+				displayStatus = "retrying"
+			}
+
+			// Use server message if available, otherwise default
+			displayMessage := fmt.Sprintf("Build %s", status)
+			if statusMessage != "" {
+				displayMessage = statusMessage
+			}
+
 			a.statusMu.Lock()
-			a.status.State = status
-			a.status.Message = fmt.Sprintf("Build %s", status)
+			a.status.State = displayStatus
+			a.status.Message = displayMessage
 			statusCopy := a.status
 			a.statusMu.Unlock()
 			a.emitBuildStatus(statusCopy)
 
-			if status == "success" {
+			if status == "completed" || status == "success" {
+				Logger.Info("Build completed, downloading PDF...")
 				if err := a.downloadPDF(remoteID, compilerURL, sessionToken); err != nil {
+					Logger.Errorf("PDF download failed: %v", err)
 					a.statusMu.Lock()
 					a.status.State = "error"
 					a.status.Message = err.Error()
@@ -625,8 +652,9 @@ func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape boo
 				return
 			}
 
-			if status == "error" {
+			if status == "failed" || status == "error" {
 				a.statusMu.Lock()
+				a.status.State = "error"
 				a.status.EndedAt = time.Now().Format(time.RFC3339)
 				a.statusMu.Unlock()
 				if a.metrics != nil {
@@ -639,7 +667,7 @@ func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape boo
 	}
 }
 
-func (a *App) checkRemoteBuild(remoteID, compilerURL, sessionToken string) (string, error) {
+func (a *App) checkRemoteBuild(remoteID, compilerURL, sessionToken string) (status string, message string, err error) {
 	Logger.Debugf("Checking remote build status for: %s", remoteID)
 
 	url := compilerURL + "/api/build/" + remoteID + "/status"
@@ -647,7 +675,7 @@ func (a *App) checkRemoteBuild(remoteID, compilerURL, sessionToken string) (stri
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		Logger.Errorf("Failed to create HTTP request: %v", err)
-		return "", err
+		return "", "", err
 	}
 
 	if sessionToken != "" {
@@ -658,14 +686,14 @@ func (a *App) checkRemoteBuild(remoteID, compilerURL, sessionToken string) (stri
 	resp, err := client.Do(req)
 	if err != nil {
 		Logger.Errorf("Build status check failed: %v", err)
-		return "", err
+		return "", "", err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		Logger.Errorf("Failed to read response body: %v", err)
-		return "", err
+		return "", "", err
 	}
 
 	var result struct {
@@ -675,29 +703,74 @@ func (a *App) checkRemoteBuild(remoteID, compilerURL, sessionToken string) (stri
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
 		Logger.Errorf("Failed to unmarshal build status response: %v", err)
-		return "", err
+		return "", "", err
 	}
 
-	Logger.Debugf("Build status for %s: %s", remoteID, result.Status)
-	return result.Status, nil
+	Logger.Debugf("Build status for %s: %s (message: %s)", remoteID, result.Status, result.Message)
+	return result.Status, result.Message, nil
 }
 
 func (a *App) downloadPDF(remoteID, compilerURL, sessionToken string) error {
 	Logger.Infof("Downloading PDF for build: %s", remoteID)
 
-	url := compilerURL + "/api/build/" + remoteID + "/pdf"
+	// Step 1: Get signed URL for PDF
+	signedURLReq, err := http.NewRequest("GET", compilerURL+"/api/build/"+remoteID+"/pdf/url", nil)
+	if err != nil {
+		Logger.Errorf("Failed to create signed URL request: %v", err)
+		return err
+	}
+	if sessionToken != "" {
+		signedURLReq.Header.Set("Authorization", "Bearer "+sessionToken)
+	}
 
-	req, err := http.NewRequest("GET", url, nil)
+	client := &http.Client{Timeout: 30 * time.Second}
+	signedURLResp, err := client.Do(signedURLReq)
+	if err != nil {
+		Logger.Errorf("Signed URL request failed: %v", err)
+		return fmt.Errorf("failed to get signed URL: %w", err)
+	}
+	defer signedURLResp.Body.Close()
+
+	if signedURLResp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(signedURLResp.Body)
+		Logger.Errorf("Signed URL request returned status %d: %s", signedURLResp.StatusCode, string(body))
+		return fmt.Errorf("failed to get signed URL: status %d", signedURLResp.StatusCode)
+	}
+
+	var signedURLResult struct {
+		URL string `json:"url"`
+	}
+	if err := json.NewDecoder(signedURLResp.Body).Decode(&signedURLResult); err != nil {
+		Logger.Errorf("Failed to decode signed URL response: %v", err)
+		return fmt.Errorf("failed to decode signed URL: %w", err)
+	}
+
+	if signedURLResult.URL == "" {
+		Logger.Error("Signed URL is empty")
+		return fmt.Errorf("signed URL is empty")
+	}
+
+	Logger.Debugf("Got signed URL for PDF download")
+
+	// Step 2: Download PDF using signed URL
+	// The signed URL is a relative path, prepend the compiler URL
+	downloadURL := signedURLResult.URL
+	if !strings.HasPrefix(downloadURL, "http") {
+		downloadURL = compilerURL + downloadURL
+	}
+
+	req, err := http.NewRequest("GET", downloadURL, nil)
 	if err != nil {
 		Logger.Errorf("Failed to create PDF download request: %v", err)
 		return err
 	}
 
+	// Still need auth header - signed URL provides additional verification
 	if sessionToken != "" {
 		req.Header.Set("Authorization", "Bearer "+sessionToken)
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	// Signed URL doesn't need auth header - the token is in the URL
 	resp, err := client.Do(req)
 	if err != nil {
 		Logger.Errorf("PDF download request failed: %v", err)

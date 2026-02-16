@@ -83,14 +83,15 @@ func (rbm *RemoteCompilerMonitor) monitorLoop() {
 
 // checkHealth performs a single health check
 func (rbm *RemoteCompilerMonitor) checkHealth() {
-	rbm.mu.Lock()
-	defer rbm.mu.Unlock()
+	// Get URL without holding lock to avoid blocking readers
+	rbm.mu.RLock()
+	url := rbm.health.URL + "/health"
+	rbm.mu.RUnlock()
 
 	ctx, cancel := context.WithTimeout(context.Background(), rbm.timeout)
 	defer cancel()
 
 	start := time.Now()
-	url := rbm.health.URL + "/health"
 
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -118,6 +119,9 @@ func (rbm *RemoteCompilerMonitor) checkHealth() {
 
 // recordSuccess marks a successful health check
 func (rbm *RemoteCompilerMonitor) recordSuccess(duration time.Duration) {
+	rbm.mu.Lock()
+	defer rbm.mu.Unlock()
+
 	wasUnhealthy := !rbm.health.IsHealthy
 
 	rbm.health.IsHealthy = true
@@ -141,6 +145,9 @@ func (rbm *RemoteCompilerMonitor) recordSuccess(duration time.Duration) {
 
 // recordFailure marks a failed health check
 func (rbm *RemoteCompilerMonitor) recordFailure(reason string) {
+	rbm.mu.Lock()
+	defer rbm.mu.Unlock()
+
 	rbm.health.ConsecutiveFails++
 	rbm.health.LastCheck = time.Now().Format(time.RFC3339)
 	rbm.health.LastError = reason

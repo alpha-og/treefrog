@@ -79,6 +79,7 @@ func (a *App) loadAuthConfig() {
 }
 
 // saveAuthConfig saves auth config to disk
+// NOTE: Caller must NOT hold authMu lock - this function acquires its own read lock
 func (a *App) saveAuthConfig() error {
 	configPath := a.getAuthConfigPath()
 	dir := strings.TrimSuffix(configPath, "/auth.json")
@@ -92,6 +93,24 @@ func (a *App) saveAuthConfig() error {
 	a.authMu.RUnlock()
 
 	data, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(configPath, data, 0600)
+}
+
+// saveAuthConfigWhileLocked saves auth config to disk
+// NOTE: Caller MUST hold authMu write lock - this function does NOT acquire locks
+func (a *App) saveAuthConfigWhileLocked() error {
+	configPath := a.getAuthConfigPath()
+	dir := strings.TrimSuffix(configPath, "/auth.json")
+
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+
+	data, err := json.MarshalIndent(a.authConfig, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -325,15 +344,33 @@ func (a *App) SignOut() error {
 	Logger.Info("Signing out")
 
 	a.authMu.Lock()
-	if a.authConfig != nil {
-		a.authConfig.SessionToken = ""
-		a.authConfig.UserID = ""
-		a.authConfig.UserEmail = ""
-		a.authConfig.UserName = ""
+
+	if a.authConfig == nil || a.authConfig.SessionToken == "" {
+		a.authMu.Unlock()
+		Logger.Info("Already signed out")
+		wailsRuntime.EventsEmit(a.ctx, "auth:signout", map[string]interface{}{
+			"success": true,
+		})
+		return nil
 	}
+
+	a.authConfig.SessionToken = ""
+	a.authConfig.UserID = ""
+	a.authConfig.UserEmail = ""
+	a.authConfig.UserName = ""
+	a.authConfig.TokenExpiry = 0
+
+	config := a.authConfig
 	a.authMu.Unlock()
 
-	if err := a.saveAuthConfig(); err != nil {
+	configPath := a.getAuthConfigPath()
+	data, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		Logger.WithError(err).Error("Failed to marshal auth config")
+		return err
+	}
+
+	if err := os.WriteFile(configPath, data, 0600); err != nil {
 		Logger.WithError(err).Error("Failed to save cleared auth config")
 		return err
 	}
@@ -365,7 +402,7 @@ func (a *App) GetSessionToken() string {
 				a.authConfig.SessionToken = ""
 				a.authConfig.RefreshToken = ""
 				a.authConfig.TokenExpiry = 0
-				a.saveAuthConfig()
+				a.saveAuthConfigWhileLocked()
 				// Emit event to frontend to prompt re-auth
 				if a.ctx != nil {
 					wailsRuntime.EventsEmit(a.ctx, "auth:session_expired", map[string]interface{}{
@@ -377,7 +414,7 @@ func (a *App) GetSessionToken() string {
 			a.authConfig.SessionToken = newToken
 			a.authConfig.RefreshToken = newRefreshToken
 			a.authConfig.TokenExpiry = newExpiry
-			a.saveAuthConfig()
+			a.saveAuthConfigWhileLocked()
 			Logger.Info("Token refreshed successfully")
 			return newToken
 		}
