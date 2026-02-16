@@ -46,6 +46,7 @@ RUN apt-get update && \
     curl \
     git \
     build-essential \
+    unzip \
     && rm -rf /var/lib/apt/lists/* && \
     apt-get clean
 

@@ -72,17 +72,17 @@ func main() {
 	)
 	_ = razorpaySvc
 
-	logger.Info("Initializing Docker compiler")
-	dockerCompiler, err := buildpkg.NewDockerCompiler(cfg.Build.ImageName, cfg.Build.WorkDir)
+	logger.Info("Initializing native compiler")
+	nativeCompiler, err := buildpkg.NewNativeCompiler(cfg.Build.WorkDir)
 	if err != nil {
-		logger.WithError(err).Fatal("Failed to initialize Docker compiler")
+		logger.WithError(err).Fatal("Failed to initialize native compiler")
 	}
-	defer dockerCompiler.Close()
-	logger.WithField("image", cfg.Build.ImageName).Info("Docker compiler initialized")
+	defer nativeCompiler.Close()
+	logger.WithField("workDir", cfg.Build.WorkDir).Info("Native compiler initialized")
 
 	logger.Info("Initializing build queue")
 	buildStore := build.NewStoreWithDB(dbInstance)
-	buildQueue = build.NewQueue(cfg.Build.DefaultWorkers, dockerCompiler, buildStore)
+	buildQueue = build.NewQueue(cfg.Build.DefaultWorkers, nativeCompiler, buildStore)
 	logger.WithField("workers", cfg.Build.DefaultWorkers).Info("Build queue initialized")
 
 	logger.Info("Initializing user store")

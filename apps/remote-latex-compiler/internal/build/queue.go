@@ -47,13 +47,13 @@ type Queue struct {
 type Worker struct {
 	id       int
 	queue    chan *BuildJob
-	compiler *buildpkg.DockerCompiler
+	compiler buildpkg.Compiler
 	store    *Store
 	done     chan struct{}
 }
 
 // NewQueue creates a new build queue with worker pool (Issue #8)
-func NewQueue(numWorkers int, compiler *buildpkg.DockerCompiler, store *Store) *Queue {
+func NewQueue(numWorkers int, compiler buildpkg.Compiler, store *Store) *Queue {
 	q := &Queue{
 		jobs:    make(chan *BuildJob, 100), // Buffer 100 jobs
 		workers: numWorkers,
@@ -137,6 +137,13 @@ func (w *Worker) executeJob(job *BuildJob) {
 
 	log.Printf("Worker %d: Processing build %s", w.id, job.Build.ID)
 
+	// Update status to compiling when worker starts
+	job.Build.Status = buildpkg.StatusCompiling
+	job.Build.UpdatedAt = time.Now()
+	if err := w.store.Update(job.Build); err != nil {
+		log.Printf("Failed to update build status to compiling: %v", err)
+	}
+
 	// If compiler is nil (not yet initialized), we skip compilation
 	// This happens during queue initialization before Docker is ready
 	if w.compiler == nil {
@@ -152,8 +159,18 @@ func (w *Worker) executeJob(job *BuildJob) {
 		if job.Retries < job.MaxRetries {
 			job.Retries++
 			job.Error = err
+
+			// Update status to retrying so client can see progress
+			job.Build.Status = buildpkg.StatusRetrying
+			job.Build.ErrorMessage = fmt.Sprintf("Attempt %d/%d failed: %v. Retrying...", job.Retries, job.MaxRetries, err)
+			job.Build.UpdatedAt = time.Now()
+			if updateErr := w.store.Update(job.Build); updateErr != nil {
+				log.Printf("Failed to update build status to retrying: %v", updateErr)
+			}
+
 			// Re-enqueue job after backoff
 			backoff := time.Duration(job.Retries) * 30 * time.Second
+			log.Printf("Waiting %v before retry %d/%d for build %s", backoff, job.Retries, job.MaxRetries, job.Build.ID)
 			time.Sleep(backoff)
 			log.Printf("Retrying build %s (attempt %d/%d)", job.Build.ID, job.Retries, job.MaxRetries)
 
