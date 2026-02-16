@@ -138,9 +138,20 @@ function AppContent() {
         setUser(null);
       });
       
+      EventsOn("auth:session_expired", (data: unknown) => {
+        const expiredData = data as { error?: string };
+        log.info("Session expired event received", expiredData);
+        setMode('guest');
+        setSessionToken(null);
+        setUser(null);
+        toast.error(expiredData?.error || "Session expired. Please sign in again.", {
+          duration: 5000,
+        });
+      });
+      
       return () => {
         if (EventsOff) {
-          EventsOff("auth:callback", "auth:signout");
+          EventsOff("auth:callback", "auth:signout", "auth:session_expired");
         }
       };
     }

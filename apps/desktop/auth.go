@@ -3,11 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
 	goruntime "runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -33,9 +35,11 @@ type AuthState struct {
 // authConfig holds authentication configuration (internal)
 type authConfig struct {
 	SessionToken string `json:"sessionToken"`
+	RefreshToken string `json:"refreshToken"`
 	UserID       string `json:"userId"`
 	UserEmail    string `json:"userEmail"`
 	UserName     string `json:"userName"`
+	TokenExpiry  int64  `json:"tokenExpiry"` // Unix timestamp
 }
 
 // initAuth initializes authentication state
@@ -187,16 +191,19 @@ func (a *App) HandleAuthCallback(callbackURL string) error {
 		return err
 	}
 
-	// Extract session token from query parameters
-	token := parsedURL.Query().Get("access_token")
-	if token == "" {
-		token = parsedURL.Query().Get("session_token")
+	// Extract tokens from query parameters
+	accessToken := parsedURL.Query().Get("access_token")
+	refreshToken := parsedURL.Query().Get("refresh_token")
+	expiresInStr := parsedURL.Query().Get("expires_in")
+
+	if accessToken == "" {
+		accessToken = parsedURL.Query().Get("session_token")
 	}
-	if token == "" {
-		token = parsedURL.Query().Get("token")
+	if accessToken == "" {
+		accessToken = parsedURL.Query().Get("token")
 	}
 
-	if token == "" {
+	if accessToken == "" {
 		err := fmt.Errorf("no session token in callback URL")
 		Logger.Error(err)
 		wailsRuntime.EventsEmit(a.ctx, "auth:callback", map[string]interface{}{
@@ -206,16 +213,29 @@ func (a *App) HandleAuthCallback(callbackURL string) error {
 		return err
 	}
 
-	// Store the token
+	// Calculate expiry time (default 1 hour if not provided)
+	var expiresAt int64
+	if expiresInStr != "" {
+		if expiresIn, err := strconv.ParseInt(expiresInStr, 10, 64); err == nil {
+			expiresAt = time.Now().Add(time.Duration(expiresIn) * time.Second).Unix()
+		}
+	}
+	if expiresAt == 0 {
+		expiresAt = time.Now().Add(1 * time.Hour).Unix()
+	}
+
+	// Store the tokens
 	a.authMu.Lock()
 	if a.authConfig == nil {
 		a.authConfig = &authConfig{}
 	}
-	a.authConfig.SessionToken = token
+	a.authConfig.SessionToken = accessToken
+	a.authConfig.RefreshToken = refreshToken
+	a.authConfig.TokenExpiry = expiresAt
 	a.authMu.Unlock()
 
 	// Fetch user info from backend
-	userInfo, err := a.fetchUserInfo(token)
+	userInfo, err := a.fetchUserInfo(accessToken)
 	if err != nil {
 		Logger.WithError(err).Warn("Failed to fetch user info, but token stored")
 	} else if userInfo != nil {
@@ -239,7 +259,7 @@ func (a *App) HandleAuthCallback(callbackURL string) error {
 
 	wailsRuntime.EventsEmit(a.ctx, "auth:callback", map[string]interface{}{
 		"success": true,
-		"token":   token,
+		"token":   accessToken,
 		"user": map[string]string{
 			"id":    a.authConfig.UserID,
 			"email": a.authConfig.UserEmail,
@@ -252,7 +272,17 @@ func (a *App) HandleAuthCallback(callbackURL string) error {
 
 // fetchUserInfo fetches user info from the backend
 func (a *App) fetchUserInfo(sessionToken string) (*AuthUser, error) {
-	compilerURL := a.getCompilerURL()
+	// Use remote compiler URL for user info - local compiler doesn't have /api/user/me
+	compilerURL := a.getRemoteCompilerURL()
+	if compilerURL == "" {
+		compilerURL = a.getCompilerURL()
+	}
+
+	// Skip if still pointing to localhost (no remote configured)
+	if strings.HasPrefix(compilerURL, "http://127.0.0.1") || strings.HasPrefix(compilerURL, "http://localhost") {
+		Logger.Warn("No remote compiler configured, skipping user info fetch")
+		return nil, nil
+	}
 
 	req, err := http.NewRequest("GET", compilerURL+"/api/user/me", nil)
 	if err != nil {
@@ -316,15 +346,98 @@ func (a *App) SignOut() error {
 	return nil
 }
 
-// GetSessionToken returns the current session token
+// GetSessionToken returns the current session token, refreshing if necessary
 func (a *App) GetSessionToken() string {
-	a.authMu.RLock()
-	defer a.authMu.RUnlock()
+	a.authMu.Lock()
+	defer a.authMu.Unlock()
 
 	if a.authConfig == nil {
 		return ""
 	}
+
+	// Check if token needs refresh (5 minutes before expiry)
+	if time.Now().Unix() > a.authConfig.TokenExpiry-300 {
+		if a.authConfig.RefreshToken != "" {
+			newToken, newRefreshToken, newExpiry, err := a.refreshToken(a.authConfig.RefreshToken)
+			if err != nil {
+				Logger.WithError(err).Warn("Failed to refresh token, user needs to re-authenticate")
+				// Clear auth config since refresh failed
+				a.authConfig.SessionToken = ""
+				a.authConfig.RefreshToken = ""
+				a.authConfig.TokenExpiry = 0
+				a.saveAuthConfig()
+				// Emit event to frontend to prompt re-auth
+				if a.ctx != nil {
+					wailsRuntime.EventsEmit(a.ctx, "auth:session_expired", map[string]interface{}{
+						"error": "Session expired. Please sign in again.",
+					})
+				}
+				return ""
+			}
+			a.authConfig.SessionToken = newToken
+			a.authConfig.RefreshToken = newRefreshToken
+			a.authConfig.TokenExpiry = newExpiry
+			a.saveAuthConfig()
+			Logger.Info("Token refreshed successfully")
+			return newToken
+		}
+		// No refresh token, session expired
+		if a.ctx != nil {
+			wailsRuntime.EventsEmit(a.ctx, "auth:session_expired", map[string]interface{}{
+				"error": "Session expired. Please sign in again.",
+			})
+		}
+		return ""
+	}
+
 	return a.authConfig.SessionToken
+}
+
+// refreshToken exchanges a refresh token for a new access token
+func (a *App) refreshToken(refreshToken string) (accessToken, newRefreshToken string, expiresAt int64, err error) {
+	supabaseURL := os.Getenv("SUPABASE_URL")
+	if supabaseURL == "" {
+		supabaseURL = "https://pmlqyqkitngxqmqfevke.supabase.co"
+	}
+
+	// Use publishable key (public-safe, can be embedded)
+	supabasePublishableKey := os.Getenv("SUPABASE_PUBLISHABLE_KEY")
+	if supabasePublishableKey == "" {
+		supabasePublishableKey = "sb_publishable_vyUbGPkiA8_hDT74wuf4sg_KvTdxPUq"
+	}
+
+	reqBody := fmt.Sprintf(`{"refresh_token":"%s"}`, refreshToken)
+	req, err := http.NewRequest("POST", supabaseURL+"/auth/v1/token?grant_type=refresh_token", strings.NewReader(reqBody))
+	if err != nil {
+		return "", "", 0, fmt.Errorf("failed to create refresh request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("apikey", supabasePublishableKey)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", "", 0, fmt.Errorf("refresh request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", "", 0, fmt.Errorf("refresh failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result struct {
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+		ExpiresIn    int    `json:"expires_in"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", "", 0, fmt.Errorf("failed to parse refresh response: %w", err)
+	}
+
+	expiresAt = time.Now().Add(time.Duration(result.ExpiresIn) * time.Second).Unix()
+	return result.AccessToken, result.RefreshToken, expiresAt, nil
 }
 
 // IsAuthenticated returns whether the user is authenticated
