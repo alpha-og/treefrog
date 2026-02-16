@@ -29,7 +29,7 @@ CREATE INDEX IF NOT EXISTS idx_users_is_admin ON users(is_admin);
 CREATE TABLE IF NOT EXISTS builds (
     id TEXT PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'compiling', 'completed', 'failed', 'expired', 'deleted')),
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'compiling', 'retrying', 'completed', 'failed', 'expired', 'deleted')),
     engine TEXT DEFAULT 'pdflatex' CHECK (engine IN ('pdflatex', 'xelatex', 'lualatex')),
     main_file TEXT,
     dir_path TEXT,

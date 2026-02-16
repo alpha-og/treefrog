@@ -170,15 +170,17 @@ async function startService(
     const [cmd, ...args] = service.startCommand.split(' ');
     
     if (service.type === 'docker') {
-      // Docker compose command
+      // Docker compose command - inherit stdio to show build progress
       const execOptions: Record<string, unknown> = {
-        timeout: 300000, // 5 minutes for build
+        timeout: 1200000, // 20 minutes for texlive-full build
+        stdio: 'inherit', // Show Docker build output
       };
       
       if (service.cwd) {
         execOptions.cwd = service.cwd;
       }
       
+      log(serviceKey, 'Running docker compose (this may take several minutes on first build)...', logStream);
       await execa(cmd, args, execOptions);
       runningProcesses.set(serviceKey, { 
         name: serviceKey, 
