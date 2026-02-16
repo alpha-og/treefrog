@@ -12,6 +12,7 @@ export interface Service {
   dependsOn: string[];
   dockerContainer?: string;
   envFile?: string;
+  env?: Record<string, string>;
 }
 
 export const SERVICES: Record<string, Service> = {
@@ -24,6 +25,11 @@ export const SERVICES: Record<string, Service> = {
     startCommand: 'wails dev',
     cwd: 'apps/desktop',
     dependsOn: [],
+    env: {
+      TREEFROG_DEV: 'true',
+      SUPABASE_URL: 'https://pmlqyqkitngxqmqfevke.supabase.co',
+      SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_vyUbGPkiA8_hDT74wuf4sg_KvTdxPUq',
+    },
   },
   website: {
     name: 'Website',

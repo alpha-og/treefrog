@@ -168,6 +168,7 @@ export function AuthCallback() {
         const callbackUrl = new URL(redirectUrl)
         callbackUrl.searchParams.set('access_token', session.access_token)
         callbackUrl.searchParams.set('refresh_token', session.refresh_token)
+        callbackUrl.searchParams.set('expires_in', session.expires_in.toString())
         window.location.href = callbackUrl.toString()
         return
       }

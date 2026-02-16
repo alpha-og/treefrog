@@ -279,14 +279,29 @@ func (a *App) getCompilerURL() string {
 		if a.config.RemoteCompilerURL != "" {
 			return a.config.RemoteCompilerURL
 		}
+		// In dev mode, default to remote compiler
+		if os.Getenv("TREEFROG_DEV") == "true" {
+			return "http://localhost:9000"
+		}
 		return "http://127.0.0.1:8080"
 	}
 
 	effectiveMode := a.config.Renderer.Mode
 
+	// Check both top-level and nested remote URL
+	remoteURL := a.config.RemoteCompilerURL
+	if remoteURL == "" && a.config.Renderer.RemoteCompilerURL != "" {
+		remoteURL = a.config.Renderer.RemoteCompilerURL
+	}
+
+	// In dev mode with remote mode selected, default to localhost:9000
+	if remoteURL == "" && os.Getenv("TREEFROG_DEV") == "true" && effectiveMode == ModeRemote {
+		remoteURL = "http://localhost:9000"
+	}
+
 	if effectiveMode == ModeAuto {
-		if a.config.RemoteCompilerURL != "" && a.remoteMonitor != nil && a.remoteMonitor.IsHealthy() {
-			return a.config.RemoteCompilerURL
+		if remoteURL != "" && a.remoteMonitor != nil && a.remoteMonitor.IsHealthy() {
+			return remoteURL
 		}
 		// Check if local renderer is actually running before returning its URL
 		if a.dockerMgr != nil {
@@ -300,8 +315,8 @@ func (a *App) getCompilerURL() string {
 	}
 
 	if effectiveMode == ModeRemote {
-		if a.config.RemoteCompilerURL != "" {
-			return a.config.RemoteCompilerURL
+		if remoteURL != "" {
+			return remoteURL
 		}
 	}
 

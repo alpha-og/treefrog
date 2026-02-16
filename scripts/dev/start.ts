@@ -197,6 +197,11 @@ async function startService(
       if (service.cwd) {
         execOptions.cwd = service.cwd;
       }
+
+      // Add environment variables for the service
+      if (service.env) {
+        execOptions.env = { ...process.env, ...service.env };
+      }
       
       const proc = execa(cmd, args, execOptions);
 
