@@ -32,6 +32,7 @@ type BuildConfig struct {
 	MinTimeout     time.Duration
 	DefaultWorkers int
 	WorkDir        string
+	ImageName      string
 }
 
 type StorageConfig struct {
@@ -78,6 +79,7 @@ func Load() *Config {
 			MinTimeout:     getDurationEnv("BUILD_MIN_TIMEOUT", 30*time.Second),
 			DefaultWorkers: getIntEnv("BUILD_WORKERS", 4),
 			WorkDir:        getEnvOrDefault("COMPILER_WORKDIR", "/tmp/treefrog-builds"),
+			ImageName:      getEnvOrDefault("COMPILER_IMAGE", "treefrog-local-latex-compiler:latest"),
 		},
 		Storage: StorageConfig{
 			BuildTTL:      getDurationEnv("STORAGE_BUILD_TTL", 24*time.Hour),

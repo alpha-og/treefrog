@@ -19,6 +19,7 @@ import (
 	"github.com/alpha-og/treefrog/apps/remote-latex-compiler/internal/log"
 	"github.com/alpha-og/treefrog/apps/remote-latex-compiler/internal/rate"
 	"github.com/alpha-og/treefrog/apps/remote-latex-compiler/internal/user"
+	buildpkg "github.com/alpha-og/treefrog/packages/go/build"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -72,10 +73,16 @@ func main() {
 	_ = razorpaySvc
 
 	logger.Info("Initializing Docker compiler")
+	dockerCompiler, err := buildpkg.NewDockerCompiler(cfg.Build.ImageName, cfg.Build.WorkDir)
+	if err != nil {
+		logger.WithError(err).Fatal("Failed to initialize Docker compiler")
+	}
+	defer dockerCompiler.Close()
+	logger.WithField("image", cfg.Build.ImageName).Info("Docker compiler initialized")
 
 	logger.Info("Initializing build queue")
 	buildStore := build.NewStoreWithDB(dbInstance)
-	buildQueue = build.NewQueue(cfg.Build.DefaultWorkers, nil, buildStore)
+	buildQueue = build.NewQueue(cfg.Build.DefaultWorkers, dockerCompiler, buildStore)
 	logger.WithField("workers", cfg.Build.DefaultWorkers).Info("Build queue initialized")
 
 	logger.Info("Initializing user store")
