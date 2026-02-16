@@ -452,6 +452,12 @@ func (a *App) runBuild(mainFile, engine string, shellEscape bool) {
 	compilerURL := a.getCompilerURL()
 	sessionToken := a.GetSessionToken()
 
+	Logger.WithFields(logrus.Fields{
+		"compiler_url": compilerURL,
+		"has_token":    sessionToken != "",
+		"token_length": len(sessionToken),
+	}).Info("Build configuration")
+
 	zipPath := filepath.Join(a.cacheDir, "build.zip")
 	if err := zipProject(root, zipPath); err != nil {
 		a.statusMu.Lock()
@@ -516,7 +522,7 @@ func (a *App) uploadBuild(zipPath, mainFile, engine string, shellEscape bool, co
 	}
 	writer.Close()
 
-	req, err := http.NewRequest("POST", compilerURL+"/build", body)
+	req, err := http.NewRequest("POST", compilerURL+"/api/build", body)
 	if err != nil {
 		Logger.Errorf("Failed to create HTTP request: %v", err)
 		return "", err
@@ -527,7 +533,7 @@ func (a *App) uploadBuild(zipPath, mainFile, engine string, shellEscape bool, co
 		req.Header.Set("Authorization", "Bearer "+sessionToken)
 	}
 
-	Logger.Debugf("Sending HTTP POST request to %s/build", compilerURL)
+	Logger.Debugf("Sending HTTP POST request to %s/api/build", compilerURL)
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -636,7 +642,7 @@ func (a *App) pollBuildStatus(remoteID, mainFile, engine string, shellEscape boo
 func (a *App) checkRemoteBuild(remoteID, compilerURL, sessionToken string) (string, error) {
 	Logger.Debugf("Checking remote build status for: %s", remoteID)
 
-	url := compilerURL + "/build/" + remoteID + "/status"
+	url := compilerURL + "/api/build/" + remoteID + "/status"
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -679,7 +685,7 @@ func (a *App) checkRemoteBuild(remoteID, compilerURL, sessionToken string) (stri
 func (a *App) downloadPDF(remoteID, compilerURL, sessionToken string) error {
 	Logger.Infof("Downloading PDF for build: %s", remoteID)
 
-	url := compilerURL + "/build/" + remoteID + "/artifacts/pdf"
+	url := compilerURL + "/api/build/" + remoteID + "/pdf"
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -758,7 +764,7 @@ func (a *App) downloadPDF(remoteID, compilerURL, sessionToken string) error {
 func (a *App) downloadBuildLog(remoteID, compilerURL, sessionToken string) error {
 	Logger.Infof("Downloading build log for build: %s", remoteID)
 
-	url := compilerURL + "/build/" + remoteID + "/log"
+	url := compilerURL + "/api/build/" + remoteID + "/log"
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
