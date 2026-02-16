@@ -192,6 +192,7 @@ export function useBuild() {
    */
   const build = useCallback(
     async (file: string, engine: string, shell: boolean) => {
+      console.log("[useBuild.build] Called with file:", file, "engine:", engine);
       if (!file) return;
 
       if (buildInFlightRef.current) {

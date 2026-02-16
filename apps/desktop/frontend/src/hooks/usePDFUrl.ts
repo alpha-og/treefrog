@@ -23,7 +23,7 @@ export function usePDFUrl(pdfKey: number): {
 
       try {
         const wailsMode = isWails();
-        log.debug(`Loading PDF - Wails mode: ${wailsMode}, pdfKey: ${pdfKey}`);
+        log.info(`Loading PDF - Wails mode: ${wailsMode}, pdfKey: ${pdfKey}`);
 
         if (wailsMode) {
           try {

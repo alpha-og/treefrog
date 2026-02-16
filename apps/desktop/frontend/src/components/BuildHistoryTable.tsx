@@ -15,12 +15,11 @@ import { cn } from "@/lib/utils";
 export interface BuildHistoryItem {
   id: string;
   projectName: string;
-  status: "completed" | "failed" | "running" | "pending";
-  engine: string;
-  createdAt: string;
-  completedAt?: string;
-  duration?: number; // seconds
-  artifacts?: number; // count of generated artifacts
+  status: "completed" | "failed" | "running" | "queued";
+  engine?: string;
+  createdAt?: string;
+  duration?: number;
+  artifacts?: number;
 }
 
 interface BuildHistoryTableProps {
@@ -46,6 +45,8 @@ function getStatusIcon(status: string) {
           <Clock className="h-4 w-4 text-[var(--primary)]" />
         </motion.div>
       );
+    case "queued":
+      return <Clock className="h-4 w-4 text-yellow-500" />;
     default:
       return <Clock className="h-4 w-4 text-[var(--muted-foreground)]" />;
   }
@@ -59,8 +60,10 @@ function getStatusText(status: string) {
       return "Failed";
     case "running":
       return "Running";
+    case "queued":
+      return "Queued";
     default:
-      return "Pending";
+      return "Unknown";
   }
 }
 
@@ -72,6 +75,8 @@ function getStatusColor(status: string) {
       return "text-[var(--destructive)] bg-red-50 dark:bg-red-950";
     case "running":
       return "text-[var(--primary)] bg-[var(--primary)]/10";
+    case "queued":
+      return "text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-950";
     default:
       return "text-[var(--muted-foreground)] bg-[var(--muted)]";
   }
@@ -231,7 +236,7 @@ export function BuildHistoryTable({
                 </td>
 
                 <td className="px-4 py-3 text-[var(--muted-foreground)]">
-                  {formatDate(build.createdAt)}
+                  {build.createdAt ? formatDate(build.createdAt) : "—"}
                 </td>
 
                 <td className="px-4 py-3 text-right">

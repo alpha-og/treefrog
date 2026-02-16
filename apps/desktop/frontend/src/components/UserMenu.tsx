@@ -126,7 +126,7 @@ export function UserMenu() {
             Sign In
           </DropdownMenuItem>
         ) : (
-          <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
+          <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleSignOut(); }} className="cursor-pointer">
             <LogOut className="mr-2 h-4 w-4" />
             Sign Out
           </DropdownMenuItem>

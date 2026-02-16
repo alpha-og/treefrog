@@ -35,7 +35,7 @@ export default function Dashboard() {
     return recentBuilds.map(b => ({
       id: b.id,
       projectName: b.main_file || "Untitled",
-      status: b.status as "completed" | "failed" | "running" | "pending",
+      status: b.status as "completed" | "failed" | "running" | "queued",
       engine: b.engine,
       createdAt: b.created_at,
       completedAt: b.status === "completed" ? b.created_at : undefined,

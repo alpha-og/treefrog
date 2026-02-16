@@ -62,6 +62,7 @@ export function useFiles() {
   const openFile = useCallback(
     async (path: string) => {
       try {
+        console.log("[openFile] Setting currentFile to:", path);
         setCurrentFile(path);
         const data = await readFile(path);
         setIsBinary(data.isBinary);

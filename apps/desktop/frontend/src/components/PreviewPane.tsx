@@ -14,6 +14,7 @@ import {
   Zap,
   Check,
   MoreVertical,
+  Clock,
 } from "lucide-react";
 import { ZOOM_LEVELS } from "../constants";
 import { usePDFUrl } from "../hooks/usePDFUrl";
@@ -396,6 +397,12 @@ const handleViewLog = async () => {
                 <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-info/15 border border-info/30 text-info animate-pulse shadow-sm whitespace-nowrap">
                   <Loader2 size={13} className="shrink-0 animate-spin" />
                   <span className="text-xs font-medium">Running</span>
+                </div>
+              )}
+              {buildStatus.state === "queued" && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-warning/15 border border-warning/30 text-warning shadow-sm whitespace-nowrap">
+                  <Clock size={13} className="shrink-0" />
+                  <span className="text-xs font-medium">Queued</span>
                 </div>
               )}
             </div>

@@ -208,6 +208,7 @@ export default function Editor() {
 
   const triggerBuild = useCallback(async () => {
     const mainFile = currentFileRef.current || "main.tex";
+    console.log("[triggerBuild] currentFileRef.current:", currentFileRef.current, "mainFile:", mainFile);
     await build(mainFile, engine, shellEscape);
   }, [build, engine, shellEscape]);
 

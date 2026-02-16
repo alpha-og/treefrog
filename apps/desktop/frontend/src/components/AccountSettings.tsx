@@ -75,7 +75,11 @@ export default function AccountSettings() {
     }
   };
 
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
   const handleSignOut = async () => {
+    if (isSigningOut) return;
+    setIsSigningOut(true);
     try {
       const signOut = (window as { go?: { main?: { App?: { SignOut?: () => Promise<void> } } } }).go?.main?.App?.SignOut;
       if (signOut) {
@@ -87,6 +91,8 @@ export default function AccountSettings() {
     } catch (error) {
       log.error("Sign out error", error);
       toast.error("Failed to sign out");
+    } finally {
+      setIsSigningOut(false);
     }
   };
 
@@ -213,9 +219,10 @@ export default function AccountSettings() {
           onClick={handleSignOut}
           variant="outline"
           className="w-full flex items-center justify-center gap-2"
+          disabled={isSigningOut}
         >
           <LogOut size={16} />
-          Sign Out
+          {isSigningOut ? "Signing out..." : "Sign Out"}
         </Button>
         <p className="text-xs text-center text-muted-foreground mt-2">
           You'll be switched to local mode

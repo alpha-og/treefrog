@@ -12,7 +12,7 @@ import { supabase } from "@/lib/supabase";
 interface BuildDetail {
   id: string;
   projectName: string;
-  status: "completed" | "failed" | "running" | "pending";
+  status: "completed" | "failed" | "running" | "queued";
   engine: string;
   mainFile: string;
   shellEscape: boolean;
@@ -62,7 +62,7 @@ export default function Build() {
         setBuild({
           id: data.id,
           projectName: data.main_file || "Untitled",
-          status: data.status as "completed" | "failed" | "running" | "pending",
+          status: data.status as "completed" | "failed" | "running" | "queued",
           engine: data.engine,
           mainFile: data.main_file || "main.tex",
           shellEscape: data.shell_escape,
