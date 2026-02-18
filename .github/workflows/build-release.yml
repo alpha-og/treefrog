@@ -121,7 +121,7 @@ jobs:
           mkdir -p treefrog.dmg-source
           cp -r treefrog.app treefrog.dmg-source/
           hdiutil create -srcfolder treefrog.dmg-source -volname Treefrog -ov -format UDZO -o treefrog-macos-universal.dmg
-          mv treefrog-macos-universal.dmg ../../../treefrog-macos-universal.dmg
+          mv treefrog-macos-universal.dmg ../../../../treefrog-macos-universal.dmg
           rm -rf treefrog.dmg-source
 
       - name: Create Linux tarball
@@ -129,15 +129,15 @@ jobs:
         run: |
           cd apps/desktop/build/bin
           tar -czf treefrog-linux-x86_64.tar.gz treefrog
-          mv treefrog-linux-x86_64.tar.gz ../../../treefrog-linux-x86_64.tar.gz
+          mv treefrog-linux-x86_64.tar.gz ../../../../treefrog-linux-x86_64.tar.gz
 
       - name: Create Windows ZIP
         if: runner.os == 'Windows'
         run: |
           cd apps\desktop\build\bin
           7z a treefrog-windows-x64.zip treefrog.exe
-          move treefrog-windows-x64.zip ..\..\..
-        shell: powershell
+          move treefrog-windows-x64.zip ..\..\..\..\
+          shell: powershell
 
       - name: List release artifacts
         shell: bash
