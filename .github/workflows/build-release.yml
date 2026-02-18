@@ -106,15 +106,23 @@ jobs:
           pnpm build --platform ${{ matrix.platform }} $BUILD_FLAGS
         shell: bash
 
+      - name: List build output
+        shell: bash
+        run: |
+          echo "=== Build output directory ==="
+          ls -la apps/desktop/build/bin/ || echo "Build directory not found"
+          echo "=== Repository root ==="
+          ls -la . || echo "Root not found"
+
       - name: Create macOS DMG (Universal)
-        if: matrix.platform == 'darwin/universal'
+        if: runner.os == 'macos'
         run: |
           cd apps/desktop/build/bin
-          mkdir -p Treefrog.dmg-source
-          cp -r Treefrog.app Treefrog.dmg-source/
-          hdiutil create -srcfolder Treefrog.dmg-source -volname Treefrog -ov -format UDZO -o treefrog-macos-universal.dmg
+          mkdir -p treefrog.dmg-source
+          cp -r treefrog.app treefrog.dmg-source/
+          hdiutil create -srcfolder treefrog.dmg-source -volname Treefrog -ov -format UDZO -o treefrog-macos-universal.dmg
           mv treefrog-macos-universal.dmg ../../../treefrog-macos-universal.dmg
-          rm -rf Treefrog.dmg-source
+          rm -rf treefrog.dmg-source
 
       - name: Create Linux tarball
         if: runner.os == 'linux'
@@ -130,6 +138,12 @@ jobs:
           7z a treefrog-windows-x64.zip treefrog.exe
           move treefrog-windows-x64.zip ..\..\..
         shell: powershell
+
+      - name: List release artifacts
+        shell: bash
+        run: |
+          echo "=== Release artifacts in root ==="
+          ls -la *.dmg *.tar.gz *.zip 2>/dev/null || echo "No artifacts found in root"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
