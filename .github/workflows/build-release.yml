@@ -115,7 +115,7 @@ jobs:
           ls -la . || echo "Root not found"
 
       - name: Create macOS DMG (Universal)
-        if: runner.os == 'macos'
+        if: runner.os == 'macOS'
         run: |
           cd apps/desktop/build/bin
           mkdir -p treefrog.dmg-source
@@ -125,14 +125,14 @@ jobs:
           rm -rf treefrog.dmg-source
 
       - name: Create Linux tarball
-        if: runner.os == 'linux'
+        if: runner.os == 'Linux'
         run: |
           cd apps/desktop/build/bin
           tar -czf treefrog-linux-x86_64.tar.gz treefrog
           mv treefrog-linux-x86_64.tar.gz ../../../treefrog-linux-x86_64.tar.gz
 
       - name: Create Windows ZIP
-        if: runner.os == 'windows'
+        if: runner.os == 'Windows'
         run: |
           cd apps\desktop\build\bin
           7z a treefrog-windows-x64.zip treefrog.exe
