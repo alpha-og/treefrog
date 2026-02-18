@@ -139,7 +139,7 @@ jobs:
             treefrog-*.dmg
             treefrog-*.tar.gz
             treefrog-*.zip
-          if-no-files-found: ignore
+          if-no-files-found: warn
           retention-days: 1
 
   release:
@@ -161,7 +161,9 @@ jobs:
       - name: Flatten artifacts directory
         run: |
           mkdir -p release
-          find artifacts -type f \( -name "treefrog-*" -o -name "*.dmg" -o -name "*.tar.gz" -o -name "*.zip" \) -exec mv {} release/ \;
+          if [ -d "./artifacts" ]; then
+            find artifacts -type f \( -name "treefrog-*" -o -name "*.dmg" -o -name "*.tar.gz" -o -name "*.zip" \) -exec mv {} release/ \;
+          fi
           ls -lah release/
 
       - name: Create Release
