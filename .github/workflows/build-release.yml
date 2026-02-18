@@ -137,7 +137,7 @@ jobs:
           cd apps\desktop\build\bin
           7z a treefrog-windows-x64.zip treefrog.exe
           move treefrog-windows-x64.zip ..\..\..\..\
-          shell: powershell
+        shell: powershell
 
       - name: List release artifacts
         shell: bash
