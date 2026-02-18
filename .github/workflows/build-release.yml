@@ -73,12 +73,12 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Setup macOS dependencies
-        if: runner.os == 'macos'
+        if: runner.os == 'macOS'
         run: |
           brew install pkg-config
 
       - name: Setup Linux dependencies
-        if: runner.os == 'linux'
+        if: runner.os == 'Linux'
         id: linux_setup
         run: |
           sudo apt-get update
@@ -106,14 +106,6 @@ jobs:
           pnpm build --platform ${{ matrix.platform }} $BUILD_FLAGS
         shell: bash
 
-      - name: List build output
-        shell: bash
-        run: |
-          echo "=== Build output directory ==="
-          ls -la apps/desktop/build/bin/ || echo "Build directory not found"
-          echo "=== Repository root ==="
-          ls -la . || echo "Root not found"
-
       - name: Create macOS DMG (Universal)
         if: runner.os == 'macOS'
         run: |
@@ -138,12 +130,6 @@ jobs:
           7z a treefrog-windows-x64.zip treefrog.exe
           move treefrog-windows-x64.zip ..\..\..\..\
         shell: powershell
-
-      - name: List release artifacts
-        shell: bash
-        run: |
-          echo "=== Release artifacts in root ==="
-          ls -la *.dmg *.tar.gz *.zip 2>/dev/null || echo "No artifacts found in root"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
