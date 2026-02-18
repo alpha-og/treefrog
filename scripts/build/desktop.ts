@@ -4,6 +4,7 @@ import { execa } from 'execa';
 interface BuildOptions {
   allPlatforms: boolean;
   platform?: string;
+  tags?: string;
 }
 
 function parseArgs(): BuildOptions {
@@ -18,6 +19,8 @@ function parseArgs(): BuildOptions {
       options.allPlatforms = true;
     } else if (arg === '--platform') {
       options.platform = args[++i];
+    } else if (arg === '--tags') {
+      options.tags = args[++i];
     }
   }
 
@@ -40,10 +43,15 @@ async function buildFrontend(): Promise<void> {
   console.log(chalk.green('[+] Frontend built'));
 }
 
-async function generateWailsBindings(): Promise<void> {
+async function generateWailsBindings(options: BuildOptions): Promise<void> {
   console.log(chalk.bold.blue('\n[*] Generating Wails bindings...\n'));
 
-  await execa('wails', ['build', '-s'], {
+  const buildArgs = ['build', '-s'];
+  if (options.tags) {
+    buildArgs.push('-tags', options.tags);
+  }
+
+  await execa('wails', buildArgs, {
     cwd: 'apps/desktop',
     stdio: 'inherit',
   });
@@ -54,13 +62,15 @@ async function generateWailsBindings(): Promise<void> {
 async function buildDesktop(options: BuildOptions): Promise<void> {
   console.log(chalk.bold.blue('\n[*] Building Treefrog desktop app...\n'));
 
-  // Step 1: Generate bindings
-  await generateWailsBindings();
+  await generateWailsBindings(options);
 
-  // Step 2: Build frontend
   await buildFrontend();
 
-  // Step 3: Build desktop app
+  const buildArgs = ['build'];
+  if (options.tags) {
+    buildArgs.push('-tags', options.tags);
+  }
+
   if (options.allPlatforms) {
     console.log(chalk.bold.blue('\n[*] Building for all platforms...\n'));
 
@@ -74,7 +84,7 @@ async function buildDesktop(options: BuildOptions): Promise<void> {
     for (const { name, platform } of platforms) {
       console.log(chalk.cyan(`Building for ${name}...`));
       try {
-        await execa('wails', ['build', '-platform', platform], {
+        await execa('wails', [...buildArgs, '-platform', platform], {
           cwd: 'apps/desktop',
           stdio: 'inherit',
         });
@@ -85,14 +95,13 @@ async function buildDesktop(options: BuildOptions): Promise<void> {
     }
   } else if (options.platform) {
     console.log(chalk.cyan(`Building for platform: ${options.platform}...`));
-    await execa('wails', ['build', '-platform', options.platform], {
+    await execa('wails', [...buildArgs, '-platform', options.platform], {
       cwd: 'apps/desktop',
       stdio: 'inherit',
     });
   } else {
-    // Build for current platform
     console.log(chalk.cyan('Building for current platform...'));
-    await execa('wails', ['build'], {
+    await execa('wails', buildArgs, {
       cwd: 'apps/desktop',
       stdio: 'inherit',
     });

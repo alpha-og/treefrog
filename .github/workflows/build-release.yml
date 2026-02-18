@@ -101,7 +101,7 @@ jobs:
         run: |
           BUILD_FLAGS=""
           if [[ "$DISTRO" == "24.04" && "${{ runner.os }}" == "Linux" ]]; then
-            BUILD_FLAGS="--platform webkit2_41"
+            BUILD_FLAGS="--tags webkit2_41"
           fi
           pnpm build --platform ${{ matrix.platform }} $BUILD_FLAGS
         shell: bash
