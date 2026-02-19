@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Document } from "react-pdf";
 import type { PDFPageProxy, PDFDocumentProxy } from "pdfjs-dist";
 import PDFPage from "./PDFPage";
@@ -39,24 +39,40 @@ export default function PDFPreview({
     setContainerWidth(container.offsetWidth);
     setContainerHeight(container.offsetHeight);
 
+    let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
+    
     const resizeObserver = new ResizeObserver(() => {
-      setContainerWidth(container.offsetWidth);
-      setContainerHeight(container.offsetHeight);
+      if (resizeTimeout) clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        if (containerRef.current) {
+          setContainerWidth(containerRef.current.offsetWidth);
+          setContainerHeight(containerRef.current.offsetHeight);
+        }
+      }, 150);
     });
 
     resizeObserver.observe(container);
 
     return () => {
       resizeObserver.disconnect();
+      if (resizeTimeout) clearTimeout(resizeTimeout);
     };
   }, []);
 
-  const handleLoadSuccess = (d: PDFDocumentProxy) => {
+  const handleLoadSuccess = useCallback((d: PDFDocumentProxy) => {
     setInternalNumPages(d.numPages);
     onNumPagesChange(d.numPages);
-  };
+  }, [onNumPagesChange]);
 
-  const pagesToRender = internalNumPages > 0 ? internalNumPages : numPages;
+  const pagesToRender = useMemo(() => 
+    internalNumPages > 0 ? internalNumPages : numPages,
+    [internalNumPages, numPages]
+  );
+
+  const pageArray = useMemo(() => 
+    Array.from({ length: pagesToRender }, (_, i) => i + 1),
+    [pagesToRender]
+  );
 
   if (error) {
     return (
@@ -67,7 +83,10 @@ export default function PDFPreview({
   }
 
   return (
-    <div ref={containerRef} className="flex flex-col items-center gap-4 p-4 h-full w-full relative">
+    <div 
+      ref={containerRef} 
+      className="flex flex-col items-center gap-4 p-4 h-full w-full relative"
+    >
       <Document
         file={url}
         onLoadSuccess={handleLoadSuccess}
@@ -79,7 +98,7 @@ export default function PDFPreview({
         }
       >
         {pagesToRender > 0 ? (
-          Array.from({ length: pagesToRender }, (_, i) => i + 1).map((pageNum) => (
+          pageArray.map((pageNum) => (
             <PDFPage
               key={pageNum}
               pageNum={pageNum}

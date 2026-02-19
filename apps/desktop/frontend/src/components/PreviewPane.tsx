@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { motion } from "motion/react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import type { PDFPageProxy } from "pdfjs-dist";
 import PDFPreview from "./PDF/PDFPreview";
 import { BuildStatus } from "../types";
@@ -30,6 +30,7 @@ import {
   MenuIcon,
 } from "@/components/common/Menu";
 import { Button } from "@/components/common";
+import { usePaneStore } from "@/stores/layoutStore";
 
 const log = createLogger("PreviewPane");
 
@@ -48,6 +49,7 @@ interface PreviewPaneProps {
   onInverseSearch?: (page: number, x: number, y: number) => void;
   highlightPosition?: { page: number; x: number; y: number } | null;
   onPageNavigate?: (page: number) => void;
+  isResizing?: boolean;
 }
 
 export default function PreviewPane({
@@ -65,11 +67,36 @@ export default function PreviewPane({
   onInverseSearch,
   highlightPosition,
   onPageNavigate,
+  isResizing: isResizingProp,
 }: PreviewPaneProps) {
    const clampZoom = (z: number) =>
      Math.min(2.4, Math.max(0.6, Math.round(z * 10) / 10));
 
    const { pdfUrl, loading: pdfLoading, error: pdfError } = usePDFUrl(pdfKey);
+   
+   const isPaneResizing = usePaneStore((state) => state.isResizing);
+   const isResizing = isResizingProp ?? isPaneResizing;
+   const [showResizingOverlay, setShowResizingOverlay] = useState(false);
+   const [cachedNumPages, setCachedNumPages] = useState(numPages);
+   
+   useEffect(() => {
+     if (numPages > 0) {
+       setCachedNumPages(numPages);
+     }
+   }, [numPages]);
+   
+   useEffect(() => {
+     if (isResizing) {
+       setShowResizingOverlay(true);
+     } else {
+       const timer = setTimeout(() => {
+         setShowResizingOverlay(false);
+       }, 200);
+       return () => clearTimeout(timer);
+     }
+   }, [isResizing]);
+   
+   const actualZoom = useMemo(() => zoom, [zoom]);
    
    // Zoom button text measurement
    const [zoomTextWidth, setZoomTextWidth] = useState<number>(0);
@@ -520,17 +547,42 @@ const handleViewLog = async () => {
                </div>
              </div>
           ) : pdfUrl && !pdfError ? (
-              <PDFPreview
-                url={pdfUrl}
-                numPages={numPages}
-                onNumPagesChange={onNumPagesChange}
-                zoom={zoom}
-                pageProxyRef={pageProxyRef}
-                registerPageRef={registerPageRef}
-                onInverseSearch={onInverseSearch}
-                highlightPosition={highlightPosition}
-                onPageNavigate={onPageNavigate}
-              />
+              <div className="relative w-full h-full overflow-hidden">
+                <PDFPreview
+                  url={pdfUrl}
+                  numPages={numPages}
+                  onNumPagesChange={onNumPagesChange}
+                  zoom={actualZoom}
+                  pageProxyRef={pageProxyRef}
+                  registerPageRef={registerPageRef}
+                  onInverseSearch={onInverseSearch}
+                  highlightPosition={highlightPosition}
+                  onPageNavigate={onPageNavigate}
+                />
+                <AnimatePresence>
+                  {showResizingOverlay && (
+                    <motion.div
+                      key="resizing-placeholder"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
+                      className="absolute inset-0 flex flex-col items-center justify-center bg-card z-20 pointer-events-none"
+                    >
+                      <div className="flex flex-col items-center gap-4 p-8">
+                        <FileText size={48} className="text-muted-foreground/50" />
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <span className="loading loading-spinner loading-sm"></span>
+                          <span className="text-sm">Adjusting view...</span>
+                        </div>
+                        {cachedNumPages > 0 && (
+                          <span className="text-xs text-muted-foreground/60">{cachedNumPages} pages</span>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
            ) : pdfError ? (
              <div className="flex flex-col items-center justify-center h-full text-error gap-4 animate-in fade-in duration-500">
                <div className="p-4 rounded-full bg-error/20">

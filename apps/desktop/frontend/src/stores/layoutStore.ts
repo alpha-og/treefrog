@@ -4,7 +4,9 @@ interface PaneState {
   sidebar: boolean;
   editor: boolean;
   preview: boolean;
+  isResizing: boolean;
   toggle: (pane: "sidebar" | "editor" | "preview") => void;
+  setIsResizing: (resizing: boolean) => void;
 }
 
 interface DimensionState {
@@ -18,6 +20,7 @@ export const usePaneStore = create<PaneState>((set) => ({
   sidebar: true,
   editor: true,
   preview: true,
+  isResizing: false,
   toggle: (pane) =>
     set((state) => {
       const newState = { ...state, [pane]: !state[pane] };
@@ -28,6 +31,7 @@ export const usePaneStore = create<PaneState>((set) => ({
       }
       return newState;
     }),
+  setIsResizing: (resizing) => set({ isResizing: resizing }),
 }));
 
 export const useDimensionStore = create<DimensionState>((set) => ({

@@ -78,6 +78,8 @@ export default function Editor() {
   const editor = usePaneStore((state) => state.editor);
   const preview = usePaneStore((state) => state.preview);
   const togglePane = usePaneStore((state) => state.toggle);
+  const isPaneResizing = usePaneStore((state) => state.isResizing);
+  const setIsPaneResizing = usePaneStore((state) => state.setIsResizing);
   const sidebarWidth = useDimensionStore((state) => state.sidebarWidth);
   const editorWidth = useDimensionStore((state) => state.editorWidth);
   const setSidebarWidth = useDimensionStore((state) => state.setSidebarWidth);
@@ -137,11 +139,6 @@ export default function Editor() {
      isDir: boolean;
      isRoot?: boolean;
    } | null>(null);
-
-  // ========== RESIZE STATE ==========
-  const [_isResizing, setIsResizing] = useState<
-    "sidebar-editor" | "editor-preview" | null
-  >(null);
 
   // ========== REFS ==========
   const currentFileRef = useRef<string>("");
@@ -418,7 +415,7 @@ export default function Editor() {
      (which: "sidebar-editor" | "editor-preview", e: React.MouseEvent) => {
        e.preventDefault();
        resizingRef.current = which;
-       setIsResizing(which);
+       setIsPaneResizing(true);
        startPosRef.current = e.clientX;
        startDimsRef.current = { sidebar: sidebarWidth, editor: editorWidth };
 
@@ -448,7 +445,7 @@ export default function Editor() {
 
        const handleResizeEnd = () => {
          resizingRef.current = null;
-         setIsResizing(null);
+         setIsPaneResizing(false);
          document.removeEventListener("mousemove", handleResizeMove);
          document.removeEventListener("mouseup", handleResizeEnd);
        };
@@ -456,7 +453,7 @@ export default function Editor() {
        document.addEventListener("mousemove", handleResizeMove);
        document.addEventListener("mouseup", handleResizeEnd);
      },
-[sidebarWidth, editorWidth, setSidebarWidth, setEditorWidth],
+ [sidebarWidth, editorWidth, setSidebarWidth, setEditorWidth, setIsPaneResizing],
   );
 
   // ========== SYNCTEX HANDLERS ==========
@@ -552,7 +549,7 @@ onTogglePane={togglePane}
           />
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-row overflow-hidden relative z-10" ref={mainRef} style={_isResizing ? { userSelect: "none" } as React.CSSProperties : {}}>
+        <div className="flex-1 flex flex-row overflow-hidden relative z-10" ref={mainRef} style={isPaneResizing ? { userSelect: "none" } as React.CSSProperties : {}}>
           {allPanesHidden ? (
            <EmptyPlaceholder />
          ) : (
@@ -600,12 +597,14 @@ onTogglePane={togglePane}
                          onPull={pull}
                        />
                  </motion.div>
-                 {(editor || preview) && (
-                   <div
-                     className="w-0.5 bg-gradient-to-b from-transparent via-border to-transparent hover:bg-primary/50 cursor-col-resize transition-all duration-200 hover:w-1"
-                     onMouseDown={(e) => handleResizeStart("sidebar-editor", e)}
-                   />
-                 )}
+                  {(editor || preview) && (
+                    <div
+                      className="w-1 bg-gradient-to-b from-transparent via-border to-transparent hover:bg-primary/50 cursor-col-resize flex-shrink-0 group relative"
+                      onMouseDown={(e) => handleResizeStart("sidebar-editor", e)}
+                    >
+                      <div className="absolute inset-0 w-1 -left-0 bg-primary/0 group-hover:bg-primary/30 transition-colors" />
+                    </div>
+                  )}
                </>
              )}
 
@@ -636,10 +635,12 @@ onTogglePane={togglePane}
                   </motion.div>
                   {preview && (
                     <div
-                      className="w-0.5 bg-gradient-to-b from-transparent via-border to-transparent hover:bg-primary/50 cursor-col-resize transition-all duration-200 hover:w-1"
+                      className="w-1 bg-gradient-to-b from-transparent via-border to-transparent hover:bg-primary/50 cursor-col-resize flex-shrink-0 group relative"
                       onMouseDown={(e) => handleResizeStart("editor-preview", e)}
                       style={{ "--wails-draggable": "no-drag" } as React.CSSProperties}
-                    />
+                    >
+                      <div className="absolute inset-0 w-1 -left-0 bg-primary/0 group-hover:bg-primary/30 transition-colors" />
+                    </div>
                   )}
                 </>
               )}

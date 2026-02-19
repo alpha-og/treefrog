@@ -1,6 +1,6 @@
 import { Page } from "react-pdf";
 import type { PDFPageProxy } from "pdfjs-dist";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo, memo } from "react";
 
 interface PDFPageProps {
   pageNum: number;
@@ -13,7 +13,7 @@ interface PDFPageProps {
   onPageNavigate?: (page: number) => void;
 }
 
-export default function PDFPage({
+const PDFPage = memo(function PDFPage({
   pageNum,
   zoom,
   pageProxyRef,
@@ -26,9 +26,9 @@ export default function PDFPage({
   const [pageHeight, setPageHeight] = useState<number>(0);
   const [pageWidth, setPageWidth] = useState<number>(0);
   
-  const containerRef = (el: HTMLDivElement | null) => {
+  const containerRef = useCallback((el: HTMLDivElement | null) => {
     registerPageRef(pageNum, el);
-  };
+  }, [pageNum, registerPageRef]);
 
   const handlePageDoubleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!onInverseSearch || !pageProxyRef.current.has(pageNum)) return;
@@ -45,7 +45,7 @@ export default function PDFPage({
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
 
-const actualZoom = typeof zoom === 'number' ? zoom : 1;
+    const actualZoom = typeof zoom === 'number' ? zoom : 1;
     
     const pdfX = clickX / actualZoom;
     const pdfY = viewport.height - (clickY / actualZoom);
@@ -79,15 +79,18 @@ const actualZoom = typeof zoom === 'number' ? zoom : 1;
     }
   }, [onPageNavigate]);
 
-  let actualZoom = typeof zoom === 'number' ? zoom : 1;
-  
-  if (typeof zoom === 'string' && zoom === 'fit-width' && containerWidth > 0 && pageWidth > 0) {
-    const availableWidth = containerWidth - 32;
-    actualZoom = availableWidth / pageWidth;
-  } else if (typeof zoom === 'string' && zoom === 'fit-height' && containerHeight > 0 && pageHeight > 0) {
-    const availableHeight = containerHeight - 100;
-    actualZoom = availableHeight / pageHeight;
-  }
+  const actualZoom = useMemo(() => {
+    if (typeof zoom === 'number') return zoom;
+    
+    if (zoom === 'fit-width' && containerWidth > 0 && pageWidth > 0) {
+      const availableWidth = containerWidth - 32;
+      return availableWidth / pageWidth;
+    } else if (zoom === 'fit-height' && containerHeight > 0 && pageHeight > 0) {
+      const availableHeight = containerHeight - 100;
+      return availableHeight / pageHeight;
+    }
+    return 1;
+  }, [zoom, containerWidth, containerHeight, pageWidth, pageHeight]);
 
   return (
     <div
@@ -121,4 +124,6 @@ const actualZoom = typeof zoom === 'number' ? zoom : 1;
       </div>
     </div>
   );
-}
+});
+
+export default PDFPage;
