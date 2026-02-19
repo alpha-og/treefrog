@@ -1,0 +1,21 @@
+pkgbase = treefrog-bin
+	pkgdesc = A native LaTeX editor with remote compilation support and local Docker rendering
+	pkgver = 1.0.0
+	pkgrel = 1
+	url = https://github.com/alpha-og/treefrog
+	arch = x86_64
+	arch = aarch64
+	license = MIT
+	depends = gtk3
+	depends = webkit2gtk-4.1
+	depends = docker
+	optdepends = texlive-bin: Local LaTeX compilation without Docker
+	provides = treefrog
+	conflicts = treefrog
+	conflicts = treefrog-git
+	source_x86_64 = treefrog-linux-x86_64.tar.gz::https://github.com/alpha-og/treefrog/releases/download/v1.0.0/treefrog-linux-x86_64.tar.gz
+	source_aarch64 = treefrog-linux-arm64.tar.gz::https://github.com/alpha-og/treefrog/releases/download/v1.0.0/treefrog-linux-arm64.tar.gz
+	sha256sums_x86_64 = SKIP
+	sha256sums_aarch64 = SKIP
+
+pkgname = treefrog-bin

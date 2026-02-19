@@ -1,0 +1,34 @@
+# Maintainer: Athul Anoop <athulanoop2020@gmail.com>
+# Contributor: Athul Anoop <athulanoop2020@gmail.com>
+
+pkgname=treefrog
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="A native LaTeX editor with remote compilation support and local Docker rendering"
+arch=('x86_64' 'aarch64')
+url="https://github.com/alpha-og/treefrog"
+license=('MIT')
+depends=('gtk3' 'webkit2gtk-4.1' 'docker')
+makedepends=('go' 'nodejs' 'pnpm' 'wails')
+optdepends=('texlive-bin: Local LaTeX compilation without Docker')
+provides=('treefrog')
+conflicts=('treefrog-bin' 'treefrog-git')
+source=("${pkgname}-${pkgver}.tar.gz::https://github.com/alpha-og/treefrog/archive/v${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+    cd "${srcdir}/${pkgname}-${pkgver}"
+    
+    pnpm install --frozen-lockfile
+    
+    cd apps/desktop
+    wails build -platform linux/$(uname -m)
+}
+
+package() {
+    cd "${srcdir}/${pkgname}-${pkgver}/apps/desktop/build/bin"
+    
+    install -Dm755 treefrog "${pkgdir}/usr/bin/treefrog"
+    
+    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/LICENSE" "${pkgdir}/usr/share/licenses/treefrog/LICENSE"
+}
