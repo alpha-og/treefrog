@@ -16,6 +16,8 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+var defaultRemoteCompilerURL = "https://treefrog-renderer.onrender.com"
+
 // Config holds application configuration
 type Config struct {
 	ProjectRoot       string          `json:"projectRoot"`
@@ -283,6 +285,9 @@ func (a *App) getCompilerURL() string {
 		if os.Getenv("TREEFROG_DEV") == "true" {
 			return "http://localhost:9000"
 		}
+		if defaultRemoteCompilerURL != "" {
+			return defaultRemoteCompilerURL
+		}
 		return "http://127.0.0.1:8080"
 	}
 
@@ -297,6 +302,11 @@ func (a *App) getCompilerURL() string {
 	// In dev mode with remote mode selected, default to localhost:9000
 	if remoteURL == "" && os.Getenv("TREEFROG_DEV") == "true" && effectiveMode == ModeRemote {
 		remoteURL = "http://localhost:9000"
+	}
+
+	// In production with remote mode, use default remote URL if not configured
+	if remoteURL == "" && effectiveMode == ModeRemote && defaultRemoteCompilerURL != "" {
+		remoteURL = defaultRemoteCompilerURL
 	}
 
 	if effectiveMode == ModeAuto {

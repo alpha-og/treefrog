@@ -99,9 +99,9 @@ jobs:
 
       - name: Build Treefrog for ${{ matrix.platform }}
         run: |
-          BUILD_FLAGS=""
+          BUILD_FLAGS="--remote-url https://treefrog-renderer.onrender.com"
           if [[ "$DISTRO" == "24.04" && "${{ runner.os }}" == "Linux" ]]; then
-            BUILD_FLAGS="--tags webkit2_41"
+            BUILD_FLAGS="$BUILD_FLAGS --tags webkit2_41"
           fi
           pnpm build --platform ${{ matrix.platform }} $BUILD_FLAGS
         shell: bash
@@ -131,6 +131,19 @@ jobs:
           move treefrog-windows-x64.zip ..\..\..\..\
         shell: powershell
 
+      - name: Generate checksums
+        run: |
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            shasum -a 256 treefrog-macos-universal.dmg > checksums.txt
+          elif [ "${{ runner.os }}" = "Linux" ]; then
+            sha256sum treefrog-linux-x86_64.tar.gz > checksums.txt
+          elif [ "${{ runner.os }}" = "Windows" ]; then
+            certutil -hashfile treefrog-windows-x64.zip SHA256 | grep -v ":" | tr -d "\r\n " | head -c 64 > hash.txt
+            echo "$(cat hash.txt)  treefrog-windows-x64.zip" > checksums.txt
+          fi
+          cat checksums.txt
+        shell: bash
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -139,6 +152,7 @@ jobs:
             treefrog-*.dmg
             treefrog-*.tar.gz
             treefrog-*.zip
+            checksums.txt
           if-no-files-found: warn
           retention-days: 1
 
@@ -163,8 +177,11 @@ jobs:
           mkdir -p release
           if [ -d "./artifacts" ]; then
             find artifacts -type f \( -name "treefrog-*" -o -name "*.dmg" -o -name "*.tar.gz" -o -name "*.zip" \) -exec mv {} release/ \;
+            cat artifacts/*/checksums.txt > release/checksums.txt 2>/dev/null || true
           fi
           ls -lah release/
+          echo "Checksums:"
+          cat release/checksums.txt 2>/dev/null || echo "No checksums generated"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2

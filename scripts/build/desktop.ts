@@ -5,6 +5,7 @@ interface BuildOptions {
   allPlatforms: boolean;
   platform?: string;
   tags?: string;
+  remoteUrl?: string;
 }
 
 function parseArgs(): BuildOptions {
@@ -21,6 +22,8 @@ function parseArgs(): BuildOptions {
       options.platform = args[++i];
     } else if (arg === '--tags') {
       options.tags = args[++i];
+    } else if (arg === '--remote-url') {
+      options.remoteUrl = args[++i];
     }
   }
 
@@ -69,6 +72,9 @@ async function buildDesktop(options: BuildOptions): Promise<void> {
   const buildArgs = ['build'];
   if (options.tags) {
     buildArgs.push('-tags', options.tags);
+  }
+  if (options.remoteUrl) {
+    buildArgs.push('-ldflags', `-X main.defaultRemoteCompilerURL=${options.remoteUrl}`);
   }
 
   if (options.allPlatforms) {
