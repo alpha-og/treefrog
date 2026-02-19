@@ -13,6 +13,55 @@ Treefrog is a desktop application providing a complete LaTeX editing and compila
 - **Local Docker Renderer** - Optional bundled LaTeX compilation environment
 - **Project Management** - File browser and multi-file project support
 
+## Installation
+
+### macOS
+
+**Homebrew (recommended):**
+```bash
+brew install treefrog/tap/treefrog
+```
+
+**Install script:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/alpha-og/treefrog/main/scripts/install.sh | bash
+```
+
+**Download directly:**
+Download the DMG from [GitHub Releases](https://github.com/alpha-og/treefrog/releases)
+
+### Linux
+
+**Arch Linux (AUR):**
+```bash
+yay -S treefrog-bin
+```
+
+**Install script:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/alpha-og/treefrog/main/scripts/install.sh | bash
+```
+
+**Download directly:**
+Download the tarball from [GitHub Releases](https://github.com/alpha-og/treefrog/releases)
+
+### Windows
+
+Download the ZIP from [GitHub Releases](https://github.com/alpha-og/treefrog/releases)
+
+### Install Script Options
+
+```bash
+# Install specific version
+curl -fsSL https://raw.githubusercontent.com/alpha-og/treefrog/main/scripts/install.sh | bash -s -- --version v1.0.0
+
+# Install to custom location
+curl -fsSL https://raw.githubusercontent.com/alpha-og/treefrog/main/scripts/install.sh | bash -s -- --prefix ~/.local
+
+# Uninstall
+curl -fsSL https://raw.githubusercontent.com/alpha-og/treefrog/main/scripts/install.sh | bash -s -- --uninstall
+```
+
 ## Quick Start
 
 ### Prerequisites
