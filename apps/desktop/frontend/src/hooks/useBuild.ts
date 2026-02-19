@@ -13,6 +13,7 @@ import {
 import { useCacheStore } from "../stores/cacheStore";
 
 const log = createLogger("Build");
+const BUILD_TIMEOUT_MS = 120000;
 
 interface DeltaSyncBuildParams {
   projectPath: string;
@@ -25,6 +26,7 @@ interface DeltaSyncBuildParams {
 
 export function useBuild() {
   const buildInFlightRef = useRef<boolean>(false);
+  const buildTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [status, setStatus] = useState<BuildStatus | null>(null);
   const [deltaProgress, setDeltaProgress] = useState<{
@@ -38,6 +40,9 @@ export function useBuild() {
     return () => {
       if (progressTimeoutRef.current) {
         clearTimeout(progressTimeoutRef.current);
+      }
+      if (buildTimeoutRef.current) {
+        clearTimeout(buildTimeoutRef.current);
       }
     };
   }, []);
@@ -200,18 +205,34 @@ export function useBuild() {
         return;
       }
 
+      const buildId = `build-${Date.now()}`;
+      
       try {
         buildInFlightRef.current = true;
-        setStatus({ id: "", state: "running", message: "Building..." });
+        setStatus({ id: buildId, state: "running", message: "Building..." });
+        
+        buildTimeoutRef.current = setTimeout(() => {
+          log.warn("Build timed out", { file, engine });
+          setStatus({
+            id: buildId,
+            state: "error",
+            message: "Build timed out",
+          });
+          buildInFlightRef.current = false;
+        }, BUILD_TIMEOUT_MS);
+        
         await triggerBuild(file, engine, shell);
       } catch (err) {
         log.error("Failed to trigger build", { file, engine, error: err });
         setStatus({
-          id: "",
+          id: buildId,
           state: "error",
           message: "Failed to start build",
         });
         buildInFlightRef.current = false;
+        if (buildTimeoutRef.current) {
+          clearTimeout(buildTimeoutRef.current);
+        }
       }
     },
     []

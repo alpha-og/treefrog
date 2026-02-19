@@ -110,7 +110,6 @@ export default function Sidebar({
    );
    const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
-    const [loadError, setLoadError] = useState<string | null>(null);
    const [commitMessage, setCommitMessage] = useState("");
    const [isCommitting, setIsCommitting] = useState(false);
    const [isGitExpanded, setIsGitExpanded] = useState(true);
@@ -126,7 +125,6 @@ export default function Sidebar({
       clearAllFolderCache();
       clearSelection();
       setSearchQuery("");
-      setLoadError(null);
     }
   }, [projectRoot, clearAllFolderCache, clearSelection, setSearchQuery]);
 
@@ -356,7 +354,7 @@ export default function Sidebar({
     );
 
   // Get project name
-  const projectName = projectRoot.split("/").pop() || projectRoot;
+  const projectName = useMemo(() => projectRoot.split("/").pop() || projectRoot, [projectRoot]);
 
   // Build breadcrumbs from current file/dir
   const breadcrumbs = useMemo(() => {
@@ -436,27 +434,10 @@ export default function Sidebar({
                  onEmptySpaceMenu(e.clientX, e.clientY);
                }
              }}
-           >
-           {loadError ? (
-            <div className="text-center py-8 text-muted-foreground text-sm">
-              <div className="mx-auto mb-2 opacity-30">
-                <span className="text-2xl">⚠️</span>
-              </div>
-              <p>Failed to load files</p>
-              <p className="text-xs mt-1 text-destructive">{loadError}</p>
-              <button
-                onClick={() => {
-                  setLoadError(null);
-                  onNavigate(currentDir || "");
-                }}
-                className="mt-3 px-3 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
-              >
-                Retry
-              </button>
-            </div>
-           ) : displayNodes.length === 0 ? (
-             <div className="text-center py-8 text-muted-foreground text-sm">
-               {isSearching ? (
+            >
+            {displayNodes.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                {isSearching ? (
                  <>
                    <p>No matches found</p>
                    <p className="text-xs mt-1">Try a different search term</p>
@@ -470,25 +451,9 @@ export default function Sidebar({
                  </>
                )}
              </div>
-          ) : displayNodes.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground text-sm">
-              {isSearching ? (
-                <>
-                  <p>No matches found</p>
-                  <p className="text-xs mt-1">Try a different search term</p>
-                </>
-              ) : (
-                <>
-                  <div className="mx-auto mb-2 opacity-30">
-                    {getFileIcon("folder", true)}
-                  </div>
-                  <p>Empty folder</p>
-                </>
-              )}
-            </div>
-          ) : (
-            renderTree(displayNodes)
-          )}
+           ) : (
+             renderTree(displayNodes)
+           )}
         </div>
 
          {/* Git Footer */}

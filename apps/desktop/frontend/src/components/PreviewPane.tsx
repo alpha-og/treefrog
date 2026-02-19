@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import type { PDFPageProxy } from "pdfjs-dist";
 import PDFPreview from "./PDF/PDFPreview";
@@ -199,13 +199,13 @@ export default function PreviewPane({
        container.removeEventListener("scroll", debouncedScroll);
        clearTimeout(timeout);
      };
-   }, []);
+    }, []);
 
-const handleViewLog = async () => {
+ const handleViewLog = useCallback(async () => {
     setLogLoading(true);
     try {
-      const log = await getBuildLog();
-      setLogContent(log || "No log available");
+      const logData = await getBuildLog();
+      setLogContent(logData || "No log available");
       setShowLog(true);
     } catch (err) {
       log.error("Failed to load build log", err);
@@ -214,23 +214,23 @@ const handleViewLog = async () => {
     } finally {
       setLogLoading(false);
     }
-  };
+  }, []);
 
-  const handleExportPDF = async () => {
+  const handleExportPDF = useCallback(async () => {
     try {
       await exportPDFFile();
     } catch (err) {
       log.error("Failed to export PDF", err);
     }
-  };
+  }, []);
 
-  const handleExportSource = async () => {
+  const handleExportSource = useCallback(async () => {
     try {
       await exportSourceFile();
     } catch (err) {
       log.error("Failed to export source", err);
     }
-  };
+  }, []);
 
   return (
     <section className="h-full flex flex-col bg-card border-l border-border relative overflow-hidden">

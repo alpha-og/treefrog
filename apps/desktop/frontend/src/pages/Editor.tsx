@@ -226,6 +226,12 @@ export default function Editor() {
     }, 500);
   }, [build, engine, shellEscape]);
 
+  useEffect(() => {
+    return () => {
+      if (buildTimer.current) window.clearTimeout(buildTimer.current);
+    };
+  }, []);
+
   const triggerBuild = useCallback(async () => {
     const mainFile = currentFileRef.current || "main.tex";
     console.log("[triggerBuild] currentFileRef.current:", currentFileRef.current, "mainFile:", mainFile);

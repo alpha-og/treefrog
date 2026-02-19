@@ -24,21 +24,19 @@ const getParentDir = (path: string): string => {
 };
 
 export function useFiles() {
-  const {
-    entries,
-    currentDir,
-    currentFile,
-    isBinary,
-    fileContent,
-    setEntries,
-    setCurrentDir,
-    setCurrentFile,
-    setIsBinary,
-    setFileContent,
-    cacheFolderContents,
-    clearFolderCache,
-    clear,
-  } = useFileStore();
+  const entries = useFileStore((state) => state.entries);
+  const currentDir = useFileStore((state) => state.currentDir);
+  const currentFile = useFileStore((state) => state.currentFile);
+  const isBinary = useFileStore((state) => state.isBinary);
+  const fileContent = useFileStore((state) => state.fileContent);
+  const setEntries = useFileStore((state) => state.setEntries);
+  const setCurrentDir = useFileStore((state) => state.setCurrentDir);
+  const setCurrentFile = useFileStore((state) => state.setCurrentFile);
+  const setIsBinary = useFileStore((state) => state.setIsBinary);
+  const setFileContent = useFileStore((state) => state.setFileContent);
+  const cacheFolderContents = useFileStore((state) => state.cacheFolderContents);
+  const clearFolderCache = useFileStore((state) => state.clearFolderCache);
+  const clear = useFileStore((state) => state.clear);
 
   const loadEntries = useCallback(
     async (dir: string) => {
