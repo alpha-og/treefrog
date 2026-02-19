@@ -427,7 +427,6 @@ export default forwardRef(function LatexCompilerSettings(
   };
 
   const isRunning = rendererStatus === "running";
-  const showImageSource = rendererMode === "local" || rendererMode === "auto";
 
   return (
     <div className="h-full flex flex-col">
@@ -475,188 +474,230 @@ export default forwardRef(function LatexCompilerSettings(
 
       {/* Main Content */}
       <div className="flex-1 grid grid-cols-2 gap-3 p-3 min-h-0 overflow-hidden">
-        {/* Local Compiler */}
-        {(rendererMode === "local" || rendererMode === "auto") && (
-          <div className="flex flex-col border border-border/60 rounded-lg overflow-hidden bg-card">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-border/50 bg-muted/20">
-              <div className="flex items-center gap-2">
-                <Wrench className="w-3.5 h-3.5 text-primary" />
-                <span className="text-xs font-semibold">Local Compiler</span>
-              </div>
-              <StatusBadge status={rendererStatus} />
+        {/* Local Compiler - always shown, grayed out if not active */}
+        <div className={cn(
+          "flex flex-col border border-border/60 rounded-lg overflow-hidden bg-card transition-opacity duration-200",
+          rendererMode === "remote" && "opacity-50"
+        )}>
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border/50 bg-muted/20">
+            <div className="flex items-center gap-2">
+              <Wrench className="w-3.5 h-3.5 text-primary" />
+              <span className="text-xs font-semibold">Local Compiler</span>
             </div>
-            
-            <div className="flex-1 flex flex-col gap-2.5 p-3 overflow-y-auto">
-              {/* Controls */}
-              <div className="flex gap-2">
-                <Button 
-                  size="sm" 
-                  variant={isRunning ? "outline" : "default"} 
-                  onClick={handleStart} 
-                  disabled={isLoading || isRunning}
-                  className="flex-1 h-7 text-xs"
-                >
-                  {isRunning ? <Check className="w-3 h-3 mr-1" /> : <Play className="w-3 h-3 mr-1" />}
-                  {isRunning ? "Active" : "Start"}
-                </Button>
-                <Button size="sm" variant="ghost" onClick={handleStop} disabled={isLoading || !isRunning} className="h-7 w-7 p-0">
-                  <Square className="w-3 h-3" />
-                </Button>
-                <Button size="sm" variant="ghost" onClick={handleRestart} disabled={isLoading || !isRunning} className="h-7 w-7 p-0">
-                  <RefreshCw className="w-3 h-3" />
-                </Button>
-              </div>
-
-              {/* Settings Row */}
-              <div className="flex items-end justify-between gap-3">
-                <div className="flex-1">
-                  <label className="text-[10px] font-medium text-muted-foreground block mb-1">Port</label>
-                  <div className="flex gap-1.5">
-                    <Input
-                      type="number"
-                      value={portInput}
-                      onChange={(e) => setPortInput(e.target.value)}
-                      disabled={isLoading || isRunning}
-                      className="h-7 text-xs w-24"
-                    />
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      onClick={handleAutoDetectPort} 
-                      disabled={isLoading || isRunning || isDetectingPort}
-                      className="h-7 px-2"
-                      title="Auto-detect available port"
-                    >
-                      {isDetectingPort ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
-                    </Button>
-                  </div>
-                </div>
-                <Toggle label="Auto-start" checked={rendererAutoStart} onChange={handleAutoStartToggle} disabled={isLoading} />
-              </div>
-
-              {/* Image Source */}
-              {showImageSource && (
-                <div className="pt-2 border-t border-border/50">
-                  <label className="text-[10px] font-medium text-muted-foreground block mb-1">Image Source</label>
-                  <DropdownMenuWrapper>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="w-full justify-between h-7 text-xs" disabled={isLoading || isRunning}>
-                        {rendererImageSource === "ghcr" ? "GitHub Registry" : rendererImageSource === "embedded" ? "From Source" : "Custom"}
-                        <ChevronDown size={10} />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContentWrapper align="start" className="w-[var(--radix-dropdown-menu-trigger-width)]">
-                      <DropdownMenuRadioGroup value={rendererImageSource} onValueChange={(v) => handleImageSourceChange(v as ImageSource)}>
-                        <MenuRadioItem value="ghcr">GitHub Registry</MenuRadioItem>
-                        <MenuRadioItem value="embedded">Build from Source</MenuRadioItem>
-                        <MenuRadioItem value="custom">Custom Image</MenuRadioItem>
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuContentWrapper>
-                  </DropdownMenuWrapper>
-                  
-                  <AnimatePresence>
-                    {rendererImageSource === "custom" && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                        className="overflow-hidden"
-                      >
-                        <div className="flex gap-1.5 mt-2">
-                          <Input
-                            type="text"
-                            placeholder="registry/image:tag"
-                            value={rendererCustomRegistry}
-                            onChange={(e) => setRendererCustomRegistry(e.target.value)}
-                            disabled={isLoading || isRunning}
-                            className="h-7 text-xs flex-1"
-                          />
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            onClick={handleVerifyCustomImage} 
-                            disabled={isVerifyingImage || isLoading || isRunning}
-                            className="h-7 w-7 p-0"
-                          >
-                            {isVerifyingImage ? <Loader2 className="w-3 h-3 animate-spin" /> :
-                             imageVerificationStatus === "valid" ? <Check className="w-3 h-3 text-emerald-500" /> :
-                             imageVerificationStatus === "invalid" ? <X className="w-3 h-3 text-red-500" /> :
-                             <Shield className="w-3 h-3" />}
-                          </Button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              )}
-
-              {/* Disk Space */}
-              <div className="pt-2 border-t border-border/50 flex items-center justify-between text-[10px]">
-                <span className="text-muted-foreground flex items-center gap-1">
-                  <HardDrive className="w-3 h-3" />
-                  {diskSpaceAvailable !== null ? formatBytes(diskSpaceAvailable) : "—"} free
-                </span>
-                <Button 
-                  size="sm" 
-                  variant="ghost" 
-                  onClick={handleCleanup} 
-                  disabled={isCleaningUp || isLoading || isRunning}
-                  className="h-6 text-[10px] px-2"
-                >
-                  {isCleaningUp ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Trash2 className="w-3 h-3 mr-1" />}
-                  Cleanup
-                </Button>
-              </div>
-            </div>
-
-            {/* Logs */}
-            <LogsDisplay logs={rendererLogs} title="Logs" shouldAnimate={shouldAnimate} />
-          </div>
-        )}
-
-        {/* Remote Compiler */}
-        {(rendererMode === "remote" || rendererMode === "auto") && (
-          <div className="flex flex-col border border-border/60 rounded-lg overflow-hidden bg-card">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-border/50 bg-muted/20">
-              <div className="flex items-center gap-2">
-                <Globe className="w-3.5 h-3.5 text-primary" />
-                <span className="text-xs font-semibold">Remote Compiler</span>
-              </div>
-              {isGuestMode ? (
-                <Badge variant="outline" className="text-[10px] h-5 bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400">
-                  <Lock className="w-2.5 h-2.5 mr-1" />
-                  Auth Required
+            <div className="flex items-center gap-2">
+              {rendererMode === "local" && (
+                <Badge variant="outline" className="text-[10px] h-5 bg-primary/10 border-primary/30 text-primary">
+                  Active
                 </Badge>
-              ) : (
+              )}
+              {rendererMode === "remote" && (
+                <Badge variant="outline" className="text-[10px] h-5 bg-muted border-border text-muted-foreground">
+                  Inactive
+                </Badge>
+              )}
+              {rendererMode === "auto" && (
                 <Badge variant="outline" className="text-[10px] h-5 bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
-                  <Check className="w-2.5 h-2.5 mr-1" />
-                  Connected
+                  Auto
                 </Badge>
               )}
+              {rendererMode !== "remote" && <StatusBadge status={rendererStatus} />}
             </div>
-            
-            <div className="flex-1 flex items-center justify-center p-4">
-              {isGuestMode ? (
-                <div className="text-center">
-                  <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-3">
-                    <Lock className="w-5 h-5 text-muted-foreground" />
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-3">Sign in for cloud compilation</p>
-                  <Button size="sm" onClick={handleNavigateToAccount}>Sign In</Button>
+          </div>
+          
+          <div className={cn(
+            "flex-1 flex flex-col gap-2.5 p-3 overflow-y-auto",
+            rendererMode === "remote" && "pointer-events-none"
+          )}>
+            {/* Controls */}
+            <div className="flex gap-2">
+              <Button 
+                size="sm" 
+                variant={isRunning ? "outline" : "default"} 
+                onClick={handleStart} 
+                disabled={isLoading || isRunning || rendererMode === "remote"}
+                className="flex-1 h-7 text-xs"
+              >
+                {isRunning ? <Check className="w-3 h-3 mr-1" /> : <Play className="w-3 h-3 mr-1" />}
+                {isRunning ? "Active" : "Start"}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={handleStop} disabled={isLoading || !isRunning || rendererMode === "remote"} className="h-7 w-7 p-0">
+                <Square className="w-3 h-3" />
+              </Button>
+              <Button size="sm" variant="ghost" onClick={handleRestart} disabled={isLoading || !isRunning || rendererMode === "remote"} className="h-7 w-7 p-0">
+                <RefreshCw className="w-3 h-3" />
+              </Button>
+            </div>
+
+            {/* Settings Row */}
+            <div className="flex items-end justify-between gap-3">
+              <div className="flex-1">
+                <label className="text-[10px] font-medium text-muted-foreground block mb-1">Port</label>
+                <div className="flex gap-1.5">
+                  <Input
+                    type="number"
+                    value={portInput}
+                    onChange={(e) => setPortInput(e.target.value)}
+                    disabled={isLoading || isRunning || rendererMode === "remote"}
+                    className="h-7 text-xs w-24"
+                  />
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    onClick={handleAutoDetectPort} 
+                    disabled={isLoading || isRunning || isDetectingPort || rendererMode === "remote"}
+                    className="h-7 px-2"
+                    title="Auto-detect available port"
+                  >
+                    {isDetectingPort ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+                  </Button>
                 </div>
-              ) : (
-                <div className="text-center">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                    <Globe className="w-5 h-5 text-primary" />
-                  </div>
-                  <p className="text-sm font-medium mb-1">Ready</p>
-                  <p className="text-xs text-muted-foreground">Remote compilation enabled</p>
-                </div>
+              </div>
+              <Toggle label="Auto-start" checked={rendererAutoStart} onChange={handleAutoStartToggle} disabled={isLoading || rendererMode === "remote"} />
+            </div>
+
+            {/* Image Source */}
+            <div className="pt-2 border-t border-border/50">
+              <label className="text-[10px] font-medium text-muted-foreground block mb-1">Image Source</label>
+              <DropdownMenuWrapper>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-full justify-between h-7 text-xs" disabled={isLoading || isRunning || rendererMode === "remote"}>
+                    {rendererImageSource === "ghcr" ? "GitHub Registry" : rendererImageSource === "embedded" ? "From Source" : "Custom"}
+                    <ChevronDown size={10} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContentWrapper align="start" className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                  <DropdownMenuRadioGroup value={rendererImageSource} onValueChange={(v) => handleImageSourceChange(v as ImageSource)}>
+                    <MenuRadioItem value="ghcr">GitHub Registry</MenuRadioItem>
+                    <MenuRadioItem value="embedded">Build from Source</MenuRadioItem>
+                    <MenuRadioItem value="custom">Custom Image</MenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContentWrapper>
+              </DropdownMenuWrapper>
+              
+              <AnimatePresence>
+                {rendererImageSource === "custom" && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                    className="overflow-hidden"
+                  >
+                    <div className="flex gap-1.5 mt-2">
+                      <Input
+                        type="text"
+                        placeholder="registry/image:tag"
+                        value={rendererCustomRegistry}
+                        onChange={(e) => setRendererCustomRegistry(e.target.value)}
+                        disabled={isLoading || isRunning || rendererMode === "remote"}
+                        className="h-7 text-xs flex-1"
+                      />
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={handleVerifyCustomImage} 
+                        disabled={isVerifyingImage || isLoading || isRunning || rendererMode === "remote"}
+                        className="h-7 w-7 p-0"
+                      >
+                        {isVerifyingImage ? <Loader2 className="w-3 h-3 animate-spin" /> :
+                         imageVerificationStatus === "valid" ? <Check className="w-3 h-3 text-emerald-500" /> :
+                         imageVerificationStatus === "invalid" ? <X className="w-3 h-3 text-red-500" /> :
+                         <Shield className="w-3 h-3" />}
+                      </Button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Disk Space */}
+            <div className="pt-2 border-t border-border/50 flex items-center justify-between text-[10px]">
+              <span className="text-muted-foreground flex items-center gap-1">
+                <HardDrive className="w-3 h-3" />
+                {diskSpaceAvailable !== null ? formatBytes(diskSpaceAvailable) : "—"} free
+              </span>
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={handleCleanup} 
+                disabled={isCleaningUp || isLoading || isRunning || rendererMode === "remote"}
+                className="h-6 text-[10px] px-2"
+              >
+                {isCleaningUp ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Trash2 className="w-3 h-3 mr-1" />}
+                Cleanup
+              </Button>
+            </div>
+          </div>
+
+          {/* Logs */}
+          <LogsDisplay logs={rendererLogs} title="Logs" shouldAnimate={shouldAnimate} />
+        </div>
+
+        {/* Remote Compiler - always shown, grayed out if not active */}
+        <div className={cn(
+          "flex flex-col border border-border/60 rounded-lg overflow-hidden bg-card transition-opacity duration-200",
+          rendererMode === "local" && "opacity-50"
+        )}>
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border/50 bg-muted/20">
+            <div className="flex items-center gap-2">
+              <Globe className="w-3.5 h-3.5 text-primary" />
+              <span className="text-xs font-semibold">Remote Compiler</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {rendererMode === "remote" && (
+                <Badge variant="outline" className="text-[10px] h-5 bg-primary/10 border-primary/30 text-primary">
+                  Active
+                </Badge>
+              )}
+              {rendererMode === "local" && (
+                <Badge variant="outline" className="text-[10px] h-5 bg-muted border-border text-muted-foreground">
+                  Inactive
+                </Badge>
+              )}
+              {rendererMode === "auto" && (
+                <Badge variant="outline" className="text-[10px] h-5 bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+                  Auto
+                </Badge>
+              )}
+              {rendererMode !== "local" && (
+                isGuestMode ? (
+                  <Badge variant="outline" className="text-[10px] h-5 bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400">
+                    <Lock className="w-2.5 h-2.5 mr-1" />
+                    Auth Required
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[10px] h-5 bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+                    <Check className="w-2.5 h-2.5 mr-1" />
+                    Connected
+                  </Badge>
+                )
               )}
             </div>
           </div>
-        )}
+          
+          <div className={cn(
+            "flex-1 flex items-center justify-center p-4",
+            rendererMode === "local" && "pointer-events-none"
+          )}>
+            {isGuestMode ? (
+              <div className="text-center">
+                <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-3">
+                  <Lock className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">Sign in for cloud compilation</p>
+                <Button size="sm" onClick={handleNavigateToAccount} disabled={rendererMode === "local"}>Sign In</Button>
+              </div>
+            ) : (
+              <div className="text-center">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                  <Globe className="w-5 h-5 text-primary" />
+                </div>
+                <p className="text-sm font-medium mb-1">Ready</p>
+                <p className="text-xs text-muted-foreground">Remote compilation enabled</p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
