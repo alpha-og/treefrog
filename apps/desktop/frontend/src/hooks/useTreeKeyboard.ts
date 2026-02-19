@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useSelectionStore } from "../stores/selectionStore";
 import { TreeNode, flattenTree } from "../utils/treeUtils";
 
@@ -34,16 +34,15 @@ export function useTreeKeyboard(options: UseTreeKeyboardOptions): UseTreeKeyboar
     onCreateFolder,
   } = options;
 
-  const {
-    lastSelectedId,
-    select,
-    toggle,
-    selectRange,
-    selectAll,
-    clear,
-  } = useSelectionStore();
+  // Use individual selectors to prevent re-renders
+  const lastSelectedId = useSelectionStore((state) => state.lastSelectedId);
+  const select = useSelectionStore((state) => state.select);
+  const toggle = useSelectionStore((state) => state.toggle);
+  const selectRange = useSelectionStore((state) => state.selectRange);
+  const selectAll = useSelectionStore((state) => state.selectAll);
+  const clear = useSelectionStore((state) => state.clear);
 
-  const flatPaths = flattenTree(treeNodes);
+  const flatPaths = useMemo(() => flattenTree(treeNodes), [treeNodes]);
   const currentIndex = flatPaths.indexOf(currentFile);
 
   const focusNode = useCallback((path: string) => {

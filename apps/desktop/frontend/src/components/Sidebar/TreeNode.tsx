@@ -68,7 +68,6 @@ export const TreeNode = memo(function TreeNode({
          <motion.div
            className={cn(
              "group relative flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all duration-150 mr-2 w-full tree-node-motion",
-             // Styling based on state
              isActive
                ? "bg-primary/25 font-semibold shadow-lg ring-1.5 ring-primary/60 text-primary hover:bg-primary/35"
                : isSelected
@@ -78,9 +77,9 @@ export const TreeNode = memo(function TreeNode({
            style={{ paddingLeft: `${0.75 + node.depth * 1}rem` }}
            onClick={handleClick}
            onContextMenu={onContextMenu}
-           initial={{ opacity: 0, x: -2 }}
+           initial={false}
            animate={{ opacity: 1, x: 0 }}
-           transition={{ duration: 0.2, ease: "easeOut" }}
+           transition={{ duration: 0.15, ease: "easeOut" }}
          >
          {/* Expand/collapse chevron for folders */}
          {node.isDir && (
@@ -126,17 +125,16 @@ export const TreeNode = memo(function TreeNode({
        </motion.div>
 
        {/* Children with smooth container animation */}
-       <AnimatePresence mode="wait">
+       <AnimatePresence mode="sync">
          {children && isExpanded && (
            <motion.div
              key={`expanded-${node.path}`}
-             layoutId={`children-${node.path}`}
              initial={{ opacity: 0, height: 0 }}
              animate={{ opacity: 1, height: "auto" }}
              exit={{ opacity: 0, height: 0 }}
              transition={{ 
-               duration: 0.4,
-               ease: "easeInOut"
+               duration: 0.25,
+               ease: [0.4, 0, 0.2, 1]
              }}
              className="overflow-hidden"
            >

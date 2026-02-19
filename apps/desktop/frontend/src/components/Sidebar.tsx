@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   GitCommit,
@@ -82,30 +82,27 @@ export default function Sidebar({
   onPush,
   onPull,
 }: SidebarProps) {
-  // File store
-  const {
-    cacheFolderContents,
-    getCachedFolderContents,
-    searchQuery,
-    filterHidden,
-    filterType,
-    sortBy,
-    sortOrder,
-    setSearchQuery,
-    toggleFilterHidden,
-    setFilterType,
-    setSortBy,
-    toggleSortOrder,
-  } = useFileStore();
+  // File store - use individual selectors to prevent re-renders
+  const cacheFolderContents = useFileStore((state) => state.cacheFolderContents);
+  const getCachedFolderContents = useFileStore((state) => state.getCachedFolderContents);
+  const clearAllFolderCache = useFileStore((state) => state.clearAllFolderCache);
+  const searchQuery = useFileStore((state) => state.searchQuery);
+  const filterHidden = useFileStore((state) => state.filterHidden);
+  const filterType = useFileStore((state) => state.filterType);
+  const sortBy = useFileStore((state) => state.sortBy);
+  const sortOrder = useFileStore((state) => state.sortOrder);
+  const setSearchQuery = useFileStore((state) => state.setSearchQuery);
+  const toggleFilterHidden = useFileStore((state) => state.toggleFilterHidden);
+  const setFilterType = useFileStore((state) => state.setFilterType);
+  const setSortBy = useFileStore((state) => state.setSortBy);
+  const toggleSortOrder = useFileStore((state) => state.toggleSortOrder);
 
-  // Selection store
-  const {
-    selectedIds,
-    lastSelectedId,
-    toggle: toggleSelection,
-    selectRange,
-    clear: clearSelection,
-  } = useSelectionStore();
+  // Selection store - use individual selectors
+  const selectedIds = useSelectionStore((state) => state.selectedIds);
+  const lastSelectedId = useSelectionStore((state) => state.lastSelectedId);
+  const toggleSelection = useSelectionStore((state) => state.toggle);
+  const selectRange = useSelectionStore((state) => state.selectRange);
+  const clearSelection = useSelectionStore((state) => state.clear);
 
   // Local state
    const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
@@ -117,6 +114,21 @@ export default function Sidebar({
    const [commitMessage, setCommitMessage] = useState("");
    const [isCommitting, setIsCommitting] = useState(false);
    const [isGitExpanded, setIsGitExpanded] = useState(true);
+
+  // Track previous project root to detect project switches
+  const prevProjectRootRef = useRef(projectRoot);
+
+  // Reset state when project changes
+  useEffect(() => {
+    if (projectRoot !== prevProjectRootRef.current) {
+      prevProjectRootRef.current = projectRoot;
+      setExpandedFolders(new Set());
+      clearAllFolderCache();
+      clearSelection();
+      setSearchQuery("");
+      setLoadError(null);
+    }
+  }, [projectRoot, clearAllFolderCache, clearSelection, setSearchQuery]);
 
 // Load persisted filter settings on mount and pre-load expanded folder contents
     useEffect(() => {

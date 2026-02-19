@@ -16,12 +16,25 @@ interface SelectionState {
   isEmpty: () => boolean;
 }
 
+const EMPTY_SET = new Set<string>();
+
+function setsEqual(a: Set<string>, b: Set<string>): boolean {
+  if (a.size !== b.size) return false;
+  for (const item of a) {
+    if (!b.has(item)) return false;
+  }
+  return true;
+}
+
 export const useSelectionStore = create<SelectionState>((set, get) => ({
-  selectedIds: new Set(),
+  selectedIds: EMPTY_SET,
   lastSelectedId: null,
 
   select: (id) => {
     set((state) => {
+      if (state.selectedIds.has(id)) {
+        return { lastSelectedId: id };
+      }
       const newSelected = new Set(state.selectedIds);
       newSelected.add(id);
       return { selectedIds: newSelected, lastSelectedId: id };
@@ -30,10 +43,13 @@ export const useSelectionStore = create<SelectionState>((set, get) => ({
 
   deselect: (id) => {
     set((state) => {
+      if (!state.selectedIds.has(id)) {
+        return state;
+      }
       const newSelected = new Set(state.selectedIds);
       newSelected.delete(id);
       return { 
-        selectedIds: newSelected, 
+        selectedIds: newSelected.size === 0 ? EMPTY_SET : newSelected, 
         lastSelectedId: state.lastSelectedId === id ? null : state.lastSelectedId 
       };
     });
@@ -66,11 +82,22 @@ export const useSelectionStore = create<SelectionState>((set, get) => ({
   },
 
   selectAll: (ids) => {
-    set({ selectedIds: new Set(ids), lastSelectedId: ids[ids.length - 1] || null });
+    set((state) => {
+      const newSet = new Set(ids);
+      if (setsEqual(state.selectedIds, newSet)) {
+        return state;
+      }
+      return { selectedIds: newSet, lastSelectedId: ids[ids.length - 1] || null };
+    });
   },
 
   clear: () => {
-    set({ selectedIds: new Set(), lastSelectedId: null });
+    set((state) => {
+      if (state.selectedIds.size === 0 && state.lastSelectedId === null) {
+        return state;
+      }
+      return { selectedIds: EMPTY_SET, lastSelectedId: null };
+    });
   },
 
   has: (id) => {

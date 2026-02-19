@@ -26,6 +26,7 @@ interface FileState {
   cacheFolderContents: (path: string, entries: FileEntry[]) => void;
   getCachedFolderContents: (path: string) => FileEntry[] | undefined;
   clearFolderCache: (path: string) => void;
+  clearAllFolderCache: () => void;
   clear: () => void;
   
   // Filtering actions
@@ -75,6 +76,10 @@ export const useFileStore = create<FileState>((set, get) => ({
     const newCache = new Map(state.folderCache);
     newCache.delete(path);
     set({ folderCache: newCache });
+  },
+  
+  clearAllFolderCache: () => {
+    set({ folderCache: new Map() });
   },
   
   clear: () =>

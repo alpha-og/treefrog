@@ -60,23 +60,33 @@ export default function Editor() {
   const navigate = useNavigate();
 
   // ========== STORES ==========
-  const { theme, setTheme } = useAppStore();
-  const { addProject } = useRecentProjectsStore();
-  const {
-    entries,
-    currentDir,
-    currentFile,
-    isBinary,
-    fileContent,
-    setCurrentDir,
-    setCurrentFile,
-    setFileContent,
-  } = useFileStore();
-  const { sidebar, editor, preview, toggle: togglePane } = usePaneStore();
-  const { sidebarWidth, editorWidth, setSidebarWidth, setEditorWidth } =
-    useDimensionStore();
-  const { modal, modalInput, openModal, closeModal, setModalInput } =
-    useModalStore();
+  const theme = useAppStore((state) => state.theme);
+  const setTheme = useAppStore((state) => state.setTheme);
+  const addProject = useRecentProjectsStore((state) => state.addProject);
+  
+  // File store - use individual selectors to prevent re-renders from filter state changes
+  const entries = useFileStore((state) => state.entries);
+  const currentDir = useFileStore((state) => state.currentDir);
+  const currentFile = useFileStore((state) => state.currentFile);
+  const isBinary = useFileStore((state) => state.isBinary);
+  const fileContent = useFileStore((state) => state.fileContent);
+  const setCurrentDir = useFileStore((state) => state.setCurrentDir);
+  const setCurrentFile = useFileStore((state) => state.setCurrentFile);
+  const setFileContent = useFileStore((state) => state.setFileContent);
+  
+  const sidebar = usePaneStore((state) => state.sidebar);
+  const editor = usePaneStore((state) => state.editor);
+  const preview = usePaneStore((state) => state.preview);
+  const togglePane = usePaneStore((state) => state.toggle);
+  const sidebarWidth = useDimensionStore((state) => state.sidebarWidth);
+  const editorWidth = useDimensionStore((state) => state.editorWidth);
+  const setSidebarWidth = useDimensionStore((state) => state.setSidebarWidth);
+  const setEditorWidth = useDimensionStore((state) => state.setEditorWidth);
+  const modal = useModalStore((state) => state.modal);
+  const modalInput = useModalStore((state) => state.modalInput);
+  const openModal = useModalStore((state) => state.openModal);
+  const closeModal = useModalStore((state) => state.closeModal);
+  const setModalInput = useModalStore((state) => state.setModalInput);
 
   // ========== HOOKS ==========
   const {
@@ -151,6 +161,19 @@ export default function Editor() {
   useEffect(() => {
     currentFileRef.current = currentFile;
   }, [currentFile]);
+
+  // Track previous projectRoot to detect project switches
+  const prevProjectRootRef = useRef<string>("");
+
+  // Clear file store when switching between projects
+  useEffect(() => {
+    if (projectRoot && !projectLoading) {
+      if (prevProjectRootRef.current && prevProjectRootRef.current !== projectRoot) {
+        clearFiles();
+      }
+      prevProjectRootRef.current = projectRoot;
+    }
+  }, [projectRoot, projectLoading, clearFiles]);
 
   // ========== WEBSOCKET ==========
   const handleBuildMessage = useCallback(
